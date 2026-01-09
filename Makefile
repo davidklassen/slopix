@@ -11,7 +11,7 @@ ASFLAGS = -mcpu=cortex-a53
 LDFLAGS = -T linker.ld -nostdlib
 
 # Source files
-OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o
+OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o
 
 # Target
 TARGET = slopix.elf
