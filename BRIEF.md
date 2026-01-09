@@ -39,11 +39,12 @@ A minimal Unix-like operating system for ARM64, built for learning.
 - Basic exception handlers
 
 ### M3: Memory
-- Physical page allocator
-- MMU setup with 4KB pages
-- Kernel mapped in high address space
+- Physical page allocator (bitmap-based, 4KB pages)
+- Page allocation and deallocation
+- Free page tracking
 
 ### M4: Processes
+- MMU setup with 4KB pages
 - Process struct (context, page table, state)
 - Context switching on timer tick
 - Two kernel threads alternating (proof of concept)
