@@ -1,9 +1,11 @@
 #include "timer.h"
+#include "scheduler.h"
 
 // ARM Generic Timer interrupt number for QEMU virt
 #define TIMER_IRQ 30
 
 static volatile unsigned long tick_count = 0;
+static int scheduling_enabled = 0;
 
 // Read system counter frequency
 static inline unsigned int timer_get_frequency(void) {
@@ -66,8 +68,17 @@ void timer_handler(void) {
     unsigned int ticks_per_interrupt = sys_freq / 100;
     unsigned long current = timer_get_counter();
     timer_set_compare(current + ticks_per_interrupt);
+
+    // Trigger scheduler every 10 ticks (100ms) if enabled
+    if (scheduling_enabled && (tick_count % 10) == 0) {
+        scheduler_schedule();
+    }
 }
 
 unsigned long timer_get_ticks(void) {
     return tick_count;
+}
+
+void timer_enable_scheduling(void) {
+    scheduling_enabled = 1;
 }

@@ -2,12 +2,13 @@
 
 A minimal Unix-like operating system for ARM64, built for learning.
 
-## Current Status: M3 (Memory) ✅
+## Current Status: M4 (Processes) ✅
 
 **Completed Milestones:**
 - ✅ M1: Boot
 - ✅ M2: Interrupts
 - ✅ M3: Memory
+- ✅ M4: Processes
 
 ## Prerequisites
 
@@ -125,7 +126,42 @@ This demonstrates:
 - ✅ Page deallocation working
 - ✅ Free page tracking accurate
 - ✅ Freed pages are reused correctly (pages 1 and 3 freed, then reallocated as pages 6 and 7)
-- ⏳ MMU setup deferred to M4 (will enable virtual memory with processes)
+
+### M4: Processes
+With M4 complete, you should see two kernel threads alternating:
+```
+=== M4: Processes ===
+[PROCESS] Process management initialized
+[SCHEDULER] Scheduler initialized
+[PROCESS] Created process PID=1, entry=0x400000b0, stack=0x4000a000-0x4000b000
+[PROCESS] Created process PID=2, entry=0x40000120, stack=0x4000c000-0x4000d000
+[SCHEDULER] Added process PID=1 to run queue
+[SCHEDULER] Added process PID=2 to run queue
+
+=== M2: Interrupts ===
+...
+Timer and scheduler started
+Two threads will alternate printing...
+
+[Thread 1] Count: 0
+[Thread 1] Count: 1
+...
+[Thread 1] Count: 22
+[Thread 2] Count: 0
+[Thread 2] Count: 1
+[Thread 2] Count: 2
+...
+```
+
+This demonstrates:
+- ✅ Process control blocks (PCBs) with saved context
+- ✅ Process creation with separate stacks
+- ✅ Context switching (saves/restores registers)
+- ✅ Round-robin scheduler
+- ✅ Timer-driven preemptive multitasking (switches every 100ms)
+- ✅ Two kernel threads running and alternating
+
+**Note:** Threads run in kernel mode (EL1) and share the same address space. Per-process virtual memory will be added in M5.
 
 ## Project Structure
 
@@ -149,11 +185,17 @@ This demonstrates:
 - `pmm.c/h` - Physical memory manager (page allocator)
 - `mmu.c/h` - MMU setup and page table management
 
+**Process Management:**
+- `process.c/h` - Process control blocks and creation
+- `scheduler.c/h` - Round-robin scheduler
+- `switch.S` - Context switching assembly
+
 **Build:**
 - `Makefile` - Build system
 
 ## Next Steps
 
-- M4: Processes (process struct, context switching, multitasking)
-- M5: Userspace (EL0 execution, syscall interface)
+- M5: Userspace (EL0 execution, syscall interface, MMU with per-process address spaces)
 - M6: Fork & Exec
+- M7: Filesystem
+- M8: Shell

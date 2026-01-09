@@ -11,7 +11,7 @@ ASFLAGS = -mcpu=cortex-a53
 LDFLAGS = -T linker.ld -nostdlib
 
 # Source files
-OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o
+OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o switch.o
 
 # Target
 TARGET = slopix.elf
@@ -28,7 +28,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(ASFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) *.o
 
 run: $(TARGET)
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)

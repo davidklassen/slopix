@@ -4,9 +4,30 @@
 #include "timer.h"
 #include "pmm.h"
 #include "mmu.h"
+#include "process.h"
+#include "scheduler.h"
 
 // Assembly function to enable MMU
 extern void enable_mmu(unsigned long ttbr0, unsigned long ttbr1);
+
+// Thread functions
+void thread1(void) {
+    int count = 0;
+    while (1) {
+        printf("[Thread 1] Count: %d\n", count++);
+        // Busy wait to slow down output
+        for (volatile int i = 0; i < 1000000; i++);
+    }
+}
+
+void thread2(void) {
+    int count = 0;
+    while (1) {
+        printf("[Thread 2] Count: %d\n", count++);
+        // Busy wait to slow down output
+        for (volatile int i = 0; i < 1000000; i++);
+    }
+}
 
 void main(void) {
     uart_init();
@@ -49,6 +70,25 @@ void main(void) {
 
     printf("[TEST] Free pages: %d / %d\n", pmm_get_free_pages(), pmm_get_total_pages());
 
+    printf("\n=== M4: Processes ===\n");
+
+    // Initialize process management
+    process_init();
+    scheduler_init();
+
+    // Create two kernel threads
+    process_t *proc1 = process_create(thread1, 4096);
+    process_t *proc2 = process_create(thread2, 4096);
+
+    if (!proc1 || !proc2) {
+        printf("[ERROR] Failed to create threads\n");
+        while (1);
+    }
+
+    // Add to scheduler
+    scheduler_add(proc1);
+    scheduler_add(proc2);
+
     printf("\n=== M2: Interrupts ===\n");
     printf("Initializing interrupts...\n");
 
@@ -61,17 +101,17 @@ void main(void) {
     // Enable interrupts
     interrupts_enable();
 
-    printf("Timer started. Waiting for interrupts...\n");
+    printf("Timer and scheduler started\n");
+    printf("Two threads will alternate printing...\n\n");
 
-    unsigned long last_ticks = 0;
+    // Enable timer-driven scheduling
+    timer_enable_scheduling();
 
-    // Main loop - print tick count every 100 ticks (1 second)
+    // Start the first thread
+    scheduler_schedule();
+
+    // Should never reach here
     while (1) {
-        unsigned long ticks = timer_get_ticks();
-        if (ticks > 0 && ticks != last_ticks && (ticks % 100) == 0) {
-            printf("[Timer] %d seconds elapsed (%d ticks)\n", ticks / 100, ticks);
-            last_ticks = ticks;
-        }
         __asm__ volatile("wfe");
     }
 }
