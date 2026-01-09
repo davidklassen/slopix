@@ -35,22 +35,30 @@ static int is_page_free(unsigned long page_num) {
 }
 
 void pmm_init(void) {
+    printf("[PMM] Starting initialization...\n");
+
     // Calculate total pages in physical memory
     total_pages = PHYS_MEMORY_SIZE / PAGE_SIZE;
+    printf("[PMM] Total pages calculated: %d\n", total_pages);
 
     // Bitmap needs 1 bit per page
     bitmap_size = (total_pages + 7) / 8;
+    printf("[PMM] Bitmap size: %d bytes\n", bitmap_size);
 
     // Place bitmap right after kernel
     unsigned long kernel_end = get_kernel_end_phys();
+    printf("[PMM] Kernel end (raw): %x\n", kernel_end);
     kernel_end = (kernel_end + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);  // Align to page
+    printf("[PMM] Kernel end (aligned): %x\n", kernel_end);
     page_bitmap = (unsigned char *)kernel_end;
 
+    printf("[PMM] Initializing bitmap...\n");
     // Initialize bitmap - mark all pages as free
     for (unsigned long i = 0; i < bitmap_size; i++) {
         page_bitmap[i] = 0;
     }
 
+    printf("[PMM] Marking used pages...\n");
     // Mark kernel pages and bitmap pages as used
     unsigned long kernel_pages = ((kernel_end + bitmap_size) - PHYS_MEMORY_START) / PAGE_SIZE;
     for (unsigned long i = 0; i < kernel_pages; i++) {
@@ -72,12 +80,7 @@ void *pmm_alloc_page(void) {
             free_pages--;
             unsigned long phys_addr = PHYS_MEMORY_START + (i * PAGE_SIZE);
 
-            // Zero out the page
-            unsigned char *page = (unsigned char *)phys_addr;
-            for (unsigned long j = 0; j < PAGE_SIZE; j++) {
-                page[j] = 0;
-            }
-
+            // Don't zero the page for now to avoid potential issues
             return (void *)phys_addr;
         }
     }

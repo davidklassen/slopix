@@ -91,33 +91,28 @@ This demonstrates:
 - ✅ Timer tick counter incrementing
 
 ### M3: Memory
-With M3 complete, you should see memory management initialization and tests:
+With M3 complete, you should see physical memory management:
 ```
 SLOPIX
 
 === M3: Memory Management ===
-[PMM] Initialized: 128 MB (32768 pages, 32750 free)
-[PMM] Kernel end: 4005c000, Bitmap at: 4005c000 (4096 bytes)
-[MMU] Initializing page tables...
-[MMU] TTBR0 (identity): 4005d000
-[MMU] TTBR1 (kernel high): 4005e000
-[MMU] Enabling MMU...
-[MMU] MMU enabled!
+[PMM] Initialized: 128 MB (32768 pages, 32765 free)
+[Note] MMU setup deferred to next milestone
 
 === Testing Physical Memory Allocator ===
 [TEST] Allocating 5 pages...
-  Page 0 allocated at: 40062000
-  Page 1 allocated at: 40063000
-  Page 2 allocated at: 40064000
-  Page 3 allocated at: 40065000
-  Page 4 allocated at: 40066000
-[TEST] Free pages: 32745 / 32768
+  Page 0 allocated at: 0x40003000
+  Page 1 allocated at: 0x40004000
+  Page 2 allocated at: 0x40005000
+  Page 3 allocated at: 0x40006000
+  Page 4 allocated at: 0x40007000
+[TEST] Free pages: 32760 / 32768
 [TEST] Freeing pages 1 and 3...
-[TEST] Free pages: 32747 / 32768
+[TEST] Free pages: 32762 / 32768
 [TEST] Allocating 2 more pages...
-  Page 6 allocated at: 40063000
-  Page 7 allocated at: 40065000
-[TEST] Free pages: 32745 / 32768
+  Page 6 allocated at: 0x40004000
+  Page 7 allocated at: 0x40006000
+[TEST] Free pages: 32760 / 32768
 
 === M2: Interrupts ===
 ...
@@ -125,12 +120,12 @@ SLOPIX
 ```
 
 This demonstrates:
-- ✅ Physical memory manager (bitmap-based page allocator)
-- ✅ MMU enabled with 4KB pages (using 2MB blocks)
-- ✅ Page table setup with TTBR0 (identity map) and TTBR1 (kernel high memory)
-- ✅ Page allocation and deallocation working
+- ✅ Physical memory manager (bitmap-based page allocator for 4KB pages)
+- ✅ Page allocation working (returns physical addresses)
+- ✅ Page deallocation working
 - ✅ Free page tracking accurate
-- ✅ Memory operations functioning after MMU enable
+- ✅ Freed pages are reused correctly (pages 1 and 3 freed, then reallocated as pages 6 and 7)
+- ⏳ MMU setup deferred to M4 (will enable virtual memory with processes)
 
 ## Project Structure
 

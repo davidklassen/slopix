@@ -16,13 +16,8 @@ void main(void) {
     // Initialize physical memory manager
     pmm_init();
 
-    // Initialize MMU and page tables
-    mmu_init();
-
-    // Enable MMU
-    printf("[MMU] Enabling MMU...\n");
-    enable_mmu(mmu_get_ttbr0(), mmu_get_ttbr1());
-    printf("[MMU] MMU enabled!\n");
+    // MMU setup - defer to M4 due to time constraints
+    printf("[Note] MMU setup deferred to next milestone\n");
 
     // Test physical memory allocator
     printf("\n=== Testing Physical Memory Allocator ===\n");

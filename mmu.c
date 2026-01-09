@@ -11,11 +11,22 @@ static unsigned long *ttbr0_l0;  // User space (low addresses)
 static unsigned long *ttbr1_l0;  // Kernel space (high addresses)
 
 static unsigned long *alloc_page_table(void) {
+    printf("[MMU] Calling pmm_alloc_page...\n");
     void *page = pmm_alloc_page();
+    printf("[MMU] pmm_alloc_page returned: %x\n", page);
     if (!page) {
         printf("[MMU] Failed to allocate page table\n");
         while (1);
     }
+
+    // Zero the page table
+    printf("[MMU] Zeroing page table...\n");
+    unsigned long *entries = (unsigned long *)page;
+    for (int i = 0; i < 512; i++) {
+        entries[i] = 0;
+    }
+    printf("[MMU] Page table zeroed\n");
+
     return (unsigned long *)page;
 }
 
@@ -23,13 +34,18 @@ void mmu_init(void) {
     printf("[MMU] Initializing page tables...\n");
 
     // Allocate level 0 page tables for TTBR0 and TTBR1
+    printf("[MMU] Allocating TTBR0 L0...\n");
     ttbr0_l0 = alloc_page_table();
+    printf("[MMU] Allocating TTBR1 L0...\n");
     ttbr1_l0 = alloc_page_table();
 
     // Setup identity map for TTBR0 (0x0 -> 0x0)
     // This maps the first 1GB of physical memory
+    printf("[MMU] Allocating TTBR0 L1...\n");
     unsigned long *ttbr0_l1 = alloc_page_table();
+    printf("[MMU] Writing TTBR0 L0[0]...\n");
     ttbr0_l0[0] = (unsigned long)ttbr0_l1 | PTE_TABLE | PTE_VALID;
+    printf("[MMU] TTBR0 L0[0] written\n");
 
     unsigned long *ttbr0_l2 = alloc_page_table();
     ttbr0_l1[0] = (unsigned long)ttbr0_l2 | PTE_TABLE | PTE_VALID;
