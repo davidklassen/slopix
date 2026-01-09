@@ -41,22 +41,29 @@ void scheduler_schedule(void) {
         // Current process is still running, try to find next in queue
         next = current->next;
         if (!next) {
-            next = run_queue_head;
+            next = run_queue_head;  // Wrap around
         }
 
-        // Skip terminated processes
-        while (next && next->state == PROCESS_TERMINATED) {
+        // Find next ready process (skip current and terminated)
+        process_t *start = next;
+        while (next) {
+            if (next != current && next->state != PROCESS_TERMINATED) {
+                // Found a candidate
+                break;
+            }
             next = next->next;
             if (!next) {
-                next = run_queue_head;
+                next = run_queue_head;  // Wrap around
             }
-            if (next == current) {
-                break;  // Wrapped around
+            if (next == start) {
+                // We've cycled through all processes
+                next = 0;
+                break;
             }
         }
 
-        // If we found a different ready process, switch to it
-        if (next && next != current && next->state == PROCESS_READY) {
+        // If we found a different process, switch to it
+        if (next && next != current) {
             current->state = PROCESS_READY;
             next->state = PROCESS_RUNNING;
             process_set_current(next);
