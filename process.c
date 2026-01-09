@@ -54,6 +54,7 @@ process_t *process_create(void (*entry)(void), unsigned long stack_size) {
     proc->context.x30 = (unsigned long)process_exit;  // Link register (return address)
     proc->context.sp = (unsigned long)stack + stack_size;  // Stack grows down
     proc->context.pc = (unsigned long)entry;  // Entry point
+    proc->context.daif = 0;  // Interrupts enabled (DAIF all cleared)
 
     printf("[PROCESS] Created process PID=%d, entry=%x, stack=%x-%x\n",
            proc->pid, entry, stack, (unsigned long)stack + stack_size);

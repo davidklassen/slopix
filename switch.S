@@ -23,6 +23,10 @@ switch_context:
     adr x9, 1f
     str x9, [x0, #104]
 
+    // Save DAIF (interrupt mask state)
+    mrs x9, daif
+    str x9, [x0, #112]
+
 load_new:
     // Load new context
     ldp x19, x20, [x1, #0]
@@ -35,6 +39,10 @@ load_new:
     // Load stack pointer
     ldr x9, [x1, #96]
     mov sp, x9
+
+    // Load DAIF (interrupt mask state)
+    ldr x9, [x1, #112]
+    msr daif, x9
 
     // Load PC and jump
     ldr x9, [x1, #104]

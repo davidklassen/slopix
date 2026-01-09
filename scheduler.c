@@ -16,13 +16,14 @@ void scheduler_init(void) {
 void scheduler_add(process_t *proc) {
     if (!proc) return;
 
-    proc->next = 0;
     proc->state = PROCESS_READY;
 
     if (!run_queue_head) {
         run_queue_head = proc;
         run_queue_tail = proc;
+        proc->next = proc;  // Single process circular list
     } else {
+        proc->next = run_queue_head;  // Make circular
         run_queue_tail->next = proc;
         run_queue_tail = proc;
     }
@@ -34,53 +35,37 @@ void scheduler_schedule(void) {
     // Get current process
     process_t *current = process_get_current();
 
-    // Find next ready process (round-robin)
-    process_t *next = 0;
-
-    if (current && current->state == PROCESS_RUNNING) {
-        // Current process is still running, try to find next in queue
-        next = current->next;
-        if (!next) {
-            next = run_queue_head;  // Wrap around
-        }
-
-        // Find next ready process (skip current and terminated)
-        process_t *start = next;
-        while (next) {
-            if (next != current && next->state != PROCESS_TERMINATED) {
-                // Found a candidate
-                break;
-            }
-            next = next->next;
-            if (!next) {
-                next = run_queue_head;  // Wrap around
-            }
-            if (next == start) {
-                // We've cycled through all processes
-                next = 0;
-                break;
-            }
-        }
-
-        // If we found a different process, switch to it
-        if (next && next != current) {
-            current->state = PROCESS_READY;
+    if (!current) {
+        // Bootstrap: no current process, pick first ready one
+        process_t *next = run_queue_head;
+        if (next && next->state == PROCESS_READY) {
             next->state = PROCESS_RUNNING;
             process_set_current(next);
-            switch_context(&current->context, &next->context);
-        }
-    } else if (!current) {
-        // No current process, pick first ready one
-        next = run_queue_head;
-        while (next && next->state != PROCESS_READY) {
-            next = next->next;
-        }
-
-        if (next) {
-            next->state = PROCESS_RUNNING;
-            process_set_current(next);
-            // Initial switch - no old context to save
             switch_context(0, &next->context);
         }
+        return;
+    }
+
+    // Find next process in circular list (simple round-robin)
+    process_t *next = current->next;
+
+    // If only one process in queue, don't switch to self
+    if (next == current) {
+        return;
+    }
+
+    // Skip terminated processes
+    int count = 0;
+    while (next->state == PROCESS_TERMINATED && count < 10) {
+        next = next->next;
+        count++;
+    }
+
+    // Switch to next process if it's different and not terminated
+    if (next != current && next->state != PROCESS_TERMINATED) {
+        current->state = PROCESS_READY;
+        next->state = PROCESS_RUNNING;
+        process_set_current(next);
+        switch_context(&current->context, &next->context);
     }
 }

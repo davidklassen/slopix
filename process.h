@@ -16,6 +16,7 @@ typedef struct {
     unsigned long x30;  // Link register
     unsigned long sp;   // Stack pointer
     unsigned long pc;   // Program counter
+    unsigned long daif; // Interrupt mask state
 } cpu_context_t;
 
 // Process control block
