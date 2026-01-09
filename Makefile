@@ -1,5 +1,5 @@
 # Toolchain
-CROSS_COMPILE ?= aarch64-none-elf-
+CROSS_COMPILE ?= aarch64-elf-
 CC = $(CROSS_COMPILE)gcc
 AS = $(CROSS_COMPILE)as
 LD = $(CROSS_COMPILE)ld

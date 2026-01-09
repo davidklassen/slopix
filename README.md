@@ -6,16 +6,13 @@ Milestone 1 implementation: Boot and print "SLOPIX" to serial console.
 
 You need the following tools installed:
 
-- **ARM64 cross-compiler**: `aarch64-none-elf-gcc` (recommended) or `aarch64-linux-gnu-gcc`
+- **ARM64 cross-compiler**: `aarch64-elf-gcc` (macOS) or `aarch64-linux-gnu-gcc` (Linux)
 - **QEMU**: `qemu-system-aarch64`
 
 ### Installing on macOS
 
 ```bash
-brew install qemu
-brew tap ArmMbed/homebrew-formulae
-brew install arm-none-eabi-gcc
-# Or download from ARM's website
+brew install qemu aarch64-elf-gcc
 ```
 
 ### Installing on Linux (Debian/Ubuntu)
@@ -23,6 +20,11 @@ brew install arm-none-eabi-gcc
 ```bash
 sudo apt-get update
 sudo apt-get install qemu-system-arm gcc-aarch64-linux-gnu
+```
+
+**Note for Linux**: If using `gcc-aarch64-linux-gnu`, override the toolchain:
+```bash
+make CROSS_COMPILE=aarch64-linux-gnu-
 ```
 
 ## Building
