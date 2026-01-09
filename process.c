@@ -46,15 +46,16 @@ process_t *process_create(void (*entry)(void), unsigned long stack_size) {
     proc->stack_size = stack_size;
     proc->next = 0;
 
-    // Initialize context
-    for (int i = 0; i < 10; i++) {
+    // Initialize context - clear all general purpose registers
+    for (int i = 0; i < 31; i++) {
         ((unsigned long *)&proc->context)[i] = 0;
     }
-    proc->context.x29 = 0;  // Frame pointer
+
+    // Set up initial execution state
     proc->context.x30 = (unsigned long)process_exit;  // Link register (return address)
     proc->context.sp = (unsigned long)stack + stack_size;  // Stack grows down
-    proc->context.pc = (unsigned long)entry;  // Entry point
-    proc->context.daif = 0;  // Interrupts enabled (DAIF all cleared)
+    proc->context.pc = (unsigned long)entry;  // Entry point (will be loaded into ELR_EL1)
+    proc->context.pstate = 0x5;  // EL1h (mode 0b0101), interrupts enabled (DAIF=0)
 
     printf("[PROCESS] Created process PID=%d, entry=%x, stack=%x-%x\n",
            proc->pid, entry, stack, (unsigned long)stack + stack_size);

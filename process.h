@@ -9,14 +9,15 @@ typedef enum {
     PROCESS_TERMINATED
 } process_state_t;
 
-// CPU context for process switching
+// CPU context for process switching (must match exception stack frame)
 typedef struct {
-    unsigned long x19, x20, x21, x22, x23, x24, x25, x26, x27, x28;
-    unsigned long x29;  // Frame pointer
-    unsigned long x30;  // Link register
+    unsigned long x0, x1, x2, x3, x4, x5, x6, x7;
+    unsigned long x8, x9, x10, x11, x12, x13, x14, x15;
+    unsigned long x16, x17, x18, x19, x20, x21, x22, x23;
+    unsigned long x24, x25, x26, x27, x28, x29, x30;
     unsigned long sp;   // Stack pointer
-    unsigned long pc;   // Program counter
-    unsigned long daif; // Interrupt mask state
+    unsigned long pc;   // Program counter (ELR_EL1)
+    unsigned long pstate; // Processor state (SPSR_EL1)
 } cpu_context_t;
 
 // Process control block

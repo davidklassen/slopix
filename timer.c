@@ -81,6 +81,26 @@ void timer_handler(void) {
     }
 }
 
+// New timer handler that supports context switching
+void *timer_handler_with_context(void *stack_ptr) {
+    tick_count++;
+
+    // Get system counter frequency
+    unsigned int sys_freq = timer_get_frequency();
+
+    // Schedule next interrupt (e.g., 100 Hz = every 10ms)
+    unsigned int ticks_per_interrupt = sys_freq / 100;
+    unsigned long current = timer_get_counter();
+    timer_set_compare(current + ticks_per_interrupt);
+
+    // Trigger scheduler every 10 ticks (100ms) if enabled
+    if (scheduling_enabled && (tick_count % 10) == 0) {
+        stack_ptr = scheduler_schedule_with_context(stack_ptr);
+    }
+
+    return stack_ptr;
+}
+
 unsigned long timer_get_ticks(void) {
     return tick_count;
 }
