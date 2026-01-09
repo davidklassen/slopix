@@ -1,6 +1,12 @@
-# SLOPIX - M1: Boot
+# SLOPIX
 
-Milestone 1 implementation: Boot and print "SLOPIX" to serial console.
+A minimal Unix-like operating system for ARM64, built for learning.
+
+## Current Status: M2 (Interrupts) ✅
+
+**Completed Milestones:**
+- ✅ M1: Boot
+- ✅ M2: Interrupts
 
 ## Prerequisites
 
@@ -57,30 +63,59 @@ Or manually:
 qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel slopix.elf
 ```
 
-You should see:
+To exit QEMU, press `Ctrl-A` then `X`.
 
+## Testing & Validation
+
+### M1: Boot
+After running, you should see:
 ```
 SLOPIX
 ```
 
-To exit QEMU, press `Ctrl-A` then `X`.
+### M2: Interrupts
+With M2 complete, you should see timer interrupts working:
+```
+SLOPIX
+Initializing interrupts...
+Timer started. Waiting for interrupts...
+[Timer] 1 seconds elapsed (100 ticks)
+[Timer] 2 seconds elapsed (200 ticks)
+[Timer] 3 seconds elapsed (300 ticks)
+...
+```
+
+This demonstrates:
+- ✅ GIC (Generic Interrupt Controller) initialized
+- ✅ ARM Generic Timer configured for 100 Hz (10ms ticks)
+- ✅ Timer interrupts firing periodically
+- ✅ Exception handlers properly routing IRQs
+- ✅ Timer tick counter incrementing
+
+The system prints a message every second (100 ticks at 100 Hz).
 
 ## Project Structure
 
+**Boot & Core:**
 - `boot.S` - ARM64 assembly startup code
 - `linker.ld` - Linker script for kernel layout
-- `main.c` - C entry point
+- `main.c` - C entry point and main loop
+
+**I/O:**
 - `uart.c/h` - PL011 UART driver for serial output
 - `printf.c/h` - Minimal printf implementation
+
+**Interrupts:**
+- `exceptions.S` - Exception vector table and handlers
+- `interrupts.c/h` - High-level interrupt management
+- `gic.c/h` - GICv2 (Generic Interrupt Controller) driver
+- `timer.c/h` - ARM Generic Timer driver
+
+**Build:**
 - `Makefile` - Build system
-
-## What's Working
-
-✅ Boot on QEMU virt machine
-✅ Initialize PL011 UART
-✅ Print to serial console
-✅ Basic printf support (%s, %d, %x, %c)
 
 ## Next Steps
 
-- M2: Interrupts (GIC setup, timer interrupts, exception handlers)
+- M3: Memory (physical page allocator, MMU setup, virtual memory)
+- M4: Processes (process struct, context switching, multitasking)
+- M5: Userspace (EL0 execution, syscall interface)
