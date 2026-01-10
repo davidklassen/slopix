@@ -41,6 +41,9 @@ bss_done:
     dsb sy          // Ensure TCR write completes
     isb             // Synchronize context
 
+    // Call physical_setup function (UART, PMM, MMU init, TTBR setup)
+    bl physical_setup
+
     // Jump to C main
     bl main
 
