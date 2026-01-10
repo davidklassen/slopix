@@ -2,8 +2,6 @@
 #include "process.h"
 #include "printf.h"
 
-extern void switch_context(cpu_context_t *old_ctx, cpu_context_t *new_ctx);
-
 static process_t *run_queue_head = 0;
 static process_t *run_queue_tail = 0;
 

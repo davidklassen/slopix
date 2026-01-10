@@ -33,12 +33,14 @@ void gic_init(void) {
 
     // Set all interrupts to lowest priority
     for (unsigned int i = 0; i < num_irqs / 4; i++) {
-        GICD_IPRIORITYR(i) = 0xA0A0A0A0;
+        GICD_IPRIORITYR(i) = (GIC_PRIORITY_DEFAULT << 24) | (GIC_PRIORITY_DEFAULT << 16) |
+                              (GIC_PRIORITY_DEFAULT << 8) | GIC_PRIORITY_DEFAULT;
     }
 
     // Set all interrupts to target CPU 0
     for (unsigned int i = 8; i < num_irqs / 4; i++) {
-        GICD_ITARGETSR(i) = 0x01010101;
+        GICD_ITARGETSR(i) = (GIC_TARGET_CPU0 << 24) | (GIC_TARGET_CPU0 << 16) |
+                             (GIC_TARGET_CPU0 << 8) | GIC_TARGET_CPU0;
     }
 
     // Configure all interrupts as level-sensitive
@@ -50,7 +52,7 @@ void gic_init(void) {
     GICD_CTLR = 1;
 
     // Set priority mask to allow all priorities
-    GICC_PMR = 0xFF;
+    GICC_PMR = GIC_PRIORITY_MASK_ALL;
 
     // Enable CPU interface
     GICC_CTLR = 1;

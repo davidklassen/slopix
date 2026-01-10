@@ -31,21 +31,7 @@ void handle_sync_exception(void) {
     while (1);
 }
 
-void handle_irq(void) {
-    // Acknowledge interrupt and get IRQ number
-    unsigned int irq = gic_acknowledge_interrupt();
-
-    if (irq == TIMER_IRQ) {
-        timer_handler();
-    } else {
-        printf("[IRQ] Unknown IRQ: %d\n", irq);
-    }
-
-    // Signal end of interrupt
-    gic_end_interrupt(irq);
-}
-
-// New IRQ handler that supports context switching
+// IRQ handler that supports context switching
 // Called from exception handler with pointer to saved context on stack
 // Returns pointer to stack to restore (may be different process)
 void *handle_irq_with_context(void *stack_ptr) {

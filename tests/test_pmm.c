@@ -73,43 +73,6 @@ void test_pmm_free_and_reallocate(void) {
     }
 }
 
-void test_pmm_out_of_memory(void) {
-    TEST("Allocate until out of memory - should fail gracefully");
-
-    unsigned long free_before = pmm_get_free_pages();
-    unsigned long allocated = 0;
-
-    // Allocate until we run out (leave some for test infrastructure)
-    while (allocated < free_before - 10) {
-        void *page = pmm_alloc_page();
-        if (!page) {
-            break;
-        }
-        allocated++;
-    }
-
-    // Try to allocate more than available
-    void *should_fail = 0;
-    for (int i = 0; i < 20; i++) {
-        should_fail = pmm_alloc_page();
-        if (!should_fail) {
-            break;
-        }
-        allocated++;
-    }
-
-    ASSERT(should_fail == 0, "Allocation failed when out of memory");
-
-    // Check that we're actually low on memory
-    unsigned long free_now = pmm_get_free_pages();
-    ASSERT(free_now < 20, "Free pages is very low (< 20)");
-
-    // Note: We can't easily free all these pages without better tracking,
-    // but that's okay - the PMM test suite will reinitialize between runs
-    printf("  [INFO] Allocated %d pages, %d pages remain free\n",
-           allocated, (int)free_now);
-}
-
 void test_pmm_pattern_alloc_free(void) {
     TEST("Pattern: alloc 10, free 5, alloc 5 - should succeed");
 
@@ -196,6 +159,4 @@ void run_pmm_tests(void) {
     test_pmm_free_and_reallocate();
     test_pmm_pattern_alloc_free();
     test_pmm_page_alignment();
-    // Skip out-of-memory test - it consumes all memory and breaks subsequent tests
-    // test_pmm_out_of_memory();
 }

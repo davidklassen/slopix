@@ -59,42 +59,20 @@ void timer_init(unsigned int frequency_hz) {
     tick_count = 0;
 }
 
-void timer_handler(void) {
-    tick_count++;
-
-    // Get system counter frequency
-    unsigned int sys_freq = timer_get_frequency();
-
-    // Schedule next interrupt (e.g., 100 Hz = every 10ms)
-    unsigned int ticks_per_interrupt = sys_freq / 100;
-    unsigned long current = timer_get_counter();
-    timer_set_compare(current + ticks_per_interrupt);
-
-    // Debug: print every 100 ticks
-    if ((tick_count % 100) == 0) {
-        printf("[TIMER] Tick %d\n", tick_count);
-    }
-
-    // Trigger scheduler every 10 ticks (100ms) if enabled
-    if (scheduling_enabled && (tick_count % 10) == 0) {
-        scheduler_schedule();
-    }
-}
-
-// New timer handler that supports context switching
+// Timer handler that supports context switching
 void *timer_handler_with_context(void *stack_ptr) {
     tick_count++;
 
     // Get system counter frequency
     unsigned int sys_freq = timer_get_frequency();
 
-    // Schedule next interrupt (e.g., 100 Hz = every 10ms)
-    unsigned int ticks_per_interrupt = sys_freq / 100;
+    // Schedule next interrupt
+    unsigned int ticks_per_interrupt = sys_freq / TIMER_FREQUENCY_HZ;
     unsigned long current = timer_get_counter();
     timer_set_compare(current + ticks_per_interrupt);
 
-    // Trigger scheduler every 10 ticks (100ms) if enabled
-    if (scheduling_enabled && (tick_count % 10) == 0) {
+    // Trigger scheduler every N ticks
+    if (scheduling_enabled && (tick_count % SCHEDULER_TICK_INTERVAL) == 0) {
         stack_ptr = scheduler_schedule_with_context(stack_ptr);
     }
 

@@ -1,6 +1,9 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
+// PSTATE values for EL1h with IRQ enabled
+#define PSTATE_EL1H_IRQ_ENABLED 0x5
+
 // Process states
 typedef enum {
     PROCESS_READY,
