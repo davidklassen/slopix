@@ -1,11 +1,13 @@
 #include "test_framework.h"
 #include "test_mmu_registers.h"
+#include "test_mmu_tables.h"
 #include "../uart.h"
 #include "../printf.h"
 #include "../gic.h"
 #include "../timer.h"
 #include "../interrupts.h"
 #include "../pmm.h"
+#include "../mmu.h"
 #include "../process.h"
 #include "../scheduler.h"
 
@@ -33,6 +35,11 @@ void test_main(void) {
     pmm_init();
     printf("[INIT] PMM initialized: %d pages free\n", (int)pmm_get_free_pages());
 
+    // Initialize MMU (page tables only, MMU still disabled)
+    printf("[INIT] Initializing MMU page tables...\n");
+    mmu_init();
+    printf("[INIT] MMU page tables initialized\n");
+
     // Initialize process management (but don't start scheduler)
     printf("[INIT] Initializing Process Management...\n");
     process_init();
@@ -51,6 +58,15 @@ void test_main(void) {
     test_tcr_t0sz_configured();
     test_tcr_t1sz_configured();
     test_mmu_still_disabled();
+
+    // Run MMU page table tests
+    TEST_SUITE("MMU Page Table Structure");
+    test_ttbr0_allocated();
+    test_l2_table_exists();
+    test_l0_points_to_l1();
+    test_identity_map_entry_0();
+    test_identity_map_entry_64();
+    test_all_128_entries_valid();
 
     // Print final summary
     printf("\n");
