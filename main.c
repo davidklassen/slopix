@@ -33,36 +33,6 @@ void main(void) {
     // Initialize physical memory manager
     pmm_init();
 
-    // Test physical memory allocator
-    printf("\n=== Testing Physical Memory Allocator ===\n");
-    printf("[TEST] Allocating 5 pages...\n");
-
-    void *pages[5];
-    for (int i = 0; i < 5; i++) {
-        pages[i] = pmm_alloc_page();
-        if (pages[i]) {
-            printf("  Page %d allocated at: %x\n", i, pages[i]);
-        } else {
-            printf("  Page %d allocation failed!\n", i);
-        }
-    }
-
-    printf("[TEST] Free pages: %d / %d\n", pmm_get_free_pages(), pmm_get_total_pages());
-
-    printf("[TEST] Freeing pages 1 and 3...\n");
-    pmm_free_page(pages[1]);
-    pmm_free_page(pages[3]);
-
-    printf("[TEST] Free pages: %d / %d\n", pmm_get_free_pages(), pmm_get_total_pages());
-
-    printf("[TEST] Allocating 2 more pages...\n");
-    void *page6 = pmm_alloc_page();
-    void *page7 = pmm_alloc_page();
-    printf("  Page 6 allocated at: %x\n", page6);
-    printf("  Page 7 allocated at: %x\n", page7);
-
-    printf("[TEST] Free pages: %d / %d\n", pmm_get_free_pages(), pmm_get_total_pages());
-
     printf("\n=== M4: Processes ===\n");
 
     // Initialize process management

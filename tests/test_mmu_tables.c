@@ -1,14 +1,6 @@
 #include "test_framework.h"
 #include "../mmu.h"
-
-// Page table entry flags (must match mmu.c)
-#define PTE_VALID    (1UL << 0)
-#define PTE_TABLE    (1UL << 1)
-#define PTE_BLOCK    (0UL << 1)
-#define PTE_AF       (1UL << 10)
-
-// Memory type
-#define MT_NORMAL    2
+#include "../memory.h"
 
 static void test_ttbr0_allocated(void) {
     TEST("TTBR0 (L0 table) allocated");

@@ -2,22 +2,12 @@
 #include "pmm.h"
 #include "printf.h"
 #include <stdint.h>
+#include "memory.h"
 
 // Prevent compiler from optimizing away writes to memory accessed by hardware
 // (page tables are read by MMU, not C code, so compiler thinks writes are dead stores)
 #define WRITE_ONCE(var, val) \
     (*((volatile typeof(val) *)&(var)) = (val))
-
-// Page table entry flags
-#define PTE_VALID    (1UL << 0)
-#define PTE_TABLE    (1UL << 1)
-#define PTE_BLOCK    (0UL << 1)
-#define PTE_AF       (1UL << 10)  // Access flag
-
-// Memory type for AttrIndx (bits 4:2)
-#define MT_DEVICE_nGnRnE  0
-#define MT_NORMAL_NC      1
-#define MT_NORMAL         2
 
 // Page table pointers
 static unsigned long *ttbr0_l0 = 0;
