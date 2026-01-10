@@ -1,6 +1,7 @@
 #include "mmu.h"
 #include "pmm.h"
 #include "printf.h"
+#include <stdint.h>
 
 // Page table entry flags
 #define PTE_VALID    (1UL << 0)
@@ -14,10 +15,10 @@
 #define MT_NORMAL         2
 
 // Page table pointers
-static volatile unsigned long *ttbr0_l0 = 0;
-static volatile unsigned long *ttbr1_l0 = 0;
-static volatile unsigned long *l1_table = 0;
-static volatile unsigned long *l2_table = 0;
+static unsigned long *ttbr0_l0 = 0;
+static unsigned long *ttbr1_l0 = 0;
+static unsigned long *l1_table = 0;
+static unsigned long *l2_table = 0;
 
 void mmu_init(void) {
     printf("[MMU] Initializing page tables...\n");
@@ -32,9 +33,9 @@ void mmu_init(void) {
         return;
     }
 
-    printf("[MMU] L0 table at: %x\n", (unsigned int)ttbr0_l0);
-    printf("[MMU] L1 table at: %x\n", (unsigned int)l1_table);
-    printf("[MMU] L2 table at: %x\n", (unsigned int)l2_table);
+    printf("[MMU] L0 table at: %x\n", (unsigned int)(uintptr_t)ttbr0_l0);
+    printf("[MMU] L1 table at: %x\n", (unsigned int)(uintptr_t)l1_table);
+    printf("[MMU] L2 table at: %x\n", (unsigned int)(uintptr_t)l2_table);
 
     // Zero all page table entries (512 entries * 8 bytes = 4096 bytes each)
     for (int i = 0; i < 512; i++) {
