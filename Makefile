@@ -12,7 +12,7 @@ LDFLAGS = -T linker.ld -nostdlib
 
 # Source files
 OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o
-TEST_OBJS = boot.o tests/test_main.o tests/test_pmm.o tests/test_processes.o tests/test_mmu_registers.o tests/test_mmu_tables.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o
+TEST_OBJS = boot.o tests/test_main.o tests/test_pmm.o tests/test_processes.o tests/test_mmu_registers.o tests/test_mmu_tables.o tests/test_mmu_enable.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o
 
 # Targets
 TARGET = slopix.elf

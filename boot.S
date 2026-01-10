@@ -53,3 +53,24 @@ set_ttbr_registers:
     msr ttbr1_el1, x1
     isb
     ret
+
+// Enable MMU by setting SCTLR_EL1.M bit
+.global enable_mmu
+enable_mmu:
+    // Invalidate all TLB entries
+    tlbi vmalle1
+    dsb sy
+    isb
+
+    // Read current SCTLR_EL1
+    mrs x0, sctlr_el1
+
+    // Set bit 0 (M - MMU enable) ONLY
+    // Don't enable caches yet to simplify debugging
+    orr x0, x0, #(1 << 0)   // M bit
+
+    // Write back to SCTLR_EL1
+    msr sctlr_el1, x0
+    isb
+
+    ret

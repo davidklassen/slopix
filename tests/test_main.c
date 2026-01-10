@@ -19,9 +19,12 @@ void run_pmm_tests(void);
 void run_process_tests(void);
 void run_mmu_register_tests(void);
 void run_mmu_table_tests(void);
+void run_mmu_preflight_tests(void);
+void run_mmu_postflight_tests(void);
 
-// Assembly function declaration
+// Assembly function declarations
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
+extern void enable_mmu(void);
 
 void test_main(void) {
     // Initialize UART for output
@@ -55,6 +58,45 @@ void test_main(void) {
     printf("[INIT] Process management initialized\n");
 
     printf("\n");
+
+    // === PRE-FLIGHT TESTS ===
+    printf("========================================\n");
+    printf("  MMU PRE-FLIGHT CHECKS\n");
+    printf("========================================\n");
+    printf("\n");
+
+    int preflight_failures_before = tests_failed;
+    run_mmu_preflight_tests();
+    int preflight_failures = tests_failed - preflight_failures_before;
+
+    if (preflight_failures > 0) {
+        printf("\n[CRITICAL] Pre-flight checks FAILED!\n");
+        printf("[CRITICAL] MMU will NOT be enabled - fix issues first\n");
+        printf("\n");
+    } else {
+        printf("\n[OK] Pre-flight checks PASSED\n");
+        printf("\n");
+
+        // === ENABLE MMU ===
+        printf("========================================\n");
+        printf("  ENABLING MMU...\n");
+        printf("========================================\n");
+        printf("\n");
+
+        enable_mmu();
+
+        printf("[OK] MMU ENABLED!\n");
+        printf("\n");
+
+        // === POST-FLIGHT TESTS ===
+        printf("========================================\n");
+        printf("  MMU POST-FLIGHT VERIFICATION\n");
+        printf("========================================\n");
+        printf("\n");
+
+        run_mmu_postflight_tests();
+        printf("\n");
+    }
 
     // Run test suites
     run_pmm_tests();
