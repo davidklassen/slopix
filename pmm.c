@@ -1,6 +1,7 @@
 #include "pmm.h"
 #include "memory.h"
 #include "printf.h"
+#include "kernel_state.h"
 
 // External symbols from linker script
 extern char __kernel_end;
@@ -71,7 +72,12 @@ void *pmm_alloc_page(void) {
             free_pages--;
             unsigned long phys_addr = PHYS_MEMORY_START + (i * PAGE_SIZE);
 
-            // Pages returned uninitialized - caller must zero if needed
+            // If executing from higher-half, return virtual address
+            if (kernel_in_higher_half()) {
+                return PHYS_TO_VIRT((void *)phys_addr);
+            }
+
+            // Otherwise return physical address
             return (void *)phys_addr;
         }
     }
@@ -79,14 +85,20 @@ void *pmm_alloc_page(void) {
 }
 
 void pmm_free_page(void *page) {
-    unsigned long phys_addr = (unsigned long)page;
+    unsigned long addr = (unsigned long)page;
 
-    if (phys_addr < PHYS_MEMORY_START || phys_addr >= PHYS_MEMORY_END) {
-        printf("[PMM] Error: Invalid page address %x\n", phys_addr);
+    // Convert virtual address to physical if needed
+    if (IS_HIGHER_HALF(addr)) {
+        addr = VIRT_TO_PHYS(addr);
+    }
+
+    // Validate physical address range
+    if (addr < PHYS_MEMORY_START || addr >= PHYS_MEMORY_END) {
+        printf("[PMM] Error: Invalid page address\n");
         return;
     }
 
-    unsigned long page_num = (phys_addr - PHYS_MEMORY_START) / PAGE_SIZE;
+    unsigned long page_num = (addr - PHYS_MEMORY_START) / PAGE_SIZE;
 
     if (!is_page_free(page_num)) {
         set_page_free(page_num);
