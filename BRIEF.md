@@ -50,12 +50,13 @@ A minimal Unix-like operating system for ARM64, built for learning.
 - Scheduler with round-robin on interrupt-driven context switches
 
 ### M5: Virtual Memory & MMU
-- Enable MMU with 4KB page granularity
-- Fix device memory mapping (UART/GIC use proper 4KB pages, not 2MB blocks)
-- Map kernel to high virtual addresses (0xFFFF000000000000 region)
-- Identity map devices in kernel space
-- Test with existing kernel threads in virtual address space
-- Success: Kernel runs at virtual addresses with MMU enabled
+- Implement MMU page table setup with 4KB page granularity
+- Implement TTBR0_EL1 configuration for identity mapping
+- Implement TTBR1_EL1 configuration for higher-half kernel mapping (0xFFFF000000000000 region)
+- Implement identity mapping for device MMIO regions (UART, GIC)
+- Implement MMU enable sequence in boot code
+- Create automated tests verifying MMU translation for kernel and device addresses
+- Success criterion: Kernel executes at higher-half virtual addresses with MMU enabled
 
 ### M6: Userspace (EL0)
 - Drop to EL0 for process execution
