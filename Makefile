@@ -11,7 +11,7 @@ ASFLAGS = -mcpu=cortex-a53
 LDFLAGS = -T linker.ld -nostdlib
 
 # Source files - include ALL test files in every build
-OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o \
+OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o kernel_state.o \
        tests/test_pmm.o tests/test_processes.o tests/test_mmu_registers.o tests/test_mmu_tables.o tests/test_mmu_enable.o tests/test_mmu_ttbr1.o
 
 # Single target
