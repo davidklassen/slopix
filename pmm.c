@@ -6,15 +6,12 @@
 extern char __kernel_end;
 
 // Bitmap for tracking free pages
-static unsigned char *page_bitmap;
+// Note: page_bitmap is volatile to prevent compiler from optimizing away writes
+// (similar to WRITE_ONCE in mmu.c - bitmap is live memory that must be explicitly initialized)
+static volatile unsigned char *page_bitmap;
 static unsigned long total_pages;
 static unsigned long free_pages;
 static unsigned long bitmap_size;
-
-// Get physical address of kernel end
-static unsigned long get_kernel_end_phys(void) {
-    return (unsigned long)&__kernel_end;
-}
 
 static void set_page_used(unsigned long page_num) {
     unsigned long byte = page_num / 8;
@@ -39,26 +36,20 @@ void pmm_init(void) {
 
     // Calculate total pages in physical memory
     total_pages = PHYS_MEMORY_SIZE / PAGE_SIZE;
-    printf("[PMM] Total pages calculated: %d\n", total_pages);
 
     // Bitmap needs 1 bit per page
     bitmap_size = (total_pages + 7) / 8;
-    printf("[PMM] Bitmap size: %d bytes\n", bitmap_size);
 
     // Place bitmap right after kernel
-    unsigned long kernel_end = get_kernel_end_phys();
-    printf("[PMM] Kernel end (raw): %x\n", kernel_end);
+    unsigned long kernel_end = (unsigned long)&__kernel_end;
     kernel_end = (kernel_end + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);  // Align to page
-    printf("[PMM] Kernel end (aligned): %x\n", kernel_end);
-    page_bitmap = (unsigned char *)kernel_end;
+    page_bitmap = (volatile unsigned char *)kernel_end;
 
-    printf("[PMM] Initializing bitmap...\n");
     // Initialize bitmap - mark all pages as free
     for (unsigned long i = 0; i < bitmap_size; i++) {
         page_bitmap[i] = 0;
     }
 
-    printf("[PMM] Marking used pages...\n");
     // Mark kernel pages and bitmap pages as used
     unsigned long kernel_pages = ((kernel_end + bitmap_size) - PHYS_MEMORY_START) / PAGE_SIZE;
     for (unsigned long i = 0; i < kernel_pages; i++) {
@@ -80,7 +71,7 @@ void *pmm_alloc_page(void) {
             free_pages--;
             unsigned long phys_addr = PHYS_MEMORY_START + (i * PAGE_SIZE);
 
-            // Don't zero the page for now to avoid potential issues
+            // Pages returned uninitialized - caller must zero if needed
             return (void *)phys_addr;
         }
     }

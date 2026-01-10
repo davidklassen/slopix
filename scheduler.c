@@ -2,8 +2,8 @@
 #include "process.h"
 #include "printf.h"
 
-static process_t *run_queue_head = 0;
-static process_t *run_queue_tail = 0;
+static process_t *run_queue_head;
+static process_t *run_queue_tail;
 
 void scheduler_init(void) {
     run_queue_head = 0;

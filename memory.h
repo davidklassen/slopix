@@ -16,6 +16,15 @@
 #define PHYS_MEMORY_SIZE  (128 * 1024 * 1024)  // 128 MB
 #define PHYS_MEMORY_END   (PHYS_MEMORY_START + PHYS_MEMORY_SIZE)
 
+// Device memory region (QEMU virt platform)
+#define DEVICE_REGION_START  0x08000000UL
+#define DEVICE_REGION_END    0x10000000UL
+
+// Page table layout (4KB granule, 39-bit VA)
+#define PAGE_TABLE_ENTRIES   512
+#define L2_BLOCK_SIZE        (2 * 1024 * 1024)  // 2MB
+#define L2_BLOCK_SHIFT       21
+
 // Convert between physical and virtual addresses
 #define PHYS_TO_VIRT(addr) ((void *)((unsigned long)(addr) + KERNEL_VIRT_BASE - KERNEL_PHYS_BASE))
 #define VIRT_TO_PHYS(addr) ((unsigned long)(addr) - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE)
@@ -24,7 +33,6 @@
 #define PTE_VALID       (1UL << 0)
 #define PTE_TABLE       (1UL << 1)
 #define PTE_BLOCK       (0UL << 1)
-#define PTE_PAGE        (1UL << 1)
 #define PTE_AF          (1UL << 10)  // Access flag
 #define PTE_KERNEL      (0UL << 6)   // AP[2:1] = 00 (kernel RW, user no access)
 #define PTE_RO          (2UL << 6)   // AP[2:1] = 10 (kernel RO, user no access)
