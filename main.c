@@ -37,8 +37,8 @@ void main(void) {
     // Initialize physical memory manager
     pmm_init();
 
-    // MMU setup - defer to M4 due to time constraints
-    printf("[Note] MMU setup deferred to next milestone\n");
+    // M5: MMU implementation in progress (device memory mapping issue being debugged)
+    printf("\n[Note] MMU implementation deferred - debugging in progress\n");
 
     // Test physical memory allocator
     printf("\n=== Testing Physical Memory Allocator ===\n");
