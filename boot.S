@@ -85,3 +85,44 @@ enable_mmu:
     isb
 
     ret
+
+// Transition from physical to higher-half virtual addresses
+// Must be called AFTER MMU is enabled
+// On entry: MMU enabled, executing from physical addresses (TTBR0 identity mapping)
+// On exit: Executing from higher-half (TTBR1), stack pointer updated
+.global transition_to_higher_half
+transition_to_higher_half:
+    // Save return address (lr) because we'll be changing address spaces
+    mov x3, x30
+
+    // Load higher-half offset: 0xFFFFFF8000000000
+    movz x1, #0x0000, lsl #0
+    movk x1, #0x0000, lsl #16
+    movk x1, #0xFF80, lsl #32
+    movk x1, #0xFFFF, lsl #48
+
+    // Get current stack pointer (physical)
+    mov x2, sp
+
+    // Convert SP to higher-half virtual address
+    add x2, x2, x1
+
+    // Update stack pointer to higher-half
+    mov sp, x2
+
+    // Update return address to higher-half
+    add x3, x3, x1
+
+    // Get address of next instruction (label 1f)
+    adr x0, 1f
+
+    // Convert to higher-half address
+    add x0, x0, x1
+
+    // Jump to higher-half - after this, PC will be in TTBR1 range
+    br x0
+
+1:  // Now executing from higher-half!
+    // Restore return address and return
+    mov x30, x3
+    ret
