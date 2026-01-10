@@ -1,0 +1,13 @@
+# Build outputs
+*.o
+*.elf
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
