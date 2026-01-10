@@ -43,6 +43,10 @@ void pmm_init(void) {
 
     // Place bitmap right after kernel
     unsigned long kernel_end = (unsigned long)&__kernel_end;
+    // Convert virtual address to physical (pmm_init runs before transition)
+    if (IS_HIGHER_HALF(kernel_end)) {
+        kernel_end = VIRT_TO_PHYS(kernel_end);
+    }
     kernel_end = (kernel_end + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);  // Align to page
     page_bitmap = (volatile unsigned char *)kernel_end;
 

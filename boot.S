@@ -2,13 +2,13 @@
 .global _start
 
 _start:
-    // Set stack pointer
-    ldr x0, =__stack_top
+    // Set stack pointer (use physical address before MMU/transition)
+    ldr x0, =__stack_top_phys
     mov sp, x0
 
-    // Clear BSS
-    ldr x0, =__bss_start
-    ldr x1, =__bss_end
+    // Clear BSS (use physical addresses)
+    ldr x0, =__bss_start_phys
+    ldr x1, =__bss_end_phys
 clear_bss:
     cmp x0, x1
     b.ge bss_done

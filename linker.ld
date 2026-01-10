@@ -2,24 +2,24 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* Physical address where kernel is loaded */
-    . = 0x40000000;
-    __kernel_phys_start = .;
+    /* Link at virtual address, but load at physical address */
+    . = 0xFFFFFF8040000000;
+    __kernel_virt_start = .;
 
-    .text : {
+    .text : AT(0x40000000) {
         *(.text.boot)
         *(.text*)
     } :text
 
-    .rodata : {
+    .rodata : AT(ADDR(.rodata) - 0xFFFFFF8000000000) {
         *(.rodata*)
     } :rodata
 
-    .data : {
+    .data : AT(ADDR(.data) - 0xFFFFFF8000000000) {
         *(.data*)
     } :data
 
-    .bss : {
+    .bss : AT(ADDR(.bss) - 0xFFFFFF8000000000) {
         __bss_start = .;
         *(.bss*)
         *(COMMON)
@@ -32,6 +32,12 @@ SECTIONS
     . = ALIGN(8);
     . = . + 0x8000;
     __stack_top = .;
+
+    /* Physical address aliases for boot code */
+    __kernel_phys_start = 0x40000000;
+    __stack_top_phys = __stack_top - 0xFFFFFF8000000000;
+    __bss_start_phys = __bss_start - 0xFFFFFF8000000000;
+    __bss_end_phys = __bss_end - 0xFFFFFF8000000000;
 }
 
 PHDRS
