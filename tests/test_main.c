@@ -1,4 +1,5 @@
 #include "test_framework.h"
+#include "test_mmu_registers.h"
 #include "../uart.h"
 #include "../printf.h"
 #include "../gic.h"
@@ -43,6 +44,13 @@ void test_main(void) {
     // Run test suites
     run_pmm_tests();
     run_process_tests();
+
+    // Run MMU register tests
+    TEST_SUITE("MMU Register Configuration");
+    test_mair_configured();
+    test_tcr_t0sz_configured();
+    test_tcr_t1sz_configured();
+    test_mmu_still_disabled();
 
     // Print final summary
     printf("\n");
