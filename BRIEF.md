@@ -44,27 +44,38 @@ A minimal Unix-like operating system for ARM64, built for learning.
 - Free page tracking
 
 ### M4: Processes
-- MMU setup with 4KB pages
 - Process struct (context, page table, state)
-- Context switching on timer tick
+- Context switching on timer tick (preemptive multitasking)
 - Two kernel threads alternating (proof of concept)
+- Scheduler with round-robin on interrupt-driven context switches
 
-### M5: Userspace
-- EL0 execution
+### M5: Virtual Memory & MMU
+- Enable MMU with 4KB page granularity
+- Fix device memory mapping (UART/GIC use proper 4KB pages, not 2MB blocks)
+- Map kernel to high virtual addresses (0xFFFF000000000000 region)
+- Identity map devices in kernel space
+- Test with existing kernel threads in virtual address space
+- Success: Kernel runs at virtual addresses with MMU enabled
+
+### M6: Userspace (EL0)
+- Drop to EL0 for process execution
 - Syscall interface via `svc` instruction
-- exit, getpid, write syscalls working
+- Exception handler for syscalls
+- Implement basic syscalls: exit, getpid, write
+- Create first userspace test program
+- Success: Process runs at EL0 and can make syscalls
 
-### M6: Fork & Exec
+### M7: Fork & Exec
 - fork: duplicate process, copy-on-write optional
 - exec: load ELF from ramdisk, replace address space
 - wait: parent blocks until child exits
 
-### M7: Filesystem
+### M8: Filesystem
 - Ramdisk loaded by QEMU (-initrd flag)
 - Simple flat filesystem or tar archive
 - open, close, read syscalls
 
-### M8: Shell
+### M9: Shell
 - Minimal shell in userspace
 - Parse command, fork, exec, wait loop
 - 2-3 toy programs (echo, cat, ls)

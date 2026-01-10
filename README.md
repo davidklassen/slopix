@@ -2,13 +2,16 @@
 
 A minimal Unix-like operating system for ARM64, built for learning.
 
-## Current Status: M4 (Processes) ✅
+## Current Status: M4 Complete ✅ → Next: M5 (Virtual Memory & MMU)
 
 **Completed Milestones:**
-- ✅ M1: Boot
-- ✅ M2: Interrupts
-- ✅ M3: Memory
-- ✅ M4: Processes
+- ✅ M1: Boot (UART, printf)
+- ✅ M2: Interrupts (GIC, timer, exception handlers)
+- ✅ M3: Memory (physical page allocator)
+- ✅ M4: Processes (preemptive multitasking, context switching)
+
+**Next Milestone:**
+- 🔨 M5: Virtual Memory & MMU (enable MMU, kernel virtual addressing)
 
 ## Prerequisites
 
@@ -161,7 +164,7 @@ This demonstrates:
 - ✅ Timer-driven preemptive multitasking (switches every 100ms)
 - ✅ Two kernel threads running and alternating
 
-**Note:** Threads run in kernel mode (EL1) and share the same address space. Per-process virtual memory will be added in M5.
+**Note:** Threads currently run in kernel mode (EL1) with MMU disabled, sharing the same physical address space. MMU enablement with virtual memory will be added in M5, and userspace (EL0) execution will be added in M6.
 
 ## Project Structure
 
@@ -195,7 +198,11 @@ This demonstrates:
 
 ## Next Steps
 
-- M5: Userspace (EL0 execution, syscall interface, MMU with per-process address spaces)
-- M6: Fork & Exec
-- M7: Filesystem
-- M8: Shell
+**Upcoming Milestones:**
+- M5: Virtual Memory & MMU (enable MMU, kernel virtual addressing)
+- M6: Userspace (EL0 execution, syscall interface)
+- M7: Fork & Exec
+- M8: Filesystem
+- M9: Shell
+
+See [BRIEF.md](BRIEF.md) for detailed milestone descriptions.
