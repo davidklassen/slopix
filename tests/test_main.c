@@ -1,6 +1,4 @@
 #include "test_framework.h"
-#include "test_mmu_registers.h"
-#include "test_mmu_tables.h"
 #include "../uart.h"
 #include "../printf.h"
 #include "../gic.h"
@@ -19,6 +17,8 @@ int tests_failed = 0;
 // Test suite declarations
 void run_pmm_tests(void);
 void run_process_tests(void);
+void run_mmu_register_tests(void);
+void run_mmu_table_tests(void);
 
 void test_main(void) {
     // Initialize UART for output
@@ -51,22 +51,8 @@ void test_main(void) {
     // Run test suites
     run_pmm_tests();
     run_process_tests();
-
-    // Run MMU register tests
-    TEST_SUITE("MMU Register Configuration");
-    test_mair_configured();
-    test_tcr_t0sz_configured();
-    test_tcr_t1sz_configured();
-    test_mmu_still_disabled();
-
-    // Run MMU page table tests
-    TEST_SUITE("MMU Page Table Structure");
-    test_ttbr0_allocated();
-    test_l2_table_exists();
-    test_l0_points_to_l1();
-    test_identity_map_entry_0();
-    test_identity_map_entry_64();
-    test_all_128_entries_valid();
+    run_mmu_register_tests();
+    run_mmu_table_tests();
 
     // Print final summary
     printf("\n");

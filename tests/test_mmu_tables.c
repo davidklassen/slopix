@@ -1,5 +1,4 @@
 #include "test_framework.h"
-#include "test_mmu_tables.h"
 #include "../mmu.h"
 
 // Page table entry flags (must match mmu.c)
@@ -11,21 +10,21 @@
 // Memory type
 #define MT_NORMAL    2
 
-void test_ttbr0_allocated(void) {
+static void test_ttbr0_allocated(void) {
     TEST("TTBR0 (L0 table) allocated");
 
     unsigned long ttbr0 = mmu_get_ttbr0();
     ASSERT(ttbr0 != 0, "TTBR0 is non-zero (L0 table allocated)");
 }
 
-void test_l2_table_exists(void) {
+static void test_l2_table_exists(void) {
     TEST("L2 table exists");
 
     unsigned long *l2 = mmu_get_l2_table();
     ASSERT(l2 != 0, "L2 table pointer is non-zero");
 }
 
-void test_l0_points_to_l1(void) {
+static void test_l0_points_to_l1(void) {
     TEST("L0[0] points to L1 table");
 
     unsigned long ttbr0 = mmu_get_ttbr0();
@@ -39,7 +38,7 @@ void test_l0_points_to_l1(void) {
     ASSERT((l0_entry & PTE_TABLE) != 0, "L0[0] has TABLE bit set");
 }
 
-void test_identity_map_entry_0(void) {
+static void test_identity_map_entry_0(void) {
     TEST("L2[0] maps physical address 0x00000000");
 
     unsigned long *l2 = mmu_get_l2_table();
@@ -60,7 +59,7 @@ void test_identity_map_entry_0(void) {
     ASSERT((entry & PTE_AF) != 0, "L2[0] has AF bit set");
 }
 
-void test_identity_map_entry_64(void) {
+static void test_identity_map_entry_64(void) {
     TEST("L2[64] maps physical address 0x08000000");
 
     unsigned long *l2 = mmu_get_l2_table();
@@ -74,7 +73,7 @@ void test_identity_map_entry_64(void) {
     ASSERT(phys_addr == 0x08000000, "L2[64] physical address is 0x08000000");
 }
 
-void test_all_128_entries_valid(void) {
+static void test_all_128_entries_valid(void) {
     TEST("All 128 L2 entries have VALID bit set");
 
     unsigned long *l2 = mmu_get_l2_table();
@@ -88,4 +87,14 @@ void test_all_128_entries_valid(void) {
     }
 
     ASSERT(all_valid, "All L2[0..127] entries are valid");
+}
+
+void run_mmu_table_tests(void) {
+    TEST_SUITE("MMU Page Table Structure");
+    test_ttbr0_allocated();
+    test_l2_table_exists();
+    test_l0_points_to_l1();
+    test_identity_map_entry_0();
+    test_identity_map_entry_64();
+    test_all_128_entries_valid();
 }
