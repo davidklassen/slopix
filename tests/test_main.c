@@ -21,6 +21,8 @@ void run_mmu_register_tests(void);
 void run_mmu_table_tests(void);
 void run_mmu_preflight_tests(void);
 void run_mmu_postflight_tests(void);
+void run_ttbr1_preflight_tests(void);
+void run_ttbr1_postflight_tests(void);
 
 // Assembly function declarations
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -67,6 +69,7 @@ void test_main(void) {
 
     int preflight_failures_before = tests_failed;
     run_mmu_preflight_tests();
+    run_ttbr1_preflight_tests();
     int preflight_failures = tests_failed - preflight_failures_before;
 
     if (preflight_failures > 0) {
@@ -95,6 +98,7 @@ void test_main(void) {
         printf("\n");
 
         run_mmu_postflight_tests();
+        run_ttbr1_postflight_tests();
         printf("\n");
     }
 
