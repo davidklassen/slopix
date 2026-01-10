@@ -107,12 +107,12 @@ void mmu_init(void) {
     }
 
     // === TTBR1 Configuration (Higher-Half Kernel Mapping) ===
-    // TTBR1 maps VA 0xFFFF_0000_0000_0000+ to same physical addresses
+    // TTBR1 maps VA 0xFFFF_FF80_0000_0000+ to same physical addresses
     // For 39-bit VA with T1SZ=25, TTBR1 VA range is 0xFFFF_FF80_0000_0000 to 0xFFFF_FFFF_FFFF_FFFF
-    // Kernel will be accessible at 0xFFFF_0000_4000_0000+ (maps to PA 0x40000000+)
+    // Kernel will be accessible at 0xFFFF_FF80_4000_0000+ (maps to PA 0x40000000+)
 
     // TTBR1 L1[0] -> L2_low table (for first 1GB within TTBR1 space)
-    // For higher-half VA 0xFFFF_0000_0000_0000+, VA[38:30] = 0
+    // For higher-half VA 0xFFFF_FF80_0000_0000+, VA[38:30] = 0
     unsigned long ttbr1_l1_entry_low = (unsigned long)ttbr1_l2_table_low | PTE_TABLE | PTE_VALID;
     WRITE_ONCE(ttbr1_l1_table[0], ttbr1_l1_entry_low);
     printf("[MMU] TTBR1 L1[0] entry = 0x%x (points to TTBR1 L2_low at 0x%x)\n",
@@ -137,7 +137,7 @@ void mmu_init(void) {
     }
 
     // TTBR1 L1[1] -> L2_kernel table (for second 1GB within TTBR1 space)
-    // For higher-half VA 0xFFFF_0000_4000_0000+, VA[38:30] = 1
+    // For higher-half VA 0xFFFF_FF80_4000_0000+, VA[38:30] = 1
     unsigned long ttbr1_l1_entry_kernel = (unsigned long)ttbr1_l2_table_kernel | PTE_TABLE | PTE_VALID;
     WRITE_ONCE(ttbr1_l1_table[1], ttbr1_l1_entry_kernel);
     printf("[MMU] TTBR1 L1[1] entry = 0x%x (points to TTBR1 L2_kernel at 0x%x)\n",
@@ -151,7 +151,7 @@ void mmu_init(void) {
         WRITE_ONCE(ttbr1_l2_table_kernel[i], entry);
     }
 
-    printf("[MMU] TTBR1 higher-half mapping configured (0xFFFF_0000_0000_0000+ -> PA)\n");
+    printf("[MMU] TTBR1 higher-half mapping configured (0xFFFF_FF80_0000_0000+ -> PA)\n");
 
     // CPU-level memory barrier: ensure all page table writes reach memory before returning
     // DSB (Data Synchronization Barrier) forces completion of all pending writes

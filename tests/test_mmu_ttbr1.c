@@ -75,13 +75,13 @@ static void test_ttbr1_l2_kernel_entry0(void) {
 }
 
 static void test_ttbr1_page_walk(void) {
-    TEST("TTBR1 page table walk for VA 0xFFFF000040000074 -> PA 0x40000074");
+    TEST("TTBR1 page table walk for VA 0xFFFFFF8040000074 -> PA 0x40000074");
 
     // Walk page tables manually
     unsigned long ttbr1 = mmu_get_ttbr1();
     unsigned long *l1 = (unsigned long *)ttbr1;
 
-    // For VA 0xFFFF_0000_4000_0074:
+    // For VA 0xFFFF_FF80_4000_0074:
     // VA[63:39] = all 1s (TTBR1 selector)
     // VA[38:30] = 0b000000001 = 1 (L1 index)
     // VA[29:21] = 0b000000000 = 0 (L2 index)
@@ -130,8 +130,8 @@ static void test_ttbr1_dual_access_postflight(void) {
     unsigned int value_ttbr0 = *ptr_ttbr0;
 
     // Read via TTBR1 (higher-half mapping)
-    // VA 0xFFFF_0000_4000_0074 should map to same PA 0x40000074
-    volatile unsigned int *ptr_ttbr1 = (volatile unsigned int *)0xFFFF000040000074UL;
+    // VA 0xFFFF_FF80_4000_0074 should map to same PA 0x40000074
+    volatile unsigned int *ptr_ttbr1 = (volatile unsigned int *)0xFFFFFF8040000074UL;
     unsigned int value_ttbr1 = *ptr_ttbr1;
 
     ASSERT(value_ttbr0 == value_ttbr1, "Same value read via TTBR0 and TTBR1");

@@ -71,11 +71,13 @@ static void test_ttbr0_aligned(void) {
     ASSERT(lower_bits == 0, "TTBR0_EL1 bits 11:0 are zero (4KB aligned)");
 }
 
-static void test_ttbr1_is_zero(void) {
-    TEST("TTBR1_EL1 is zero (not used yet)");
+static void test_ttbr1_configured(void) {
+    TEST("TTBR1_EL1 matches L1 page table address");
 
-    unsigned long ttbr1 = read_ttbr1_el1();
-    ASSERT(ttbr1 == 0, "TTBR1_EL1 = 0");
+    unsigned long ttbr1_reg = read_ttbr1_el1();
+    unsigned long ttbr1_expected = mmu_get_ttbr1();
+    ASSERT(ttbr1_reg == ttbr1_expected, "TTBR1_EL1 matches mmu_get_ttbr1()");
+    ASSERT(ttbr1_reg != 0, "TTBR1_EL1 is non-zero (configured for higher-half kernel)");
 }
 
 void run_mmu_register_tests(void) {
@@ -85,5 +87,5 @@ void run_mmu_register_tests(void) {
     test_tcr_t1sz_configured();
     test_ttbr0_matches_page_table();
     test_ttbr0_aligned();
-    test_ttbr1_is_zero();
+    test_ttbr1_configured();
 }

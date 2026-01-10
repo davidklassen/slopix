@@ -6,7 +6,9 @@
 #define PAGE_SHIFT 12
 
 // Memory layout
-#define KERNEL_VIRT_BASE 0xFFFF000000000000UL
+// For T1SZ=25 (39-bit VA), TTBR1 range starts at 2^64 - 2^39 = 0xFFFFFF8000000000
+// Kernel physical base is 0x40000000, so kernel virtual base is TTBR1_base + kernel_PA
+#define KERNEL_VIRT_BASE 0xFFFFFF8040000000UL
 #define KERNEL_PHYS_BASE 0x40000000UL
 
 // Physical memory - QEMU virt machine typically provides 128MB starting at 0x40000000
