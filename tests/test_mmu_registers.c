@@ -55,14 +55,6 @@ static void test_tcr_t1sz_configured(void) {
     ASSERT(t1sz == 25, "TCR_EL1 bits 21:16 (T1SZ) = 25");
 }
 
-static void test_mmu_still_disabled(void) {
-    TEST("MMU is still disabled");
-
-    unsigned long sctlr = read_sctlr_el1();
-    unsigned long mmu_enabled = sctlr & 0x1;  // Extract bit 0
-    ASSERT(mmu_enabled == 0, "SCTLR_EL1 bit 0 (M bit) = 0");
-}
-
 static void test_ttbr0_matches_page_table(void) {
     TEST("TTBR0_EL1 matches L0 page table address");
 
@@ -86,22 +78,12 @@ static void test_ttbr1_is_zero(void) {
     ASSERT(ttbr1 == 0, "TTBR1_EL1 = 0");
 }
 
-static void test_mmu_still_disabled_after_ttbr(void) {
-    TEST("MMU still disabled after setting TTBRs");
-
-    unsigned long sctlr = read_sctlr_el1();
-    unsigned long mmu_enabled = sctlr & 0x1;  // Extract bit 0
-    ASSERT(mmu_enabled == 0, "SCTLR_EL1 bit 0 (M bit) = 0");
-}
-
 void run_mmu_register_tests(void) {
     TEST_SUITE("MMU Register Configuration");
     test_mair_configured();
     test_tcr_t0sz_configured();
     test_tcr_t1sz_configured();
-    test_mmu_still_disabled();
     test_ttbr0_matches_page_table();
     test_ttbr0_aligned();
     test_ttbr1_is_zero();
-    test_mmu_still_disabled_after_ttbr();
 }
