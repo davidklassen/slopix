@@ -11,6 +11,15 @@
 #define KERNEL_VIRT_BASE 0xFFFFFF8040000000UL
 #define KERNEL_PHYS_BASE 0x40000000UL
 
+// Higher-half kernel offset for address translation
+#define KERNEL_VIRT_OFFSET  (KERNEL_VIRT_BASE - KERNEL_PHYS_BASE)
+
+// Check if address is in higher-half range (TTBR1)
+#define IS_HIGHER_HALF(addr) ((unsigned long)(addr) >= 0xFFFF000000000000UL)
+
+// Convert physical address to higher-half virtual address
+#define ADDR_TO_HIGHER_HALF(addr) ((void *)((unsigned long)(addr) + KERNEL_VIRT_OFFSET))
+
 // Physical memory - QEMU virt machine typically provides 128MB starting at 0x40000000
 #define PHYS_MEMORY_START 0x40000000UL
 #define PHYS_MEMORY_SIZE  (128 * 1024 * 1024)  // 128 MB
