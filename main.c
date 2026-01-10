@@ -3,12 +3,8 @@
 #include "interrupts.h"
 #include "timer.h"
 #include "pmm.h"
-#include "mmu.h"
 #include "process.h"
 #include "scheduler.h"
-
-// Assembly function to enable MMU
-extern void enable_mmu(unsigned long ttbr0, unsigned long ttbr1);
 
 // Thread functions
 void thread1(void) {
@@ -36,9 +32,6 @@ void main(void) {
 
     // Initialize physical memory manager
     pmm_init();
-
-    // M5: MMU implementation in progress (device memory mapping issue being debugged)
-    printf("\n[Note] MMU implementation deferred - debugging in progress\n");
 
     // Test physical memory allocator
     printf("\n=== Testing Physical Memory Allocator ===\n");

@@ -32,7 +32,6 @@ void mmu_init(void) {
     // Allocate level 0 page tables for TTBR0 and TTBR1
     ttbr0_l0 = alloc_page_table();
     ttbr1_l0 = alloc_page_table();
-    printf("[MMU] Allocated L0 tables\n");
 
     // Setup identity map for TTBR0 (0x0 -> 0x0)
     unsigned long *ttbr0_l1 = alloc_page_table();
@@ -40,7 +39,6 @@ void mmu_init(void) {
 
     unsigned long *ttbr0_l2 = alloc_page_table();
     ttbr0_l1[0] = (unsigned long)ttbr0_l2 | PTE_TABLE | PTE_VALID;
-    printf("[MMU] Allocated L1/L2 for TTBR0\n");
 
     // Map first 512 MB using 2MB blocks
     // Use device memory for GIC (0x08000000) and UART (0x09000000) regions
@@ -60,12 +58,14 @@ void mmu_init(void) {
     for (i = 73; i < 256; i++) {
         ttbr0_l2[i] = (i * 0x200000) | attrs_normal | PTE_BLOCK | PTE_AF | PTE_VALID;
     }
-    printf("[MMU] Mapped 512MB identity\n");
 
     // Setup TTBR1 (high addresses) - minimal setup, not used yet
     unsigned long *ttbr1_l1 = alloc_page_table();
     ttbr1_l0[511] = (unsigned long)ttbr1_l1 | PTE_TABLE | PTE_VALID;
-    printf("[MMU] Setup TTBR1\n");
+
+    // Memory barriers: ensure all page table writes complete before MMU enable
+    __asm__ volatile("dsb ishst");  // Data Synchronization Barrier
+    __asm__ volatile("isb");        // Instruction Synchronization Barrier
 
     printf("[MMU] Page tables ready\n");
 }
