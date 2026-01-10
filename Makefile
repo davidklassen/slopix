@@ -12,13 +12,18 @@ LDFLAGS = -T linker.ld -nostdlib
 
 # Source files
 OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o switch.o
+TEST_OBJS = boot.o tests/test_main.o tests/test_pmm.o tests/test_processes.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o switch.o
 
-# Target
+# Targets
 TARGET = slopix.elf
+TEST_TARGET = slopix-test.elf
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+$(TEST_TARGET): $(TEST_OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
@@ -27,10 +32,15 @@ $(TARGET): $(OBJS)
 %.o: %.S
 	$(CC) $(ASFLAGS) -c -o $@ $<
 
+test: $(TEST_TARGET)
+
+run-test: $(TEST_TARGET)
+	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TEST_TARGET)
+
 clean:
-	rm -f $(OBJS) $(TARGET) *.o
+	rm -f $(OBJS) $(TEST_OBJS) $(TARGET) $(TEST_TARGET) *.o tests/*.o
 
 run: $(TARGET)
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)
 
-.PHONY: all clean run
+.PHONY: all clean run test run-test
