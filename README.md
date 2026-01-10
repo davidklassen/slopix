@@ -2,16 +2,17 @@
 
 A minimal Unix-like operating system for ARM64, built for learning.
 
-## Current Status: M4 Complete ✅ → Next: M5 (Virtual Memory & MMU)
+## Current Status: M5 Complete ✅ → Next: M6 (Userspace)
 
 **Completed Milestones:**
 - ✅ M1: Boot (UART, printf)
 - ✅ M2: Interrupts (GIC, timer, exception handlers)
 - ✅ M3: Memory (physical page allocator)
 - ✅ M4: Processes (preemptive multitasking, context switching)
+- ✅ M5: Virtual Memory & MMU (MMU enabled, identity mapping, page tables)
 
 **Next Milestone:**
-- 🔨 M5: Virtual Memory & MMU (enable MMU, kernel virtual addressing)
+- 🔨 M6: Userspace (EL0 execution, syscall interface)
 
 ## Prerequisites
 
@@ -69,6 +70,38 @@ qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel slopix.elf
 ```
 
 To exit QEMU, press `Ctrl-A` then `X`.
+
+## Running Tests
+
+SLOPIX includes a comprehensive test suite for validating MMU functionality and other kernel subsystems.
+
+To build the test kernel:
+
+```bash
+make test
+```
+
+This produces `slopix-test.elf`.
+
+To run the tests:
+
+```bash
+make run-test
+```
+
+Or manually:
+
+```bash
+qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel slopix-test.elf
+```
+
+The test suite includes:
+- **MMU Register Configuration**: Verifies MAIR_EL1, TCR_EL1, TTBR0_EL1, SCTLR_EL1
+- **MMU Page Table Structure**: Validates L1/L2 table layout and descriptors
+- **MMU Pre-flight Checks**: Ensures critical mappings before MMU enable
+- **MMU Post-flight Verification**: Confirms system functionality after MMU enable
+- **Physical Memory Manager**: Tests page allocation/deallocation
+- **Process Management**: Validates PCB creation and initialization
 
 ## Testing & Validation
 
@@ -166,6 +199,33 @@ This demonstrates:
 
 **Note:** Threads currently run in kernel mode (EL1) with MMU disabled, sharing the same physical address space. MMU enablement with virtual memory will be added in M5, and userspace (EL0) execution will be added in M6.
 
+### M5: Virtual Memory & MMU
+With M5 complete, the MMU is enabled with identity mapping:
+```
+=== M5: Virtual Memory & MMU ===
+[MMU] Allocating page tables...
+[MMU] L1 table at 0x40007000
+[MMU] L2 table (low) at 0x40008000
+[MMU] L2 table (kernel) at 0x40009000
+[MMU] Setting up identity mapping...
+[MMU] Mapped first 1GB (0x00000000-0x3FFFFFFF)
+[MMU] Mapped second 1GB (0x40000000-0x7FFFFFFF)
+[MMU] MAIR_EL1 = 0x00FF4400
+[MMU] TCR_EL1 configured (T0SZ=25, 39-bit VA)
+[MMU] TTBR0_EL1 = 0x40007000
+[MMU] Enabling MMU...
+[MMU] MMU enabled! SCTLR_EL1.M = 1
+[MMU] Virtual addressing active (identity mapped)
+```
+
+This demonstrates:
+- ✅ 2-level page tables (L1 → L2) for 39-bit address space
+- ✅ Identity mapping (VA = PA)
+- ✅ Device memory for MMIO (GIC, UART)
+- ✅ Normal memory for kernel/RAM
+- ✅ MMU enabled with SCTLR_EL1.M = 1
+- ✅ System continues running with virtual addressing
+
 ## Project Structure
 
 **Boot & Core:**
@@ -196,10 +256,56 @@ This demonstrates:
 **Build:**
 - `Makefile` - Build system
 
+**Tests:**
+- `tests/` - Test suite
+  - `test_framework.h` - Simple test assertion framework
+  - `test_main.c` - Test entry point
+  - `test_pmm.c` - Physical memory manager tests
+  - `test_processes.c` - Process management tests
+  - `test_mmu_registers.c` - MMU register configuration tests
+  - `test_mmu_tables.c` - MMU page table structure tests
+  - `test_mmu_enable.c` - MMU pre/post-flight verification tests
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+**ARM64 Architecture:**
+- **[docs/arm64-page-tables.md](docs/arm64-page-tables.md)** - Complete ARM64 page table architecture
+  - Starting level determination
+  - Translation table structure
+  - Table/block descriptor formats
+  - Translation walk examples
+  - Common mistakes and debugging
+
+- **[docs/arm64-registers.md](docs/arm64-registers.md)** - ARM64 system register specifications
+  - SCTLR_EL1, TCR_EL1, TTBR0/1_EL1
+  - MAIR_EL1 memory attributes
+  - SPSR_EL1, ELR_EL1, ESR_EL1
+  - Starting level calculation for T0SZ
+
+**SLOPIX-Specific:**
+- **[docs/slopix-memory-layout.md](docs/slopix-memory-layout.md)** - SLOPIX memory organization
+  - Physical memory map (QEMU virt platform)
+  - Virtual address space layout
+  - Page table structure with actual addresses
+  - Memory attributes by region
+  - Boot requirements and critical mappings
+  - Translation examples
+
+- **[docs/qemu-virt-platform.md](docs/qemu-virt-platform.md)** - QEMU virt machine specification
+  - Device memory map (GIC, UART, RTC, etc.)
+  - RAM layout and configuration
+
+All documentation includes:
+- ✅ Verified against ARM Architecture Reference Manual
+- ✅ Real SLOPIX code examples with actual addresses
+- ✅ ARM ARM section references for verification
+- ✅ Debugging guidance and common pitfalls
+
 ## Next Steps
 
 **Upcoming Milestones:**
-- M5: Virtual Memory & MMU (enable MMU, kernel virtual addressing)
 - M6: Userspace (EL0 execution, syscall interface)
 - M7: Fork & Exec
 - M8: Filesystem

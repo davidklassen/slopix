@@ -74,6 +74,50 @@ Controls address translation and granule sizes.
 - `10`: Outer shareable
 - `11`: Inner shareable
 
+### Starting Level Calculation
+
+The **starting level** of translation (which level the hardware begins the table walk at) depends on:
+1. **Input Address (IA) size**: 64 - TxSZ bits
+2. **Granule size**: 4KB, 16KB, or 64KB
+3. **ARM Architecture Reference Manual D4.2.7, Table D4-11**
+
+#### SLOPIX Configuration
+
+For SLOPIX:
+- **T0SZ = 25** → IA size = 64 - 25 = **39 bits**
+- **Granule = 4KB** (TG0 = 00)
+- **Starting level = Level 1** (not Level 0)
+
+**Why Level 1?**
+
+With 4KB granule, each page table level uses 9 bits of VA (512 entries):
+- **Level 0**: VA[47:39] - Covers 512GB per entry
+- **Level 1**: VA[38:30] - Covers 1GB per entry
+- **Level 2**: VA[29:21] - Covers 2MB per entry
+- **Level 3**: VA[20:12] - Covers 4KB per entry
+
+For a **39-bit VA** (VA[38:0]), the hardware:
+- **Skips Level 0** (VA[47:39] are not used)
+- **Starts at Level 1** (VA[38:30] = bits used for L1 index)
+- Uses **2 table levels** total: L1 → L2
+
+#### SLOPIX Translation Table Hierarchy
+
+```
+TTBR0_EL1 → L1 Table (starting level)
+            ├── L1[0] → L2_low (maps 0x00000000-0x3FFFFFFF)
+            └── L1[1] → L2_kernel (maps 0x40000000-0x7FFFFFFF)
+```
+
+**Key Insight**: SLOPIX uses **2 table levels**, not 3:
+- **Level 1**: Starting level (pointed to by TTBR0)
+- **Level 2**: Final level (contains 2MB block descriptors)
+- **Level 0 and Level 3**: Not used
+
+This is determined by the ARM architecture based on T0SZ and granule size, not a choice made by the kernel.
+
+**Reference**: ARM Architecture Reference Manual D4.2.7 "Determining the required initial lookup level"
+
 ---
 
 ## TTBR0_EL1 / TTBR1_EL1 - Translation Table Base Registers
