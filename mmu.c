@@ -3,6 +3,11 @@
 #include "printf.h"
 #include <stdint.h>
 
+// Prevent compiler from optimizing away writes to memory accessed by hardware
+// (page tables are read by MMU, not C code, so compiler thinks writes are dead stores)
+#define WRITE_ONCE(var, val) \
+    (*((volatile typeof(val) *)&(var)) = (val))
+
 // Page table entry flags
 #define PTE_VALID    (1UL << 0)
 #define PTE_TABLE    (1UL << 1)
@@ -39,40 +44,29 @@ void mmu_init(void) {
 
     // Zero all page table entries (512 entries * 8 bytes = 4096 bytes each)
     for (int i = 0; i < 512; i++) {
-        ttbr0_l0[i] = 0;
-        l1_table[i] = 0;
-        l2_table[i] = 0;
+        WRITE_ONCE(ttbr0_l0[i], 0);
+        WRITE_ONCE(l1_table[i], 0);
+        WRITE_ONCE(l2_table[i], 0);
     }
-    // Compiler barrier: prevent optimization from reordering or eliminating
-    // page table writes. The MMU hardware reads these entries, but GCC
-    // doesn't see any C code reading them, so it might optimize away writes.
-    __asm__ volatile("" ::: "memory");
-    printf("[MMU] Page tables zeroed\n");
 
     // Link L0[0] -> L1
-    ttbr0_l0[0] = (unsigned long)l1_table | PTE_TABLE | PTE_VALID;
+    WRITE_ONCE(ttbr0_l0[0], (unsigned long)l1_table | PTE_TABLE | PTE_VALID);
     // Link L1[0] -> L2
-    l1_table[0] = (unsigned long)l2_table | PTE_TABLE | PTE_VALID;
+    WRITE_ONCE(l1_table[0], (unsigned long)l2_table | PTE_TABLE | PTE_VALID);
 
     // Fill L2 with identity mapping for first 256MB (128 entries * 2MB each)
     // Each L2 entry maps 2MB using block descriptors
-    printf("[MMU] Creating identity mapping...\n");
     for (unsigned int i = 0; i < 128; i++) {
         unsigned long phys_addr = ((unsigned long)i) << 21;  // 2MB blocks (shift left 21 bits)
-        l2_table[i] = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
-        // Break up SIMD loop unrolling with periodic progress output
-        if ((i & 31) == 0) {
-            __asm__ volatile("" ::: "memory");
-        }
+        unsigned long entry = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
+        WRITE_ONCE(l2_table[i], entry);
     }
-    // Compiler barrier: prevent optimization from reordering or eliminating
-    // page table writes. The MMU hardware reads these entries, but GCC
-    // doesn't see any C code reading them, so it might optimize away writes.
-    __asm__ volatile("" ::: "memory");
-    printf("[MMU] Identity mapping complete\n");
 
     // TTBR1 not used yet
     ttbr1_l0 = 0;
+
+    // Memory barrier: ensure all page table writes complete before returning
+    __asm__ volatile("" ::: "memory");
 
     printf("[MMU] Page tables initialized (MMU still disabled)\n");
 }
