@@ -77,7 +77,7 @@ void mmu_init(void) {
             attr = MT_NORMAL;
         }
 
-        unsigned long entry = phys_addr | (attr << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
+        unsigned long entry = phys_addr | (attr << 2) | PTE_BLOCK | PTE_AF | PTE_KERNEL | PTE_VALID;
         WRITE_ONCE(l2_table_low[i], entry);
     }
 
@@ -90,7 +90,7 @@ void mmu_init(void) {
     for (unsigned int i = 0; i < PAGE_TABLE_ENTRIES; i++) {
         unsigned long phys_addr = 0x40000000UL + (((unsigned long)i) << L2_BLOCK_SHIFT);  // 0x40000000 + i * 2MB
 
-        unsigned long entry = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
+        unsigned long entry = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_KERNEL | PTE_VALID;
         WRITE_ONCE(l2_table_kernel[i], entry);
     }
 
@@ -118,7 +118,7 @@ void mmu_init(void) {
             attr = MT_NORMAL;
         }
 
-        unsigned long entry = phys_addr | (attr << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
+        unsigned long entry = phys_addr | (attr << 2) | PTE_BLOCK | PTE_AF | PTE_KERNEL | PTE_VALID;
         WRITE_ONCE(ttbr1_l2_table_low[i], entry);
     }
 
@@ -131,7 +131,7 @@ void mmu_init(void) {
     for (unsigned int i = 0; i < PAGE_TABLE_ENTRIES; i++) {
         unsigned long phys_addr = 0x40000000UL + (((unsigned long)i) << L2_BLOCK_SHIFT);  // 0x40000000 + i * 2MB
 
-        unsigned long entry = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_VALID;
+        unsigned long entry = phys_addr | (MT_NORMAL << 2) | PTE_BLOCK | PTE_AF | PTE_KERNEL | PTE_VALID;
         WRITE_ONCE(ttbr1_l2_table_kernel[i], entry);
     }
 
