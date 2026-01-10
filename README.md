@@ -2,6 +2,18 @@
 
 A minimal Unix-like operating system for ARM64, built for learning.
 
+## AI-Generated Code
+
+This project is 100% AI-generated code. Every line of code, documentation, and configuration has been created by an AI coding agent in response to natural language prompts.
+
+**Transparency & Reproducibility:**
+- All prompts used to generate this code are preserved in the git commit history
+- Each commit message contains the exact prompt given to the AI agent
+- The complete development process is transparent and reproducible
+- You can trace any feature or bug fix back to its original prompt
+
+This prompt-per-commit workflow makes SLOPIX both a functioning OS kernel and a case study in AI-assisted development.
+
 ## Current Status: M5 Complete ✅ → Next: M6 (Userspace)
 
 **Completed Milestones:**
