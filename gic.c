@@ -1,23 +1,23 @@
 #include "gic.h"
 
 // GICv2 addresses for QEMU virt machine
-#define GICD_BASE 0x08000000  // Distributor
-#define GICC_BASE 0x08010000  // CPU Interface
+#define GICD_BASE 0x08000000UL  // Distributor
+#define GICC_BASE 0x08010000UL  // CPU Interface
 
 // Distributor registers
-#define GICD_CTLR       (*(volatile unsigned int *)(GICD_BASE + 0x000))
-#define GICD_TYPER      (*(volatile unsigned int *)(GICD_BASE + 0x004))
-#define GICD_ISENABLER(n) (*(volatile unsigned int *)(GICD_BASE + 0x100 + (n) * 4))
-#define GICD_ICENABLER(n) (*(volatile unsigned int *)(GICD_BASE + 0x180 + (n) * 4))
-#define GICD_IPRIORITYR(n) (*(volatile unsigned int *)(GICD_BASE + 0x400 + (n) * 4))
-#define GICD_ITARGETSR(n) (*(volatile unsigned int *)(GICD_BASE + 0x800 + (n) * 4))
-#define GICD_ICFGR(n) (*(volatile unsigned int *)(GICD_BASE + 0xC00 + (n) * 4))
+#define GICD_CTLR       (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x000))
+#define GICD_TYPER      (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x004))
+#define GICD_ISENABLER(n) (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x100 + (n) * 4))
+#define GICD_ICENABLER(n) (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x180 + (n) * 4))
+#define GICD_IPRIORITYR(n) (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x400 + (n) * 4))
+#define GICD_ITARGETSR(n) (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0x800 + (n) * 4))
+#define GICD_ICFGR(n) (*(volatile unsigned int *)(unsigned long)(GICD_BASE + 0xC00 + (n) * 4))
 
 // CPU Interface registers
-#define GICC_CTLR       (*(volatile unsigned int *)(GICC_BASE + 0x000))
-#define GICC_PMR        (*(volatile unsigned int *)(GICC_BASE + 0x004))
-#define GICC_IAR        (*(volatile unsigned int *)(GICC_BASE + 0x00C))
-#define GICC_EOIR       (*(volatile unsigned int *)(GICC_BASE + 0x010))
+#define GICC_CTLR       (*(volatile unsigned int *)(unsigned long)(GICC_BASE + 0x000))
+#define GICC_PMR        (*(volatile unsigned int *)(unsigned long)(GICC_BASE + 0x004))
+#define GICC_IAR        (*(volatile unsigned int *)(unsigned long)(GICC_BASE + 0x00C))
+#define GICC_EOIR       (*(volatile unsigned int *)(unsigned long)(GICC_BASE + 0x010))
 
 void gic_init(void) {
     // Disable distributor

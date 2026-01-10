@@ -77,8 +77,7 @@ void test_pmm_out_of_memory(void) {
     TEST("Allocate until out of memory - should fail gracefully");
 
     unsigned long free_before = pmm_get_free_pages();
-    void **pages = (void **)pmm_alloc_page();  // Use one page to store pointers
-    int allocated = 0;
+    unsigned long allocated = 0;
 
     // Allocate until we run out (leave some for test infrastructure)
     while (allocated < free_before - 10) {
