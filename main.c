@@ -24,6 +24,7 @@ extern void run_mmu_preflight_tests(void);
 extern void run_mmu_postflight_tests(void);
 extern void run_ttbr1_preflight_tests(void);
 extern void run_ttbr1_postflight_tests(void);
+extern void run_higher_half_tests(void);
 #endif
 
 // Assembly function declarations
@@ -115,6 +116,12 @@ void main(void) {
         enable_mmu();
 
         printf("[OK] MMU ENABLED!\n");
+
+        // Transition to higher-half
+        extern void transition_to_higher_half(void);
+        transition_to_higher_half();
+
+        printf("[OK] Transitioned to higher-half!\n");
         printf("\n");
 
         // === POST-FLIGHT TESTS ===
@@ -125,6 +132,7 @@ void main(void) {
 
         run_mmu_postflight_tests();
         run_ttbr1_postflight_tests();
+        run_higher_half_tests();
         printf("\n");
     }
 
@@ -178,6 +186,18 @@ void main(void) {
     // Add to scheduler
     scheduler_add(proc1);
     scheduler_add(proc2);
+
+    printf("\n=== M5: Virtual Memory ===\n");
+
+    // Enable MMU (page tables already set up in physical_setup)
+    extern void enable_mmu(void);
+    extern void transition_to_higher_half(void);
+
+    printf("Enabling MMU...\n");
+    enable_mmu();
+    transition_to_higher_half();
+
+    printf("Running from higher-half virtual addresses!\n");
 
     printf("\n=== M2: Interrupts ===\n");
     printf("Initializing interrupts...\n");
