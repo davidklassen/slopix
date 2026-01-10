@@ -24,18 +24,22 @@ bss_done:
     // Attr2 = 0xFF (Normal memory, write-back cacheable)
     ldr x0, =0x00FF4400
     msr mair_el1, x0
-    isb
+    dsb sy          // Ensure MAIR write completes
+    isb             // Synchronize context
 
     // Set TCR_EL1 for 39-bit address space
     // T0SZ = 25 (bits 5:0) - 2^(64-25) = 512GB address space
     // T1SZ = 25 (bits 21:16) - 2^(64-25) = 512GB address space
     // TG0 = 0 (4KB granule for TTBR0, bits 15:14)
     // TG1 = 2 (4KB granule for TTBR1, bits 31:30)
+    // IPS = 1 (bits 34:32) - 36-bit physical address space (64GB)
     mov x2, #25
     orr x2, x2, x2, lsl #16
     orr x2, x2, #(2 << 30)
+    orr x2, x2, #(1 << 32)    // IPS = 1 (36-bit PA)
     msr tcr_el1, x2
-    isb
+    dsb sy          // Ensure TCR write completes
+    isb             // Synchronize context
 
     // Jump to C main
     bl main
@@ -51,7 +55,8 @@ halt:
 set_ttbr_registers:
     msr ttbr0_el1, x0
     msr ttbr1_el1, x1
-    isb
+    dsb sy          // Ensure TTBR writes complete
+    isb             // Synchronize context
     ret
 
 // Enable MMU by setting SCTLR_EL1.M bit
@@ -61,6 +66,9 @@ enable_mmu:
     tlbi vmalle1
     dsb sy
     isb
+
+    // Ensure all prior operations complete before enabling MMU
+    dsb sy
 
     // Read current SCTLR_EL1
     mrs x0, sctlr_el1

@@ -68,10 +68,10 @@ static void test_preflight_tcr_configured(void) {
 static void test_preflight_kernel_region_mapped(void) {
     TEST("PRE-FLIGHT: Kernel region mapped (0x40000000)");
 
-    // Kernel at 0x40000000 is in second 512MB, L1[1] should point to L2_kernel table
+    // For 39-bit VA, TTBR0 points to L1 table (starting level)
+    // Kernel at 0x40000000: VA[38:30] = 1, so check L1[1]
     unsigned long ttbr0 = mmu_get_ttbr0();
-    unsigned long *l0 = (unsigned long *)ttbr0;
-    unsigned long *l1 = (unsigned long *)(l0[0] & 0xFFFFFFFFF000UL);
+    unsigned long *l1 = (unsigned long *)ttbr0;
     unsigned long entry = l1[1];
 
     ASSERT((entry & PTE_VALID) != 0, "L1[1] is valid");
