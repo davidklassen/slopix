@@ -82,8 +82,9 @@ SLOPIX currently uses **identity mapping**: Virtual Address = Physical Address.
 | 0x10000000-0x3FFFFFFF | ~768 MB | Unmapped (no physical RAM here)    | Normal      |
 
 **Key Locations**:
-- Exception vectors: 0x40003000 (actually in second 1GB, see below)
 - Boot stack: Set by linker script, typically low addresses before kernel
+
+(Note: Exception vectors are at 0x40003000 in the second 1GB - see below)
 
 ### Second 1GB Region (0x40000000 - 0x7FFFFFFF)
 
@@ -291,38 +292,18 @@ Step 1: Extract L1 index
   L1[0] → L2_low @ 0x40008000
 
 Step 2: Extract L2 index
-  VA[29:21] = 0b000000100 = 4
-  L2_low[4] → Block at PA 0x00800000
+  VA[29:21] = (0x09000004 >> 21) & 0x1FF = 72
 
-Step 3: Add block offset
-  Block base: 0x00800000
-  VA[20:0]: 0x00004
-  Final PA: 0x00800000 + 0x00004 = 0x00800004
-
-Wait, this is wrong! Let me recalculate...
-
-Actually:
-  VA[29:21] = (0x09000004 >> 21) & 0x1FF
-            = 0x48 >> 0 = 0x48 = 72
-
-Hmm, let me be more careful:
-  0x09000004 in binary (relevant bits):
-  VA[29:21] = 0b000001001 = 9 (not 4!)
-
-Actually, 0x09000000 >> 21 = 0x48 >> 0... let me recalculate properly:
-
-0x09000000 = 0x00000000_09000000
-Shift right by 21 bits: 0x00000000_00000048
-Mask to 9 bits: 0x048 = 72
-
-So L2_low[72] covers 0x09000000-0x091FFFFF (144 MB region)
-
-Actually wait, this is getting complicated. Let me just verify:
-  Each L2 entry covers 2MB = 0x200000
-  Entry 4 covers: 4 × 0x200000 = 0x00800000-0x009FFFFF
+  Verification: Each L2 entry covers 2MB = 0x200000
   Entry 72 covers: 72 × 0x200000 = 0x09000000-0x091FFFFF ✓
 
-Final PA: 0x09000000 + 0x004 = 0x09000004 (UART data register)
+Step 3: Read L2_low[72]
+  L2_low[72] points to block at PA 0x09000000
+
+Step 4: Add block offset
+  Block base: 0x09000000
+  VA[20:0]: 0x00004
+  Final PA: 0x09000000 + 0x004 = 0x09000004 (UART data register)
 ```
 
 ---
