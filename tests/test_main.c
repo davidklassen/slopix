@@ -20,6 +20,9 @@ void run_process_tests(void);
 void run_mmu_register_tests(void);
 void run_mmu_table_tests(void);
 
+// Assembly function declaration
+extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
+
 void test_main(void) {
     // Initialize UART for output
     uart_init();
@@ -39,6 +42,11 @@ void test_main(void) {
     printf("[INIT] Initializing MMU page tables...\n");
     mmu_init();
     printf("[INIT] MMU page tables initialized\n");
+
+    // Set TTBR registers
+    printf("[INIT] Setting TTBR0_EL1 and TTBR1_EL1...\n");
+    set_ttbr_registers(mmu_get_ttbr0(), mmu_get_ttbr1());
+    printf("[INIT] TTBR registers set\n");
 
     // Initialize process management (but don't start scheduler)
     printf("[INIT] Initializing Process Management...\n");

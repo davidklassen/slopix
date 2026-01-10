@@ -1,4 +1,5 @@
 #include "test_framework.h"
+#include "../mmu.h"
 
 // Inline assembly helpers to read system registers
 static inline unsigned long read_mair_el1(void) {
@@ -16,6 +17,18 @@ static inline unsigned long read_tcr_el1(void) {
 static inline unsigned long read_sctlr_el1(void) {
     unsigned long val;
     __asm__ volatile("mrs %0, sctlr_el1" : "=r"(val));
+    return val;
+}
+
+static inline unsigned long read_ttbr0_el1(void) {
+    unsigned long val;
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(val));
+    return val;
+}
+
+static inline unsigned long read_ttbr1_el1(void) {
+    unsigned long val;
+    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(val));
     return val;
 }
 
@@ -50,10 +63,45 @@ static void test_mmu_still_disabled(void) {
     ASSERT(mmu_enabled == 0, "SCTLR_EL1 bit 0 (M bit) = 0");
 }
 
+static void test_ttbr0_matches_page_table(void) {
+    TEST("TTBR0_EL1 matches L0 page table address");
+
+    unsigned long ttbr0_reg = read_ttbr0_el1();
+    unsigned long ttbr0_expected = mmu_get_ttbr0();
+    ASSERT(ttbr0_reg == ttbr0_expected, "TTBR0_EL1 matches mmu_get_ttbr0()");
+}
+
+static void test_ttbr0_aligned(void) {
+    TEST("TTBR0_EL1 is 4KB aligned");
+
+    unsigned long ttbr0 = read_ttbr0_el1();
+    unsigned long lower_bits = ttbr0 & 0xFFF;  // Extract bits 11:0
+    ASSERT(lower_bits == 0, "TTBR0_EL1 bits 11:0 are zero (4KB aligned)");
+}
+
+static void test_ttbr1_is_zero(void) {
+    TEST("TTBR1_EL1 is zero (not used yet)");
+
+    unsigned long ttbr1 = read_ttbr1_el1();
+    ASSERT(ttbr1 == 0, "TTBR1_EL1 = 0");
+}
+
+static void test_mmu_still_disabled_after_ttbr(void) {
+    TEST("MMU still disabled after setting TTBRs");
+
+    unsigned long sctlr = read_sctlr_el1();
+    unsigned long mmu_enabled = sctlr & 0x1;  // Extract bit 0
+    ASSERT(mmu_enabled == 0, "SCTLR_EL1 bit 0 (M bit) = 0");
+}
+
 void run_mmu_register_tests(void) {
     TEST_SUITE("MMU Register Configuration");
     test_mair_configured();
     test_tcr_t0sz_configured();
     test_tcr_t1sz_configured();
     test_mmu_still_disabled();
+    test_ttbr0_matches_page_table();
+    test_ttbr0_aligned();
+    test_ttbr1_is_zero();
+    test_mmu_still_disabled_after_ttbr();
 }

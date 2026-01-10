@@ -44,3 +44,12 @@ bss_done:
 halt:
     wfe
     b halt
+
+// Set TTBR0_EL1 and TTBR1_EL1 registers
+// Parameters: x0 = TTBR0 value, x1 = TTBR1 value
+.global set_ttbr_registers
+set_ttbr_registers:
+    msr ttbr0_el1, x0
+    msr ttbr1_el1, x1
+    isb
+    ret
