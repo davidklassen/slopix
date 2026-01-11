@@ -29,7 +29,7 @@ SECTIONS
     . = ALIGN(4096);
     __kernel_end = .;
 
-    . = ALIGN(8);
+    /* Allocate 32KB kernel stack (0x8000 = 32768 bytes) */
     . = . + 0x8000;
     __stack_top = .;
 
