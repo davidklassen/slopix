@@ -53,12 +53,19 @@ exception_handler_sync:
     eret
 
 exception_handler_irq:
-    // Save ELR_EL1 and SPSR_EL1 first
+    // CRITICAL: Save x0, x1 FIRST before using them as scratch registers
+    // This preserves the original x0/x1 values from the interrupted code
+    stp x0, x1, [sp, #-16]!
+
+    // Now we can safely use x0, x1 as scratch registers
+    // to read and save ELR_EL1 and SPSR_EL1
     mrs x0, elr_el1
     mrs x1, spsr_el1
     stp x0, x1, [sp, #-16]!
 
-    // Save all general purpose registers to stack (x0-x30)
+    // Save remaining general purpose registers to stack (x2-x30)
+    // Context frame layout (34 entries, 272 bytes, 16-byte aligned):
+    // [x0, x1, ELR_EL1, SPSR_EL1, x29, x30, x27, x28, ..., x5, x6, x3, x4, x2, xzr]
     stp x29, x30, [sp, #-16]!
     stp x27, x28, [sp, #-16]!
     stp x25, x26, [sp, #-16]!
@@ -73,8 +80,7 @@ exception_handler_irq:
     stp x7, x8, [sp, #-16]!
     stp x5, x6, [sp, #-16]!
     stp x3, x4, [sp, #-16]!
-    stp x1, x2, [sp, #-16]!
-    stp xzr, x0, [sp, #-16]!
+    stp x2, xzr, [sp, #-16]!
 
     // x0 = pointer to saved context on stack
     mov x0, sp
@@ -86,8 +92,8 @@ exception_handler_irq:
     mov sp, x0
 
     // Restore all registers from (potentially new) stack
-    ldp xzr, x0, [sp], #16
-    ldp x1, x2, [sp], #16
+    // Order must exactly reverse the save order above
+    ldp x2, xzr, [sp], #16
     ldp x3, x4, [sp], #16
     ldp x5, x6, [sp], #16
     ldp x7, x8, [sp], #16
@@ -103,10 +109,13 @@ exception_handler_irq:
     ldp x27, x28, [sp], #16
     ldp x29, x30, [sp], #16
 
-    // Restore ELR_EL1 and SPSR_EL1
+    // Restore ELR_EL1 and SPSR_EL1 using x0, x1 as scratch
     ldp x0, x1, [sp], #16
     msr elr_el1, x0
     msr spsr_el1, x1
+
+    // Finally restore original x0, x1
+    ldp x0, x1, [sp], #16
 
     eret
 

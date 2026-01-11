@@ -27,7 +27,17 @@ void interrupts_disable(void) {
 }
 
 void handle_sync_exception(void) {
+    unsigned long esr, elr, far, spsr;
+    __asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
+    __asm__ volatile("mrs %0, elr_el1" : "=r"(elr));
+    __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+    __asm__ volatile("mrs %0, spsr_el1" : "=r"(spsr));
+
     printf("[EXCEPTION] Synchronous exception\n");
+    printf("  ESR_EL1:  0x%x (EC=0x%x)\n", (unsigned int)esr, (unsigned int)((esr >> 26) & 0x3F));
+    printf("  ELR_EL1:  0x%x\n", (unsigned int)elr);
+    printf("  FAR_EL1:  0x%x\n", (unsigned int)far);
+    printf("  SPSR_EL1: 0x%x\n", (unsigned int)spsr);
     while (1);
 }
 
