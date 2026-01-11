@@ -54,7 +54,7 @@
 // Combined page attributes for common use cases
 #define PTE_KERNEL_CODE  (PTE_KERNEL)                    // Kernel RW+X
 #define PTE_KERNEL_DATA  (PTE_KERNEL | PTE_UXN)          // Kernel RW, no exec
-#define PTE_USER_CODE    (PTE_USER)                      // User RW+X
+#define PTE_USER_CODE    (PTE_USER | PTE_PXN)            // User RW+X, kernel cannot execute
 #define PTE_USER_DATA    (PTE_USER | PTE_UXN | PTE_PXN)  // User RW, no exec, kernel can't exec
 
 // Memory protection model:

@@ -50,8 +50,8 @@ static void test_user_code_attributes(void) {
     // AP[2:1] = 01 (user accessible)
     ASSERT_EQ((pte >> 6) & 3, 1);
 
-    // PXN = 0 (but wait, should be 1 for security!)
-    ASSERT_EQ((pte >> 53) & 1, 0);
+    // PXN = 1 (security: kernel cannot execute user code)
+    ASSERT_EQ((pte >> 53) & 1, 1);
 }
 
 void run_pte_bit_tests(void) {
