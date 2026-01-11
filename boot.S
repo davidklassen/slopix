@@ -70,15 +70,22 @@ enable_mmu:
     dsb sy
     isb
 
+    // Invalidate instruction cache before enabling
+    ic iallu        // Invalidate all instruction caches to PoU
+    dsb sy          // Ensure invalidation completes
+    isb             // Synchronize context
+
     // Ensure all prior operations complete before enabling MMU
     dsb sy
 
     // Read current SCTLR_EL1
     mrs x0, sctlr_el1
 
-    // Set bit 0 (M - MMU enable) ONLY
-    // Don't enable caches yet to simplify debugging
-    orr x0, x0, #(1 << 0)   // M bit
+    // Enable MMU, instruction cache, and data cache
+    // Kernel memory is mapped with MT_NORMAL (cacheable) attribute
+    orr x0, x0, #(1 << 0)   // M bit - MMU enable
+    orr x0, x0, #(1 << 2)   // C bit - Data cache enable
+    orr x0, x0, #(1 << 12)  // I bit - Instruction cache enable
 
     // Write back to SCTLR_EL1
     msr sctlr_el1, x0
