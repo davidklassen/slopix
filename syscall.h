@@ -11,10 +11,10 @@
 void syscall_init(void);
 void *syscall_handler(void *stack_ptr);
 
-// Syscall implementations (stubs for now)
-long sys_exit(int status);
-long sys_write(int fd, const void *buf, unsigned long count);
-long sys_read(int fd, void *buf, unsigned long count);
+// Syscall implementations (extract args from context internally)
+long sys_exit(void);
+long sys_write(void);
+long sys_read(void);
 long sys_getpid(void);
 
 #endif
