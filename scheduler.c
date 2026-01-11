@@ -25,8 +25,6 @@ void scheduler_add(process_t *proc) {
         run_queue_tail->next = proc;
         run_queue_tail = proc;
     }
-
-    printf("[SCHEDULER] Added process PID=%d to run queue\n", proc->pid);
 }
 
 void scheduler_schedule(void) {

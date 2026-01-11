@@ -33,8 +33,6 @@ static int is_page_free(unsigned long page_num) {
 }
 
 void pmm_init(void) {
-    printf("[PMM] Starting initialization...\n");
-
     // Calculate total pages in physical memory
     total_pages = PHYS_MEMORY_SIZE / PAGE_SIZE;
 
@@ -63,10 +61,8 @@ void pmm_init(void) {
 
     free_pages = total_pages - kernel_pages;
 
-    printf("[PMM] Initialized: %d MB (%d pages, %d free)\n",
-           PHYS_MEMORY_SIZE / (1024 * 1024), total_pages, free_pages);
-    printf("[PMM] Kernel end: %x, Bitmap at: %x (%d bytes)\n",
-           kernel_end, page_bitmap, bitmap_size);
+    printf("[PMM] Initialized: %d MB (%d free pages)\n",
+           PHYS_MEMORY_SIZE / (1024 * 1024), free_pages);
 }
 
 void *pmm_alloc_page(void) {

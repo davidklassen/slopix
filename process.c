@@ -70,9 +70,6 @@ process_t *process_create(void (*entry)(void), unsigned long stack_size) {
     proc->context.pc = (unsigned long)entry;  // Entry point (will be loaded into ELR_EL1)
     proc->context.pstate = PSTATE_EL1H_IRQ_ENABLED;
 
-    printf("[PROCESS] Created process PID=%d, entry=%x, stack=%x-%x\n",
-           proc->pid, entry, stack, (unsigned long)stack + stack_size);
-
     return proc;
 }
 

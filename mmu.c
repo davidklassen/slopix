@@ -21,8 +21,6 @@ static unsigned long *ttbr1_l2_table_low;    // TTBR1 Level 2 for first 1GB
 static unsigned long *ttbr1_l2_table_kernel; // TTBR1 Level 2 for second 1GB (kernel at 0xFFFF_FF80_4000_0000+)
 
 void mmu_init(void) {
-    printf("[MMU] Initializing page tables...\n");
-
     // Allocate TTBR0 page tables: L1, L2_low, L2_kernel
     // For 39-bit VA with T0SZ=25, translation starts at Level 1 (not Level 0)
     l1_table = (unsigned long *)pmm_alloc_page();
@@ -139,7 +137,7 @@ void mmu_init(void) {
     // DSB (Data Synchronization Barrier) forces completion of all pending writes
     __asm__ volatile("dsb sy" ::: "memory");
 
-    printf("[MMU] Page tables initialized (MMU still disabled)\n");
+    printf("[MMU] Page tables initialized\n");
 }
 
 unsigned long mmu_get_ttbr0(void) {

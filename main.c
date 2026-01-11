@@ -59,7 +59,9 @@ void main(void) {
 
     extern void transition_to_higher_half(void);
     enable_mmu();
+    printf("[MMU] MMU enabled\n");
     transition_to_higher_half();
+    printf("[MMU] Transitioned to higher-half\n");
 
 #ifdef TEST_BUILD
     run_mmu_postflight_tests();
