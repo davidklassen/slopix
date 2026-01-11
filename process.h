@@ -52,6 +52,16 @@ static inline int process_is_el1(const process_t *proc) {
     return proc->context.exception_level == 1;
 }
 
+// Context frame size for exception handling
+// Frame contains: x2, xzr, x3-x30, sp_el1, pc, pstate, x0, x1, sp_el0, ttbr0_el1
+// Total: 34 original registers + 2 new fields = 36 quad-words
+#define CONTEXT_FRAME_SIZE 36        // Total registers in context frame
+#define CONTEXT_FRAME_BYTES (CONTEXT_FRAME_SIZE * 8)  // 288 bytes
+
+// Context frame layout (36 quad-words = 288 bytes):
+// [x2, xzr, x3, x4, ..., x30, sp_el1, pc, pstate, x0, x1, sp_el0, ttbr0_el1]
+// Note: Frame size must be 16-byte aligned for ARM64 AAPCS64
+
 // Process management functions
 void process_init(void);
 process_t *process_create(void (*entry)(void), unsigned long stack_size);

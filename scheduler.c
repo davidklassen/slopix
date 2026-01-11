@@ -2,8 +2,6 @@
 #include "process.h"
 #include "printf.h"
 
-#define CONTEXT_FRAME_SIZE (34 * sizeof(unsigned long))
-
 static process_t *run_queue_head;
 static process_t *run_queue_tail;
 
