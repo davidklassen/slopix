@@ -27,13 +27,13 @@ exception_vector_table:
 
     // Lower EL using AArch64
     .align 7
-    b exception_handler_sync
+    b el0_sync_handler
     .align 7
-    b exception_handler_irq
+    b el0_irq_handler
     .align 7
-    b exception_handler_fiq
+    b el0_fiq_handler
     .align 7
-    b exception_handler_serror
+    b el0_serror_handler
 
     // Lower EL using AArch32
     .align 7
@@ -207,6 +207,170 @@ exception_handler_fiq:
     eret
 
 exception_handler_serror:
+    stp x29, x30, [sp, #-16]!
+    bl handle_serror
+    ldp x29, x30, [sp], #16
+    eret
+
+// EL0→EL1 synchronous exception handler (syscalls, data aborts, etc.)
+el0_sync_handler:
+    // Save x0, x1 first
+    stp x0, x1, [sp, #-16]!
+
+    // Save ELR_EL1 and SPSR_EL1
+    mrs x0, elr_el1
+    mrs x1, spsr_el1
+    stp x0, x1, [sp, #-16]!
+
+    // Save all general purpose registers
+    stp x29, x30, [sp, #-16]!
+    stp x27, x28, [sp, #-16]!
+    stp x25, x26, [sp, #-16]!
+    stp x23, x24, [sp, #-16]!
+    stp x21, x22, [sp, #-16]!
+    stp x19, x20, [sp, #-16]!
+    stp x17, x18, [sp, #-16]!
+    stp x15, x16, [sp, #-16]!
+    stp x13, x14, [sp, #-16]!
+    stp x11, x12, [sp, #-16]!
+    stp x9, x10, [sp, #-16]!
+    stp x7, x8, [sp, #-16]!
+    stp x5, x6, [sp, #-16]!
+    stp x3, x4, [sp, #-16]!
+    stp x2, xzr, [sp, #-16]!
+
+    // CRITICAL: Save SP_EL0 and TTBR0_EL1 (user stack and page table)
+    mrs x0, sp_el0
+    mrs x1, ttbr0_el1
+    stp x0, x1, [sp, #-16]!
+
+    // Call C handler
+    mov x0, sp
+    bl handle_sync_exception_with_context
+    mov sp, x0
+
+    // Restore SP_EL0 and TTBR0_EL1
+    ldp x0, x1, [sp], #16
+    msr sp_el0, x0
+    msr ttbr0_el1, x1
+
+    // TLB invalidation (page table may have changed)
+    tlbi vmalle1
+    dsb sy
+    isb
+
+    // Restore all registers
+    ldp x2, xzr, [sp], #16
+    ldp x3, x4, [sp], #16
+    ldp x5, x6, [sp], #16
+    ldp x7, x8, [sp], #16
+    ldp x9, x10, [sp], #16
+    ldp x11, x12, [sp], #16
+    ldp x13, x14, [sp], #16
+    ldp x15, x16, [sp], #16
+    ldp x17, x18, [sp], #16
+    ldp x19, x20, [sp], #16
+    ldp x21, x22, [sp], #16
+    ldp x23, x24, [sp], #16
+    ldp x25, x26, [sp], #16
+    ldp x27, x28, [sp], #16
+    ldp x29, x30, [sp], #16
+
+    // Restore ELR_EL1 and SPSR_EL1
+    ldp x0, x1, [sp], #16
+    msr elr_el1, x0
+    msr spsr_el1, x1
+
+    // Restore x0, x1
+    ldp x0, x1, [sp], #16
+
+    // Return to EL0
+    eret
+
+// EL0→EL1 IRQ handler
+el0_irq_handler:
+    // Save x0, x1 first
+    stp x0, x1, [sp, #-16]!
+
+    // Save ELR_EL1 and SPSR_EL1
+    mrs x0, elr_el1
+    mrs x1, spsr_el1
+    stp x0, x1, [sp, #-16]!
+
+    // Save all general purpose registers
+    stp x29, x30, [sp, #-16]!
+    stp x27, x28, [sp, #-16]!
+    stp x25, x26, [sp, #-16]!
+    stp x23, x24, [sp, #-16]!
+    stp x21, x22, [sp, #-16]!
+    stp x19, x20, [sp, #-16]!
+    stp x17, x18, [sp, #-16]!
+    stp x15, x16, [sp, #-16]!
+    stp x13, x14, [sp, #-16]!
+    stp x11, x12, [sp, #-16]!
+    stp x9, x10, [sp, #-16]!
+    stp x7, x8, [sp, #-16]!
+    stp x5, x6, [sp, #-16]!
+    stp x3, x4, [sp, #-16]!
+    stp x2, xzr, [sp, #-16]!
+
+    // Save SP_EL0 and TTBR0_EL1
+    mrs x0, sp_el0
+    mrs x1, ttbr0_el1
+    stp x0, x1, [sp, #-16]!
+
+    // Call C handler (may do context switch)
+    mov x0, sp
+    bl handle_irq_with_context
+    mov sp, x0
+
+    // Restore SP_EL0 and TTBR0_EL1
+    ldp x0, x1, [sp], #16
+    msr sp_el0, x0
+    msr ttbr0_el1, x1
+
+    // TLB invalidation
+    tlbi vmalle1
+    dsb sy
+    isb
+
+    // Restore all registers
+    ldp x2, xzr, [sp], #16
+    ldp x3, x4, [sp], #16
+    ldp x5, x6, [sp], #16
+    ldp x7, x8, [sp], #16
+    ldp x9, x10, [sp], #16
+    ldp x11, x12, [sp], #16
+    ldp x13, x14, [sp], #16
+    ldp x15, x16, [sp], #16
+    ldp x17, x18, [sp], #16
+    ldp x19, x20, [sp], #16
+    ldp x21, x22, [sp], #16
+    ldp x23, x24, [sp], #16
+    ldp x25, x26, [sp], #16
+    ldp x27, x28, [sp], #16
+    ldp x29, x30, [sp], #16
+
+    // Restore ELR_EL1 and SPSR_EL1
+    ldp x0, x1, [sp], #16
+    msr elr_el1, x0
+    msr spsr_el1, x1
+
+    // Restore x0, x1
+    ldp x0, x1, [sp], #16
+
+    // Return to EL0
+    eret
+
+// EL0→EL1 FIQ handler
+el0_fiq_handler:
+    stp x29, x30, [sp, #-16]!
+    bl handle_fiq
+    ldp x29, x30, [sp], #16
+    eret
+
+// EL0→EL1 SError handler
+el0_serror_handler:
     stp x29, x30, [sp, #-16]!
     bl handle_serror
     ldp x29, x30, [sp], #16
