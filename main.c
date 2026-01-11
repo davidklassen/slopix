@@ -31,6 +31,8 @@ extern void run_svc_detection_tests(void);
 extern void run_syscall_infrastructure_tests(void);
 extern void run_syscall_exit_tests(void);
 extern void run_el0_process_create_tests(void);
+extern void run_el0_hello_tests(void);
+extern void demonstrate_el0_execution(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -99,8 +101,15 @@ void main(void) {
     run_syscall_infrastructure_tests();
     run_syscall_exit_tests();
     run_el0_process_create_tests();
+    run_el0_hello_tests();
 
     print_test_summary();
+
+    // If all tests passed, run actual EL0 demonstration
+    if (tests_failed == 0) {
+        demonstrate_el0_execution();
+        // This function will ERET to EL0 and never return
+    }
 
     // Run sync exception tests last (will halt the system)
     // Uncomment the line below to test exception handling:
