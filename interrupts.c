@@ -2,6 +2,7 @@
 #include "gic.h"
 #include "timer.h"
 #include "printf.h"
+#include "uart.h"
 
 #define TIMER_IRQ 30
 
@@ -26,6 +27,7 @@ void interrupts_disable(void) {
     __asm__ volatile("msr daifset, #2");  // Set IRQ mask
 }
 
+// Old sync exception handler (no longer called, kept for reference)
 void handle_sync_exception(void) {
     unsigned long esr, elr, far, spsr;
     __asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
@@ -39,6 +41,35 @@ void handle_sync_exception(void) {
     printf("  FAR_EL1:  0x%x\n", (unsigned int)far);
     printf("  SPSR_EL1: 0x%x\n", (unsigned int)spsr);
     while (1);
+}
+
+// Sync exception handler that supports full context saving
+// Called from exception handler with pointer to saved context on stack
+// Returns pointer to stack to restore (currently always returns same pointer)
+void *handle_sync_exception_with_context(void *stack_ptr) {
+    // Read system registers
+    unsigned long esr, elr, far, spsr;
+    __asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
+    __asm__ volatile("mrs %0, elr_el1" : "=r"(elr));
+    __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+    __asm__ volatile("mrs %0, spsr_el1" : "=r"(spsr));
+
+    // Extract Exception Class from ESR_EL1
+    unsigned int ec = (esr >> 26) & 0x3F;
+
+    // Print diagnostic information
+    printf("[EXCEPTION] Synchronous exception\n");
+    printf("  ESR_EL1:  0x%x\n", (unsigned int)esr);
+    printf("  EC=0x%x\n", ec);
+    printf("  ELR_EL1:  0x%x\n", (unsigned int)elr);
+    printf("  FAR_EL1:  0x%x\n", (unsigned int)far);
+    printf("  SPSR_EL1: 0x%x\n", (unsigned int)spsr);
+
+    // Halt the system
+    while (1);
+
+    // Return unmodified stack pointer (for now)
+    return stack_ptr;
 }
 
 // IRQ handler that supports context switching

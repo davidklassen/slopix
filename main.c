@@ -18,6 +18,7 @@ extern void run_mmu_postflight_tests(void);
 extern void run_ttbr1_preflight_tests(void);
 extern void run_ttbr1_postflight_tests(void);
 extern void run_higher_half_tests(void);
+extern void run_sync_exception_tests(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -72,6 +73,13 @@ void main(void) {
     run_pmm_tests();
     run_process_tests();
     print_test_summary();
+
+    // Initialize exception handling for exception tests
+    interrupts_init();
+
+    // Run sync exception tests last (will halt the system)
+    // Uncomment the line below to test exception handling:
+    // run_sync_exception_tests();
 
 #else
     process_t *proc1 = process_create(thread1, 4096);
