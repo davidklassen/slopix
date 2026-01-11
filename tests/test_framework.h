@@ -3,7 +3,7 @@
 
 #include "../printf.h"
 
-// Test statistics (extern - defined in test_main.c)
+// Test statistics (extern - defined in tests/test_globals.c)
 extern int tests_run;
 extern int tests_passed;
 extern int tests_failed;

@@ -7,10 +7,6 @@
 #include "process.h"
 #include "scheduler.h"
 
-int tests_run = 0;
-int tests_passed = 0;
-int tests_failed = 0;
-
 #ifdef TEST_BUILD
 #include "tests/test_framework.h"
 
@@ -59,24 +55,16 @@ void main(void) {
 #ifdef TEST_BUILD
     run_mmu_preflight_tests();
     run_ttbr1_preflight_tests();
-
-    if (tests_failed > 0) {
-        printf("\n[CRITICAL] Pre-flight checks failed - MMU not enabled\n");
-    }
 #endif
 
-    if (tests_failed == 0) {
-        extern void transition_to_higher_half(void);
-        enable_mmu();
-        transition_to_higher_half();
-    }
+    extern void transition_to_higher_half(void);
+    enable_mmu();
+    transition_to_higher_half();
 
 #ifdef TEST_BUILD
-    if (tests_failed == 0) {
-        run_mmu_postflight_tests();
-        run_ttbr1_postflight_tests();
-        run_higher_half_tests();
-    }
+    run_mmu_postflight_tests();
+    run_ttbr1_postflight_tests();
+    run_higher_half_tests();
 
     run_pmm_tests();
     run_process_tests();

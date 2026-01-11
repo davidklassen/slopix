@@ -10,9 +10,14 @@ CFLAGS = -Wall -Wextra -ffreestanding -nostdlib -O2 -mcpu=cortex-a53
 ASFLAGS = -mcpu=cortex-a53
 LDFLAGS = -T linker.ld -nostdlib
 
-# Source files - include ALL test files in every build
-OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o kernel_state.o \
-       tests/test_pmm.o tests/test_processes.o tests/test_mmu_registers.o tests/test_mmu_tables.o tests/test_mmu_enable.o tests/test_mmu_ttbr1.o tests/test_higher_half.o
+# Base kernel objects (always compiled)
+OBJS = boot.o main.o uart.o printf.o exceptions.o gic.o timer.o interrupts.o pmm.o mmu.o process.o scheduler.o kernel_state.o
+
+# Test objects (always compiled)
+TEST_OBJS = tests/test_globals.o tests/test_pmm.o tests/test_processes.o tests/test_mmu_registers.o tests/test_mmu_tables.o tests/test_mmu_enable.o tests/test_mmu_ttbr1.o tests/test_higher_half.o
+
+# All objects to link
+ALL_OBJS = $(OBJS) $(TEST_OBJS)
 
 # Single target
 TARGET = slopix.elf
@@ -24,7 +29,7 @@ all: clean-main $(TARGET)
 test: CFLAGS += -DTEST_BUILD
 test: clean-main $(TARGET)
 
-$(TARGET): $(OBJS)
+$(TARGET): $(ALL_OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
@@ -38,7 +43,7 @@ clean-main:
 	@rm -f main.o
 
 clean:
-	rm -f $(OBJS) $(TARGET) *.o tests/*.o
+	rm -f $(OBJS) $(TEST_OBJS) $(TARGET) *.o tests/*.o
 
 run: $(TARGET)
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)
