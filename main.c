@@ -7,6 +7,7 @@
 #include "process.h"
 #include "scheduler.h"
 #include "kernel_exit.h"
+#include "syscall.h"
 
 #ifdef TEST_BUILD
 #include "tests/test_framework.h"
@@ -27,6 +28,7 @@ extern void run_context_frame_size_tests(void);
 extern void run_dual_stack_foundation_tests(void);
 extern void run_pte_bit_tests(void);
 extern void run_svc_detection_tests(void);
+extern void run_syscall_infrastructure_tests(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -90,7 +92,9 @@ void main(void) {
 
     // Initialize exception handling for SVC tests
     interrupts_init();
+    syscall_init();
     run_svc_detection_tests();
+    run_syscall_infrastructure_tests();
 
     print_test_summary();
 

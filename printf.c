@@ -43,6 +43,38 @@ static void print_hex(unsigned int value) {
     }
 }
 
+static void print_hex_long(unsigned long value) {
+    const char hex[] = "0123456789abcdef";
+    uart_puts("0x");
+
+    int started = 0;
+    for (int i = 60; i >= 0; i -= 4) {
+        int digit = (value >> i) & 0xF;
+        if (digit != 0 || started || i == 0) {
+            uart_putchar(hex[digit]);
+            started = 1;
+        }
+    }
+}
+
+static void print_ulong(unsigned long value) {
+    if (value == 0) {
+        uart_putchar('0');
+        return;
+    }
+
+    char buf[32];
+    int i = 0;
+    while (value > 0) {
+        buf[i++] = '0' + (value % 10);
+        value /= 10;
+    }
+
+    while (i > 0) {
+        uart_putchar(buf[--i]);
+    }
+}
+
 static void print_string(const char *s) {
     if (s == 0) {
         uart_puts("(null)");
@@ -58,26 +90,51 @@ void printf(const char *fmt, ...) {
     while (*fmt) {
         if (*fmt == '%') {
             fmt++;
-            switch (*fmt) {
-                case 's':
-                    print_string(va_arg(args, const char *));
-                    break;
-                case 'd':
-                    print_int(va_arg(args, int));
-                    break;
-                case 'x':
-                    print_hex(va_arg(args, unsigned int));
-                    break;
-                case 'c':
-                    uart_putchar((char)va_arg(args, int));
-                    break;
-                case '%':
-                    uart_putchar('%');
-                    break;
-                default:
-                    uart_putchar('%');
-                    uart_putchar(*fmt);
-                    break;
+            // Check for 'l' length modifier
+            if (*fmt == 'l') {
+                fmt++;
+                switch (*fmt) {
+                    case 'u':
+                        print_ulong(va_arg(args, unsigned long));
+                        break;
+                    case 'x':
+                        print_hex_long(va_arg(args, unsigned long));
+                        break;
+                    case 'd':
+                        // For simplicity, treat %ld as unsigned long
+                        print_ulong(va_arg(args, unsigned long));
+                        break;
+                    default:
+                        uart_putchar('%');
+                        uart_putchar('l');
+                        uart_putchar(*fmt);
+                        break;
+                }
+            } else {
+                switch (*fmt) {
+                    case 's':
+                        print_string(va_arg(args, const char *));
+                        break;
+                    case 'd':
+                        print_int(va_arg(args, int));
+                        break;
+                    case 'x':
+                        print_hex(va_arg(args, unsigned int));
+                        break;
+                    case 'p':
+                        print_hex_long(va_arg(args, unsigned long));
+                        break;
+                    case 'c':
+                        uart_putchar((char)va_arg(args, int));
+                        break;
+                    case '%':
+                        uart_putchar('%');
+                        break;
+                    default:
+                        uart_putchar('%');
+                        uart_putchar(*fmt);
+                        break;
+                }
             }
         } else {
             if (*fmt == '\n') {

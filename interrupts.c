@@ -3,6 +3,7 @@
 #include "timer.h"
 #include "printf.h"
 #include "uart.h"
+#include "syscall.h"
 
 #define TIMER_IRQ 30
 
@@ -58,21 +59,16 @@ void *handle_sync_exception_with_context(void *stack_ptr) {
 
     // Check for SVC instruction (EC = 0x15)
     if (ec == 0x15) {
-        printf("[SYSCALL] SVC instruction detected (EC=0x15)\n");
-        printf("  ESR_EL1: 0x%lx\n", esr);
-        printf("  ELR_EL1: 0x%lx (return address)\n", elr);
-
-        // For now, just return - syscall dispatcher will be added in next step
-        // This allows SVC to complete without halting the system
-        return stack_ptr;
+        // SVC instruction - dispatch to syscall handler
+        return syscall_handler(stack_ptr);
     }
 
     // Other synchronous exceptions (page fault, undefined instruction, etc.)
     printf("[EXCEPTION] Synchronous exception\n");
-    printf("  ESR_EL1:  0x%lx (EC=0x%x)\n", esr, ec);
-    printf("  ELR_EL1:  0x%lx\n", elr);
-    printf("  FAR_EL1:  0x%lx\n", far);
-    printf("  SPSR_EL1: 0x%lx\n", spsr);
+    printf("  ESR_EL1:  %lx (EC=%x)\n", esr, ec);
+    printf("  ELR_EL1:  %lx\n", elr);
+    printf("  FAR_EL1:  %lx\n", far);
+    printf("  SPSR_EL1: %lx\n", spsr);
 
     // Halt on unhandled exceptions
     while (1);

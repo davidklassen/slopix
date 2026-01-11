@@ -140,7 +140,7 @@ void test_pmm_page_alignment(void) {
         unsigned long addr = (unsigned long)pages[i];
         if ((addr & 0xFFF) != 0) {  // Check 4KB alignment (lower 12 bits should be 0)
             all_aligned = 0;
-            printf("  [ERROR] Page %d at 0x%lx is not 4KB aligned\n", i, addr);
+            printf("  [ERROR] Page %d at %lx is not 4KB aligned\n", i, addr);
         }
     }
 
