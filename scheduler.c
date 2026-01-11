@@ -2,6 +2,8 @@
 #include "process.h"
 #include "printf.h"
 
+#define CONTEXT_FRAME_SIZE (33 * sizeof(unsigned long))
+
 static process_t *run_queue_head;
 static process_t *run_queue_tail;
 
@@ -45,45 +47,47 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
             next->state = PROCESS_RUNNING;
             process_set_current(next);
 
-            // Build initial context on next process's stack
-            // Stack layout must match exception handler: x0, xzr, x1...x30, ELR, SPSR
+            /* ARM64 AAPCS64 requires SP to be 16-byte aligned.
+             * Context frame: 33 * 8 bytes = 264 bytes (16-byte aligned size)
+             * Layout: [x0, xzr, x1, x2, ..., x30, ELR_EL1, SPSR_EL1]
+             */
             unsigned long *next_stack = (unsigned long *)next->context.sp;
+            next_stack -= 33;  // Allocate entire frame at once, maintaining alignment
 
-            // Push context in reverse order (stack grows down)
-            *(--next_stack) = next->context.pstate;  // SPSR_EL1
-            *(--next_stack) = next->context.pc;      // ELR_EL1
-            *(--next_stack) = next->context.x30;
-            *(--next_stack) = next->context.x29;
-            *(--next_stack) = next->context.x28;
-            *(--next_stack) = next->context.x27;
-            *(--next_stack) = next->context.x26;
-            *(--next_stack) = next->context.x25;
-            *(--next_stack) = next->context.x24;
-            *(--next_stack) = next->context.x23;
-            *(--next_stack) = next->context.x22;
-            *(--next_stack) = next->context.x21;
-            *(--next_stack) = next->context.x20;
-            *(--next_stack) = next->context.x19;
-            *(--next_stack) = next->context.x18;
-            *(--next_stack) = next->context.x17;
-            *(--next_stack) = next->context.x16;
-            *(--next_stack) = next->context.x15;
-            *(--next_stack) = next->context.x14;
-            *(--next_stack) = next->context.x13;
-            *(--next_stack) = next->context.x12;
-            *(--next_stack) = next->context.x11;
-            *(--next_stack) = next->context.x10;
-            *(--next_stack) = next->context.x9;
-            *(--next_stack) = next->context.x8;
-            *(--next_stack) = next->context.x7;
-            *(--next_stack) = next->context.x6;
-            *(--next_stack) = next->context.x5;
-            *(--next_stack) = next->context.x4;
-            *(--next_stack) = next->context.x3;
-            *(--next_stack) = next->context.x2;
-            *(--next_stack) = next->context.x1;
-            *(--next_stack) = 0;  // xzr
-            *(--next_stack) = next->context.x0;
+            next_stack[0] = next->context.x0;
+            next_stack[1] = 0;  // xzr
+            next_stack[2] = next->context.x1;
+            next_stack[3] = next->context.x2;
+            next_stack[4] = next->context.x3;
+            next_stack[5] = next->context.x4;
+            next_stack[6] = next->context.x5;
+            next_stack[7] = next->context.x6;
+            next_stack[8] = next->context.x7;
+            next_stack[9] = next->context.x8;
+            next_stack[10] = next->context.x9;
+            next_stack[11] = next->context.x10;
+            next_stack[12] = next->context.x11;
+            next_stack[13] = next->context.x12;
+            next_stack[14] = next->context.x13;
+            next_stack[15] = next->context.x14;
+            next_stack[16] = next->context.x15;
+            next_stack[17] = next->context.x16;
+            next_stack[18] = next->context.x17;
+            next_stack[19] = next->context.x18;
+            next_stack[20] = next->context.x19;
+            next_stack[21] = next->context.x20;
+            next_stack[22] = next->context.x21;
+            next_stack[23] = next->context.x22;
+            next_stack[24] = next->context.x23;
+            next_stack[25] = next->context.x24;
+            next_stack[26] = next->context.x25;
+            next_stack[27] = next->context.x26;
+            next_stack[28] = next->context.x27;
+            next_stack[29] = next->context.x28;
+            next_stack[30] = next->context.x29;
+            next_stack[31] = next->context.x30;
+            next_stack[32] = next->context.pc;      // ELR_EL1
+            next_stack[33] = next->context.pstate;  // SPSR_EL1
 
             return next_stack;
         }
@@ -153,44 +157,47 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
     next->state = PROCESS_RUNNING;
     process_set_current(next);
 
-    // Build context on next process's stack
-    // Stack layout: x0, xzr, x1...x30, ELR, SPSR
+    /* ARM64 AAPCS64 requires SP to be 16-byte aligned.
+     * Context frame: 33 * 8 bytes = 264 bytes (16-byte aligned size)
+     * Layout: [x0, xzr, x1, x2, ..., x30, ELR_EL1, SPSR_EL1]
+     */
     unsigned long *next_stack = (unsigned long *)next->context.sp;
+    next_stack -= 33;  // Allocate entire frame at once, maintaining alignment
 
-    *(--next_stack) = next->context.pstate;  // SPSR
-    *(--next_stack) = next->context.pc;      // ELR
-    *(--next_stack) = next->context.x30;
-    *(--next_stack) = next->context.x29;
-    *(--next_stack) = next->context.x28;
-    *(--next_stack) = next->context.x27;
-    *(--next_stack) = next->context.x26;
-    *(--next_stack) = next->context.x25;
-    *(--next_stack) = next->context.x24;
-    *(--next_stack) = next->context.x23;
-    *(--next_stack) = next->context.x22;
-    *(--next_stack) = next->context.x21;
-    *(--next_stack) = next->context.x20;
-    *(--next_stack) = next->context.x19;
-    *(--next_stack) = next->context.x18;
-    *(--next_stack) = next->context.x17;
-    *(--next_stack) = next->context.x16;
-    *(--next_stack) = next->context.x15;
-    *(--next_stack) = next->context.x14;
-    *(--next_stack) = next->context.x13;
-    *(--next_stack) = next->context.x12;
-    *(--next_stack) = next->context.x11;
-    *(--next_stack) = next->context.x10;
-    *(--next_stack) = next->context.x9;
-    *(--next_stack) = next->context.x8;
-    *(--next_stack) = next->context.x7;
-    *(--next_stack) = next->context.x6;
-    *(--next_stack) = next->context.x5;
-    *(--next_stack) = next->context.x4;
-    *(--next_stack) = next->context.x3;
-    *(--next_stack) = next->context.x2;
-    *(--next_stack) = next->context.x1;
-    *(--next_stack) = 0;  // xzr
-    *(--next_stack) = next->context.x0;
+    next_stack[0] = next->context.x0;
+    next_stack[1] = 0;  // xzr
+    next_stack[2] = next->context.x1;
+    next_stack[3] = next->context.x2;
+    next_stack[4] = next->context.x3;
+    next_stack[5] = next->context.x4;
+    next_stack[6] = next->context.x5;
+    next_stack[7] = next->context.x6;
+    next_stack[8] = next->context.x7;
+    next_stack[9] = next->context.x8;
+    next_stack[10] = next->context.x9;
+    next_stack[11] = next->context.x10;
+    next_stack[12] = next->context.x11;
+    next_stack[13] = next->context.x12;
+    next_stack[14] = next->context.x13;
+    next_stack[15] = next->context.x14;
+    next_stack[16] = next->context.x15;
+    next_stack[17] = next->context.x16;
+    next_stack[18] = next->context.x17;
+    next_stack[19] = next->context.x18;
+    next_stack[20] = next->context.x19;
+    next_stack[21] = next->context.x20;
+    next_stack[22] = next->context.x21;
+    next_stack[23] = next->context.x22;
+    next_stack[24] = next->context.x23;
+    next_stack[25] = next->context.x24;
+    next_stack[26] = next->context.x25;
+    next_stack[27] = next->context.x26;
+    next_stack[28] = next->context.x27;
+    next_stack[29] = next->context.x28;
+    next_stack[30] = next->context.x29;
+    next_stack[31] = next->context.x30;
+    next_stack[32] = next->context.pc;      // ELR_EL1
+    next_stack[33] = next->context.pstate;  // SPSR_EL1
 
     return next_stack;
 }
