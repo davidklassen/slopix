@@ -43,6 +43,15 @@ typedef struct process {
     struct process *next;
 } process_t;
 
+// Helper functions to check process execution level
+static inline int process_is_el0(const process_t *proc) {
+    return proc->context.exception_level == 0;
+}
+
+static inline int process_is_el1(const process_t *proc) {
+    return proc->context.exception_level == 1;
+}
+
 // Process management functions
 void process_init(void);
 process_t *process_create(void (*entry)(void), unsigned long stack_size);
