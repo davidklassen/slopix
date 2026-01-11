@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "printf.h"
 #include "kernel_state.h"
+#include "interrupts.h"
 
 // External symbols from linker script
 extern char __kernel_end;
@@ -66,6 +67,14 @@ void pmm_init(void) {
 }
 
 void *pmm_alloc_page(void) {
+    void *result = 0;
+
+    /* Disable interrupts to prevent race conditions with preemptive scheduling.
+     * Without protection, two processes could allocate the same page if a
+     * timer interrupt fires between is_page_free() and set_page_used().
+     */
+    interrupts_disable();
+
     for (unsigned long i = 0; i < total_pages; i++) {
         if (is_page_free(i)) {
             set_page_used(i);
@@ -74,14 +83,16 @@ void *pmm_alloc_page(void) {
 
             // If executing from higher-half, return virtual address
             if (kernel_in_higher_half()) {
-                return PHYS_TO_VIRT((void *)phys_addr);
+                result = PHYS_TO_VIRT((void *)phys_addr);
+            } else {
+                result = (void *)phys_addr;
             }
-
-            // Otherwise return physical address
-            return (void *)phys_addr;
+            break;
         }
     }
-    return 0;  // Out of memory
+
+    interrupts_enable();
+    return result;  // Returns 0 if out of memory
 }
 
 void pmm_free_page(void *page) {
@@ -100,10 +111,18 @@ void pmm_free_page(void *page) {
 
     unsigned long page_num = (addr - PHYS_MEMORY_START) / PAGE_SIZE;
 
+    /* Disable interrupts to prevent race conditions.
+     * A timer interrupt between is_page_free() and set_page_free() could
+     * cause a page to be freed while another process is allocating it.
+     */
+    interrupts_disable();
+
     if (!is_page_free(page_num)) {
         set_page_free(page_num);
         free_pages++;
     }
+
+    interrupts_enable();
 }
 
 unsigned long pmm_get_free_pages(void) {
