@@ -21,6 +21,7 @@ extern void run_higher_half_tests(void);
 extern void run_sync_exception_tests(void);
 extern void run_context_fields_tests(void);
 extern void run_process_context_init_tests(void);
+extern void run_pstate_tests(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -76,6 +77,7 @@ void main(void) {
     run_process_tests();
     run_context_fields_tests();
     run_process_context_init_tests();
+    run_pstate_tests();
     print_test_summary();
 
     // Initialize exception handling for exception tests

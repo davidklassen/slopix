@@ -1,8 +1,14 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-// PSTATE values for EL1h with IRQ enabled
-#define PSTATE_EL1H_IRQ_ENABLED 0x5
+// PSTATE mode bits [3:0]:
+// 0x0 = EL0t (EL0 with SP_EL0)
+// 0x5 = EL1h (EL1 with SP_EL1)
+// IRQ enabled means PSTATE.I bit is 0 (interrupts not masked)
+
+#define PSTATE_EL0T_IRQ_ENABLED 0x0  // EL0t mode, IRQ enabled
+#define PSTATE_EL1H_IRQ_ENABLED 0x5  // EL1h mode, IRQ enabled
+#define PSTATE_MODE_MASK        0xF  // Bits [3:0] = execution mode
 
 // Process states
 typedef enum {
