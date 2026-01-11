@@ -81,8 +81,10 @@ void *syscall_handler(void *stack_ptr) {
 
 long sys_exit(void) {
     int status = argint(0);
-    printf("[SYSCALL] sys_exit(%d) - stub, returning -1\n", status);
-    return -1;
+    printf("[SYSCALL] sys_exit(%d) - terminating process\n", status);
+    process_exit();
+    // Never reached - process_exit() calls WFE loop
+    return 0;
 }
 
 long sys_write(void) {
