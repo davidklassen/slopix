@@ -47,6 +47,22 @@
 #define PTE_RO          (2UL << 6)   // AP[2:1] = 10 (kernel RO, user no access)
 #define PTE_USER        (1UL << 6)   // AP[2:1] = 01 (kernel RW, user RW)
 
+// Execute-Never bits for memory protection
+#define PTE_UXN         (1UL << 54)  // User execute never (bit 54)
+#define PTE_PXN         (1UL << 53)  // Privileged execute never (bit 53)
+
+// Combined page attributes for common use cases
+#define PTE_KERNEL_CODE  (PTE_KERNEL)                    // Kernel RW+X
+#define PTE_KERNEL_DATA  (PTE_KERNEL | PTE_UXN)          // Kernel RW, no exec
+#define PTE_USER_CODE    (PTE_USER)                      // User RW+X
+#define PTE_USER_DATA    (PTE_USER | PTE_UXN | PTE_PXN)  // User RW, no exec, kernel can't exec
+
+// Memory protection model:
+// - Kernel code: PTE_KERNEL_CODE (kernel can execute, user cannot access)
+// - Kernel data: PTE_KERNEL_DATA (kernel RW, no execute, user cannot access)
+// - User code: PTE_USER_CODE (user can execute, kernel cannot execute via PXN)
+// - User data: PTE_USER_DATA (user RW, neither can execute)
+
 // Memory attribute indexes (for MAIR_EL1)
 #define MAIR_DEVICE_nGnRnE  0x00
 #define MAIR_NORMAL_NC      0x44

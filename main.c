@@ -25,6 +25,7 @@ extern void run_pstate_tests(void);
 extern void run_process_el_detection_tests(void);
 extern void run_context_frame_size_tests(void);
 extern void run_dual_stack_foundation_tests(void);
+extern void run_pte_bit_tests(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -84,6 +85,7 @@ void main(void) {
     run_process_el_detection_tests();
     run_context_frame_size_tests();
     run_dual_stack_foundation_tests();
+    run_pte_bit_tests();
     print_test_summary();
 
     // Initialize exception handling for exception tests
