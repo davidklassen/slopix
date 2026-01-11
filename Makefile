@@ -6,7 +6,7 @@ LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 # Flags
-CFLAGS = -Wall -Wextra -ffreestanding -nostdlib -O2 -mcpu=cortex-a53
+CFLAGS = -Wall -Wextra -ffreestanding -nostdlib -O2 -mcpu=cortex-a53 -mgeneral-regs-only
 ASFLAGS = -mcpu=cortex-a53
 LDFLAGS = -T linker.ld -nostdlib
 

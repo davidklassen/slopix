@@ -7,7 +7,7 @@
 // Prevent compiler from optimizing away writes to memory accessed by hardware
 // (page tables are read by MMU, not C code, so compiler thinks writes are dead stores)
 #define WRITE_ONCE(var, val) \
-    (*((volatile typeof(val) *)&(var)) = (val))
+    (*((volatile typeof(var) *)&(var)) = (val))
 
 // Page table pointers
 // Note: For 39-bit VA (T0SZ=25), translation starts at Level 1, not Level 0
