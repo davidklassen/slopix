@@ -77,6 +77,11 @@ process_t *process_create(void (*entry)(void), unsigned long stack_size) {
     proc->context.pc = (unsigned long)entry;  // Entry point (will be loaded into ELR_EL1)
     proc->context.pstate = PSTATE_EL1H_IRQ_ENABLED;
 
+    // EL0 fields (unused until M6 userspace)
+    proc->context.sp_el0 = 0;
+    proc->context.ttbr0_el1 = 0;
+    proc->context.exception_level = 1;
+
     return proc;
 }
 
