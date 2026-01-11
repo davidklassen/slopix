@@ -66,7 +66,14 @@ process_t *process_create(void (*entry)(void), unsigned long stack_size) {
 
     // Set up initial execution state
     proc->context.x30 = (unsigned long)process_exit;  // Link register (return address)
-    proc->context.sp = (unsigned long)stack + stack_size;  // Stack grows down
+
+    /* ARM64 AAPCS64 requires SP to be 16-byte aligned when taking/returning from exceptions.
+     * The scheduler builds a 264-byte context frame (33 * 8), which has offset 8 (264 % 16 = 8).
+     * We initialize SP with offset 8, so after scheduler subtracts 264, SP becomes 16-byte aligned.
+     * Formula: Subtract 8, round down to 16-byte boundary, then add 8 back for offset 8.
+     */
+    proc->context.sp = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
+
     proc->context.pc = (unsigned long)entry;  // Entry point (will be loaded into ELR_EL1)
     proc->context.pstate = PSTATE_EL1H_IRQ_ENABLED;
 
