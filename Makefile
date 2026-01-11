@@ -49,6 +49,6 @@ run: $(TARGET)
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)
 
 run-test: test
-	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)
+	qemu-system-aarch64 -M virt -cpu cortex-a53 -semihosting -nographic -kernel $(TARGET)
 
 .PHONY: all clean run test run-test clean-main

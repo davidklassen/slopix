@@ -6,6 +6,7 @@
 #include "mmu.h"
 #include "process.h"
 #include "scheduler.h"
+#include "kernel_exit.h"
 
 #ifdef TEST_BUILD
 #include "tests/test_framework.h"
@@ -91,7 +92,11 @@ void main(void) {
     scheduler_schedule();
 #endif
 
+#ifdef TEST_BUILD
+    kernel_exit(tests_failed > 0 ? 1 : 0);
+#else
     while (1) {
         __asm__ volatile("wfe");
     }
+#endif
 }
