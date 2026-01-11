@@ -26,6 +26,10 @@ extern int tests_failed;
     } \
 } while(0)
 
+// Equality assertion macro
+#define ASSERT_EQ(actual, expected) \
+    ASSERT((actual) == (expected), #actual " == " #expected)
+
 // Test suite header
 #define TEST_SUITE(name) \
     printf("\n" COLOR_YELLOW "=== Test Suite: %s ===" COLOR_RESET "\n", name)

@@ -21,6 +21,10 @@ typedef struct {
     unsigned long sp;   // Stack pointer
     unsigned long pc;   // Program counter (ELR_EL1)
     unsigned long pstate; // Processor state (SPSR_EL1)
+    unsigned long sp_el0;        // User stack pointer (EL0)
+    unsigned long ttbr0_el1;     // Per-process page table base
+    unsigned char exception_level; // 0=EL0, 1=EL1
+    unsigned char _padding[7];   // Align to 8-byte boundary
 } cpu_context_t;
 
 // Process control block
