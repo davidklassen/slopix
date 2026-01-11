@@ -30,6 +30,7 @@ extern void run_pte_bit_tests(void);
 extern void run_svc_detection_tests(void);
 extern void run_syscall_infrastructure_tests(void);
 extern void run_syscall_exit_tests(void);
+extern void run_el0_process_create_tests(void);
 #endif
 
 extern void set_ttbr_registers(unsigned long ttbr0, unsigned long ttbr1);
@@ -97,6 +98,7 @@ void main(void) {
     run_svc_detection_tests();
     run_syscall_infrastructure_tests();
     run_syscall_exit_tests();
+    run_el0_process_create_tests();
 
     print_test_summary();
 

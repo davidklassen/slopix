@@ -65,6 +65,7 @@ static inline int process_is_el1(const process_t *proc) {
 // Process management functions
 void process_init(void);
 process_t *process_create(void (*entry)(void), unsigned long stack_size);
+process_t *process_create_user(void (*entry)(void), unsigned long user_stack_size);
 void process_exit(void);
 process_t *process_get_current(void);
 void process_set_current(process_t *proc);
