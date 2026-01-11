@@ -1,8 +1,18 @@
 #include "test_framework.h"
 #include "../syscall.h"
+#include "../process.h"
+
+static void dummy_test_fn(void) {
+    // Empty test function for process creation
+}
 
 static void test_syscall_dispatcher_getpid(void) {
-    TEST("Syscall dispatcher extracts syscall number (getpid stub)");
+    TEST("Syscall: getpid() returns current process PID");
+
+    // Create a test process and set it as current
+    process_t *test_proc = process_create(dummy_test_fn, 4096);
+    process_t *saved_current = process_get_current();
+    process_set_current(test_proc);
 
     long result;
     __asm__ volatile(
@@ -14,9 +24,13 @@ static void test_syscall_dispatcher_getpid(void) {
         : "x8", "x0"
     );
 
-    // Stub returns -1
-    ASSERT_EQ(result, -1);
-    printf("  Syscall dispatcher invoked stub successfully\n");
+    // Should return actual PID, not -1
+    process_t *current = process_get_current();
+    ASSERT_EQ(result, current->pid);
+    printf("  getpid() returned PID=%ld\n", result);
+
+    // Restore previous current process
+    process_set_current(saved_current);
 }
 
 static void test_syscall_dispatcher_write(void) {

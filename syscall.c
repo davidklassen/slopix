@@ -1,5 +1,6 @@
 #include "syscall.h"
 #include "printf.h"
+#include "process.h"
 
 // Syscall function pointer type
 typedef long (*syscall_fn_t)(unsigned long, unsigned long, unsigned long,
@@ -33,9 +34,6 @@ void *syscall_handler(void *stack_ptr) {
     unsigned long arg3 = ctx[4];         // x3
     unsigned long arg4 = ctx[5];         // x4
     unsigned long arg5 = ctx[6];         // x5
-
-    printf("[SYSCALL] Dispatcher: nr=%lu, args=[%lu, %lu, %lu, ...]\n",
-           syscall_nr, arg0, arg1, arg2);
 
     long result = -1;  // Default: ENOSYS (not implemented)
 
@@ -72,6 +70,9 @@ long sys_read(int fd, void *buf, unsigned long count) {
 }
 
 long sys_getpid(void) {
-    printf("[SYSCALL] sys_getpid() - stub, returning -1\n");
-    return -1;
+    process_t *current = process_get_current();
+    long pid = current ? current->pid : 0;
+
+    printf("[SYSCALL] sys_getpid() -> %ld\n", pid);
+    return pid;
 }
