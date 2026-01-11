@@ -121,8 +121,8 @@ void test_process_created_at_el1(void) {
     process_t *proc = process_create(dummy_fn, 1024);
     ASSERT_EQ(proc->context.exception_level, 1);
     ASSERT_EQ(proc->context.sp_el0, 0);
-    // sp should still be set
-    ASSERT_NEQ(proc->context.sp, 0);
+    // sp_el1 should still be set
+    ASSERT_NEQ(proc->context.sp_el1, 0);
 }
 ```
 

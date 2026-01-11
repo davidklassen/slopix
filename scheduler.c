@@ -52,7 +52,7 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
              * Layout matches exceptions.S save order (SP points to lowest address):
              * [x2, xzr, x3, x4, x5, x6, ..., x29, x30, ELR, SPSR, x0, x1]
              */
-            unsigned long *next_stack = (unsigned long *)next->context.sp;
+            unsigned long *next_stack = (unsigned long *)next->context.sp_el1;
             next_stack -= 34;  // Allocate entire frame at once, maintaining alignment
 
             next_stack[0] = next->context.x2;
@@ -163,7 +163,7 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
      * Layout matches exceptions.S save order (SP points to lowest address):
      * [x2, xzr, x3, x4, x5, x6, ..., x29, x30, ELR, SPSR, x0, x1]
      */
-    unsigned long *next_stack = (unsigned long *)next->context.sp;
+    unsigned long *next_stack = (unsigned long *)next->context.sp_el1;
     next_stack -= 34;  // Allocate entire frame at once, maintaining alignment
 
     next_stack[0] = next->context.x2;

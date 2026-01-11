@@ -271,7 +271,7 @@ svc #0              // Execute syscall
 // Context frame is 264 bytes (33 * 8), offset 8 modulo 16
 // Initialize SP with offset 8 so after scheduler subtracts 264,
 // SP becomes 16-byte aligned
-proc->context.sp = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
+proc->context.sp_el1 = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
 ```
 
 This ensures proper alignment for exception entry/exit.
@@ -631,7 +631,7 @@ To start a user process, set up context for ERET:
 ```c
 // Set up initial user process context
 process->context.pc = (unsigned long)user_entry_point;  // ELR_EL1
-process->context.sp = (unsigned long)user_stack_top;     // SP_EL0
+process->context.sp_el0 = (unsigned long)user_stack_top; // SP_EL0
 
 // PSTATE for EL0: EL=0, SP=0, interrupts enabled
 // Bits: [3:2]=00 (EL0), [0]=0 (use SP_EL0), DAIF=0000 (interrupts enabled)
@@ -683,7 +683,7 @@ exception_handler_sync:
 // Context frame is 264 bytes (not 16-byte aligned)
 // Initialize SP with offset 8 so after pushing 264 bytes,
 // SP becomes 16-byte aligned
-proc->context.sp = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
+proc->context.sp_el1 = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
 ```
 
 **SLOPIX Status**: Current implementation handles this correctly.
@@ -780,7 +780,7 @@ void *user_stack = allocate_user_pages(STACK_PAGES);
 map_user_pages(user_stack, STACK_PAGES, PTE_USER | PTE_UXN);
 
 // Set SP_EL0 to top of stack
-process->context.sp = (unsigned long)user_stack + STACK_SIZE;
+process->context.sp_el0 = (unsigned long)user_stack + STACK_SIZE;
 ```
 
 **SLOPIX Status**: Not yet implemented - current processes run at EL1.

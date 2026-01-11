@@ -181,10 +181,10 @@ void test_process_context_initialization(void) {
         // SP should have offset 8 from 16-byte boundary, so after scheduler
         // subtracts 264 bytes (context frame), SP becomes 16-byte aligned
         unsigned long stack_top = (unsigned long)proc->stack + proc->stack_size;
-        ASSERT(proc->context.sp <= stack_top && proc->context.sp >= (unsigned long)proc->stack,
-               "Process SP within stack bounds");
-        ASSERT(proc->context.sp % 16 == 8,
-               "Process SP has offset 8 (for 16-byte alignment after context frame)");
+        ASSERT(proc->context.sp_el1 <= stack_top && proc->context.sp_el1 >= (unsigned long)proc->stack,
+               "Process SP_EL1 within stack bounds");
+        ASSERT(proc->context.sp_el1 % 16 == 8,
+               "Process SP_EL1 has offset 8 (for 16-byte alignment after context frame)");
 
         // Check x30 (link register) is set to process_exit
         extern void process_exit(void);

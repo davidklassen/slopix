@@ -142,8 +142,8 @@ typedef struct {
 
 Code confuses ARM64's dual stack pointer system:
 
-1. **Single SP assumption**: Process creation only sets one `sp` field
-2. **Scheduler unaware**: Only manages `next->context.sp`, doesn't know about SP_EL0
+1. **Single SP assumption**: Process creation only sets one `sp_el1` field
+2. **Scheduler unaware**: Only manages `next->context.sp_el1`, doesn't know about SP_EL0
 3. **ERET won't work**: When returning to EL0, ERET doesn't restore SP automatically
    - SP_EL0 is a **separate register** from SP_EL1
    - Must manually write SP_EL0 before ERET
@@ -153,10 +153,10 @@ Code confuses ARM64's dual stack pointer system:
 
 ```c
 // process.c - Only sets one SP
-proc->context.sp = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
+proc->context.sp_el1 = (((unsigned long)stack + stack_size - 8) & ~0xFUL) + 8;
 
 // scheduler.c - Only manages one SP
-unsigned long *next_stack = (unsigned long *)next->context.sp;
+unsigned long *next_stack = (unsigned long *)next->context.sp_el1;
 ```
 
 ### ARM64 Reality

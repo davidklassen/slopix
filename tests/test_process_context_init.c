@@ -22,8 +22,8 @@ void test_process_created_at_el1(void) {
         ASSERT_EQ(proc->context.sp_el0, 0);
         ASSERT_EQ(proc->context.ttbr0_el1, 0);
 
-        // Verify existing sp field is still properly set (non-zero)
-        ASSERT(proc->context.sp != 0, "Process SP field is set (non-zero)");
+        // Verify existing sp_el1 field is still properly set (non-zero)
+        ASSERT(proc->context.sp_el1 != 0, "Process SP_EL1 field is set (non-zero)");
     }
 }
 
