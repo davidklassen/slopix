@@ -47,29 +47,35 @@ void handle_sync_exception(void) {
 // Called from exception handler with pointer to saved context on stack
 // Returns pointer to stack to restore (currently always returns same pointer)
 void *handle_sync_exception_with_context(void *stack_ptr) {
-    // Read system registers
     unsigned long esr, elr, far, spsr;
     __asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
     __asm__ volatile("mrs %0, elr_el1" : "=r"(elr));
     __asm__ volatile("mrs %0, far_el1" : "=r"(far));
     __asm__ volatile("mrs %0, spsr_el1" : "=r"(spsr));
 
-    // Extract Exception Class from ESR_EL1
+    // Extract Exception Class from ESR_EL1 bits [31:26]
     unsigned int ec = (esr >> 26) & 0x3F;
 
-    // Print diagnostic information
+    // Check for SVC instruction (EC = 0x15)
+    if (ec == 0x15) {
+        printf("[SYSCALL] SVC instruction detected (EC=0x15)\n");
+        printf("  ESR_EL1: 0x%lx\n", esr);
+        printf("  ELR_EL1: 0x%lx (return address)\n", elr);
+
+        // For now, just return - syscall dispatcher will be added in next step
+        // This allows SVC to complete without halting the system
+        return stack_ptr;
+    }
+
+    // Other synchronous exceptions (page fault, undefined instruction, etc.)
     printf("[EXCEPTION] Synchronous exception\n");
-    printf("  ESR_EL1:  0x%x\n", (unsigned int)esr);
-    printf("  EC=0x%x\n", ec);
-    printf("  ELR_EL1:  0x%x\n", (unsigned int)elr);
-    printf("  FAR_EL1:  0x%x\n", (unsigned int)far);
-    printf("  SPSR_EL1: 0x%x\n", (unsigned int)spsr);
+    printf("  ESR_EL1:  0x%lx (EC=0x%x)\n", esr, ec);
+    printf("  ELR_EL1:  0x%lx\n", elr);
+    printf("  FAR_EL1:  0x%lx\n", far);
+    printf("  SPSR_EL1: 0x%lx\n", spsr);
 
-    // Halt the system
+    // Halt on unhandled exceptions
     while (1);
-
-    // Return unmodified stack pointer (for now)
-    return stack_ptr;
 }
 
 // IRQ handler that supports context switching
