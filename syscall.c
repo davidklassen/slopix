@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include "printf.h"
 #include "process.h"
+#include "uart.h"
 
 // Syscall function pointer type (following xv6 pattern)
 typedef long (*syscall_fn_t)(void);
@@ -88,9 +89,21 @@ long sys_write(void) {
     int fd = argint(0);
     const void *buf = argptr(1);
     unsigned long count = argraw(2);
-    printf("[SYSCALL] sys_write(fd=%d, buf=%p, count=%lu) - stub, returning -1\n",
-           fd, buf, count);
-    return -1;
+
+    // Only support stdout (fd=1) and stderr (fd=2) for now
+    if (fd != 1 && fd != 2) {
+        printf("[SYSCALL] sys_write: invalid fd=%d\n", fd);
+        return -9;  // EBADF: Bad file descriptor
+    }
+
+    // Write to UART character by character
+    const char *str = (const char *)buf;
+    for (unsigned long i = 0; i < count; i++) {
+        uart_putchar(str[i]);
+    }
+
+    // Return number of bytes written
+    return (long)count;
 }
 
 long sys_read(void) {
