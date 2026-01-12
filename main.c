@@ -8,6 +8,7 @@
 #include "kernel_exit.h"
 #include "syscall.h"
 #include "timer.h"
+#include "gic.h"
 
 #ifdef TEST_BUILD
 #include "tests/test_framework.h"
@@ -116,6 +117,8 @@ void main(void) {
 #endif
 
     timer_init();
+    gic_init();
+    printf("[GIC] Initialized\n");
     printf("Run...\n");
 
     while (1) {

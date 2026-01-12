@@ -6,7 +6,18 @@
 make clean && make run
 ```
 
-**Note:** The kernel runs in QEMU and will not exit on its own. Run in the background with `&` or terminate with Ctrl-A X.
+**Behavior:** The kernel boots, initializes, then enters an idle loop (`wfe`). It will never exit on its own. Terminate manually with Ctrl-A X.
+
+### Running the Kernel (Claude Code)
+
+Use the Bash tool's `timeout` parameter. The command will be moved to background when timeout expires:
+
+```
+Bash tool with timeout: 5000
+command: make clean && make run
+```
+
+Then check output with `cat <output_file>` and terminate with `KillShell`. Exit code 137 is expected (SIGKILL = 128 + 9).
 
 ## Running Tests
 
@@ -14,7 +25,18 @@ make clean && make run
 make clean && make run-test
 ```
 
-**Note:** Tests run in QEMU and may hang since this is OS development. If tests hang, you can run them in the background (e.g., using `&` in the shell).
+**Behavior:** Tests normally complete and exit via semihosting. However, tests can hang on errors (e.g., exceptions, infinite loops). Use a timeout to handle hangs.
+
+### Running Tests (Claude Code)
+
+Use the Bash tool's `timeout` parameter (5 seconds is sufficient):
+
+```
+Bash tool with timeout: 5000
+command: make clean && make run-test
+```
+
+If tests pass, the command completes normally. If tests hang, the command moves to background and can be killed.
 
 ## Code Quality
 
