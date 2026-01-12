@@ -1,7 +1,6 @@
 #include "uart.h"
 #include "printf.h"
 #include "interrupts.h"
-#include "timer.h"
 #include "pmm.h"
 #include "mmu.h"
 #include "process.h"

@@ -63,11 +63,3 @@ void gic_enable_interrupt(unsigned int irq) {
     unsigned int bit = irq % 32;
     GICD_ISENABLER(reg) = (1 << bit);
 }
-
-unsigned int gic_acknowledge_interrupt(void) {
-    return GICC_IAR & 0x3FF;  // Get interrupt ID
-}
-
-void gic_end_interrupt(unsigned int irq) {
-    GICC_EOIR = irq;
-}
