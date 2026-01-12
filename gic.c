@@ -45,6 +45,12 @@ void gic_enable_irq(uint32_t irq) {
     GICD_ISENABLER(reg) = (1U << bit);
 }
 
+uint32_t gic_is_irq_enabled(uint32_t irq) {
+    uint32_t reg = irq / 32;
+    uint32_t bit = irq % 32;
+    return (GICD_ISENABLER(reg) >> bit) & 1U;
+}
+
 uint32_t gic_acknowledge(void) {
     return GICC_IAR;
 }

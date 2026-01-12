@@ -47,6 +47,7 @@
 // Function declarations
 void gic_init(void);
 void gic_enable_irq(uint32_t irq);
+uint32_t gic_is_irq_enabled(uint32_t irq);
 uint32_t gic_acknowledge(void);
 void gic_end_interrupt(uint32_t irq);
 

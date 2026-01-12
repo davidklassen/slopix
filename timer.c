@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "printf.h"
+#include "gic.h"
 
 static uint64_t timer_frequency = 0;
 
@@ -14,4 +15,8 @@ uint64_t timer_get_frequency(void) {
 
 uint64_t timer_get_counter(void) {
     return read_cntvct_el0();
+}
+
+void timer_enable_irq(void) {
+    gic_enable_irq(TIMER_IRQ);
 }

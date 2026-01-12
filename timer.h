@@ -63,9 +63,13 @@ static inline void write_cntv_tval_el0(uint64_t val) {
 #define CNTV_CTL_IMASK    (1 << 1)  // Timer interrupt mask
 #define CNTV_CTL_ISTATUS  (1 << 2)  // Timer interrupt status
 
+// Virtual timer interrupt number (GICv2 PPI)
+#define TIMER_IRQ 27
+
 // Function declarations
 void timer_init(void);
 uint64_t timer_get_frequency(void);
 uint64_t timer_get_counter(void);
+void timer_enable_irq(void);
 
 #endif
