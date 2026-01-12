@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "kernel_exit.h"
 #include "syscall.h"
+#include "timer.h"
 
 #ifdef TEST_BUILD
 #include "tests/test_framework.h"
