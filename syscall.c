@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include "printf.h"
 #include "process.h"
+#include "scheduler.h"
 #include "uart.h"
 
 #ifdef TEST_BUILD
@@ -98,6 +99,7 @@ long sys_exit(void) {
         process_t *current = process_get_current();
         if (current) {
             current->state = PROCESS_TERMINATED;
+            scheduler_remove(current);
             printf("[PROCESS] Process PID=%d exited\n", current->pid);
         }
         printf("\n" COLOR_GREEN "=== EL0 Demonstration Complete ===" COLOR_RESET "\n");
@@ -109,6 +111,12 @@ long sys_exit(void) {
         kernel_exit(0);
     }
     #endif
+
+    process_t *current = process_get_current();
+    if (current) {
+        current->state = PROCESS_TERMINATED;
+        scheduler_remove(current);
+    }
 
     process_exit();
     // Never reached - process_exit() calls WFE loop

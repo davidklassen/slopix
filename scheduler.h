@@ -5,6 +5,7 @@
 
 void scheduler_init(void);
 void scheduler_add(process_t *proc);
+void scheduler_remove(process_t *proc);
 void *scheduler_schedule_with_context(void *stack_ptr);
 
 #endif

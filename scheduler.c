@@ -27,6 +27,44 @@ void scheduler_add(process_t *proc) {
     }
 }
 
+void scheduler_remove(process_t *proc) {
+    if (!proc || !run_queue_head) return;
+
+    // Handle single process in queue
+    if (run_queue_head == run_queue_tail && run_queue_head == proc) {
+        run_queue_head = 0;
+        run_queue_tail = 0;
+        proc->next = 0;
+        return;
+    }
+
+    // Find predecessor in circular list
+    process_t *pred = run_queue_head;
+    while (pred->next != proc && pred->next != run_queue_head) {
+        pred = pred->next;
+    }
+
+    // Process not found in queue
+    if (pred->next != proc) {
+        return;
+    }
+
+    // Remove process from circular list
+    pred->next = proc->next;
+
+    // Update head if removing head
+    if (proc == run_queue_head) {
+        run_queue_head = proc->next;
+    }
+
+    // Update tail if removing tail
+    if (proc == run_queue_tail) {
+        run_queue_tail = pred;
+    }
+
+    proc->next = 0;
+}
+
 // New scheduler that works with stack-based context switching
 // stack_ptr points to saved context on current process's stack
 // Returns pointer to stack to restore (may be different process)
@@ -138,15 +176,8 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
         return stack_ptr;  // Return same stack
     }
 
-    // Skip terminated processes
-    int count = 0;
-    while (next->state == PROCESS_TERMINATED && count < 10) {
-        next = next->next;
-        count++;
-    }
-
     // If no valid next process, stay with current
-    if (!next || next == current || next->state == PROCESS_TERMINATED) {
+    if (!next) {
         return stack_ptr;
     }
 
