@@ -1,5 +1,13 @@
 # Development Guide
 
+## Running the Kernel
+
+```bash
+make clean && make run
+```
+
+**Note:** The kernel runs in QEMU and will not exit on its own. Run in the background with `&` or terminate with Ctrl-A X.
+
 ## Running Tests
 
 ```bash

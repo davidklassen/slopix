@@ -113,6 +113,7 @@ void main(void) {
     }
 #endif
 
+    timer_init();
     printf("Run...\n");
 
     while (1) {
