@@ -29,9 +29,11 @@ static void print_int(int value) {
     }
 }
 
-static void print_hex(unsigned int value) {
+static void print_hex(unsigned int value, int prefix) {
     const char hex[] = "0123456789abcdef";
-    uart_puts("0x");
+    if (prefix) {
+        uart_puts("0x");
+    }
 
     int started = 0;
     for (int i = 28; i >= 0; i -= 4) {
@@ -43,9 +45,11 @@ static void print_hex(unsigned int value) {
     }
 }
 
-static void print_hex_long(unsigned long value) {
+static void print_hex_long(unsigned long value, int prefix) {
     const char hex[] = "0123456789abcdef";
-    uart_puts("0x");
+    if (prefix) {
+        uart_puts("0x");
+    }
 
     int started = 0;
     for (int i = 60; i >= 0; i -= 4) {
@@ -90,6 +94,12 @@ void printf(const char *fmt, ...) {
     while (*fmt) {
         if (*fmt == '%') {
             fmt++;
+            // Check for '#' flag (alternate form - adds 0x prefix for hex)
+            int alt_form = 0;
+            if (*fmt == '#') {
+                alt_form = 1;
+                fmt++;
+            }
             // Check for 'l' length modifier
             if (*fmt == 'l') {
                 fmt++;
@@ -98,7 +108,7 @@ void printf(const char *fmt, ...) {
                         print_ulong(va_arg(args, unsigned long));
                         break;
                     case 'x':
-                        print_hex_long(va_arg(args, unsigned long));
+                        print_hex_long(va_arg(args, unsigned long), alt_form);
                         break;
                     case 'd':
                         // For simplicity, treat %ld as unsigned long
@@ -106,6 +116,7 @@ void printf(const char *fmt, ...) {
                         break;
                     default:
                         uart_putchar('%');
+                        if (alt_form) uart_putchar('#');
                         uart_putchar('l');
                         uart_putchar(*fmt);
                         break;
@@ -119,10 +130,11 @@ void printf(const char *fmt, ...) {
                         print_int(va_arg(args, int));
                         break;
                     case 'x':
-                        print_hex(va_arg(args, unsigned int));
+                        print_hex(va_arg(args, unsigned int), alt_form);
                         break;
                     case 'p':
-                        print_hex_long(va_arg(args, unsigned long));
+                        // %p always gets 0x prefix per standard
+                        print_hex_long(va_arg(args, unsigned long), 1);
                         break;
                     case 'c':
                         uart_putchar((char)va_arg(args, int));
@@ -132,6 +144,7 @@ void printf(const char *fmt, ...) {
                         break;
                     default:
                         uart_putchar('%');
+                        if (alt_form) uart_putchar('#');
                         uart_putchar(*fmt);
                         break;
                 }

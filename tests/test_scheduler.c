@@ -44,6 +44,30 @@ static void test_scheduler_single_process_bootstrap(void) {
     ASSERT(process_get_current() == proc, "Scheduler selected the test process");
     ASSERT(proc->state == PROCESS_RUNNING, "Process state is RUNNING after scheduling");
     ASSERT(returned_stack != 0, "Scheduler returned non-null stack pointer");
+    ASSERT(returned_stack != fake_context, "Scheduler returned different stack pointer");
+
+    // Verify context frame contents
+    // The scheduler creates a context frame on the process stack with layout:
+    // [sp_el0, ttbr0_el1, x2, xzr, x3, x4, ..., x29, x30, ELR, SPSR, x0, x1]
+    unsigned long *ctx_frame = (unsigned long *)returned_stack;
+
+    unsigned long expected_elr = (unsigned long)dummy_scheduler_func;
+    unsigned long actual_elr = ctx_frame[32];
+    printf("  [INFO] Context frame ELR_EL1 (position 32): expected=0x%lx, actual=0x%lx\n",
+           expected_elr, actual_elr);
+    ASSERT(actual_elr == expected_elr, "ELR_EL1 matches process entry point");
+
+    unsigned long expected_spsr = PSTATE_EL1H_IRQ_ENABLED;
+    unsigned long actual_spsr = ctx_frame[33];
+    printf("  [INFO] Context frame SPSR_EL1 (position 33): expected=0x%lx, actual=0x%lx\n",
+           expected_spsr, actual_spsr);
+    ASSERT(actual_spsr == expected_spsr, "SPSR_EL1 matches expected PSTATE");
+
+    unsigned long expected_lr = (unsigned long)process_exit;
+    unsigned long actual_lr = ctx_frame[31];
+    printf("  [INFO] Context frame x30/LR (position 31): expected=0x%lx, actual=0x%lx\n",
+           expected_lr, actual_lr);
+    ASSERT(actual_lr == expected_lr, "x30/LR points to process_exit");
 
     printf("  [INFO] Process PID=%d was selected and is now running\n", proc->pid);
 
