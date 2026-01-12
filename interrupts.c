@@ -3,6 +3,17 @@
 #include "printf.h"
 #include "uart.h"
 #include "syscall.h"
+#include "timer.h"
+
+static volatile int timer_irq_received = 0;
+
+int irq_get_timer_flag(void) {
+    return timer_irq_received;
+}
+
+void irq_reset_timer_flag(void) {
+    timer_irq_received = 0;
+}
 
 extern void exception_vector_table(void);
 
@@ -31,7 +42,10 @@ void handle_irq(void) {
         return;
     }
 
-    printf("[IRQ] Received interrupt %u\n", irq);
+    if (irq == TIMER_IRQ) {
+        timer_irq_received = 1;
+        write_cntv_ctl_el0(0);  // Disable to prevent repeated interrupts
+    }
 
     gic_end_interrupt(irq);
 }

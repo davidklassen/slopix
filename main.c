@@ -36,6 +36,7 @@ extern void run_el0_hello_tests(void);
 extern void run_scheduler_basic_tests(void);
 extern void run_timer_tests(void);
 extern void run_gic_tests(void);
+extern void run_irq_tests(void);
 extern void demonstrate_el0_execution(void);
 #endif
 
@@ -108,6 +109,7 @@ void main(void) {
     run_scheduler_basic_tests();
     run_timer_tests();
     run_gic_tests();
+    run_irq_tests();
 
     print_test_summary();
 

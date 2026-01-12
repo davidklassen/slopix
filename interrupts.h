@@ -11,4 +11,8 @@ void *handle_sync_exception_with_context(void *stack_ptr);
 void handle_fiq(void);
 void handle_serror(void);
 
+// IRQ test support
+int irq_get_timer_flag(void);
+void irq_reset_timer_flag(void);
+
 #endif
