@@ -14,13 +14,26 @@ void interrupts_init(void) {
     gic_init();
 }
 
-// Stub functions - interrupts are never enabled, but pmm.c uses these for critical sections
 void interrupts_enable(void) {
-    // No-op: interrupts are never globally enabled in current implementation
+    __asm__ volatile("msr daifclr, #2" ::: "memory");
 }
 
 void interrupts_disable(void) {
-    // No-op: interrupts are already disabled
+    __asm__ volatile("msr daifset, #2" ::: "memory");
+}
+
+// IRQ handler called from exception vector
+void handle_irq(void) {
+    uint32_t irq = gic_acknowledge();
+
+    // Check for spurious interrupt
+    if (irq == GIC_SPURIOUS_IRQ) {
+        return;
+    }
+
+    printf("[IRQ] Received interrupt %u\n", irq);
+
+    gic_end_interrupt(irq);
 }
 
 
