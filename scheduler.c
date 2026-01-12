@@ -93,7 +93,8 @@ void *scheduler_schedule_with_context(void *stack_ptr) {
     // Save current process context from stack
     // Stack layout (matches exceptions.S): [sp_el0, ttbr0_el1, x2, xzr, x3, x4, ..., x29, x30, ELR, SPSR, x0, x1]
     unsigned long *ctx_ptr = (unsigned long *)stack_ptr;
-    ctx_ptr += 2;  // Skip sp_el0 and ttbr0_el1 (loaded directly from system registers)
+    current->context.sp_el0 = *ctx_ptr++;      // Read sp_el0 from saved context
+    current->context.ttbr0_el1 = *ctx_ptr++;   // Read ttbr0_el1 from saved context
     current->context.x2 = *ctx_ptr++;
     ctx_ptr++;  // skip xzr
     current->context.x3 = *ctx_ptr++;
