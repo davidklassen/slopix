@@ -27,11 +27,6 @@ void scheduler_add(process_t *proc) {
     }
 }
 
-void scheduler_schedule(void) {
-    // Legacy function - not used with new context switching
-    // Kept for compatibility
-}
-
 // New scheduler that works with stack-based context switching
 // stack_ptr points to saved context on current process's stack
 // Returns pointer to stack to restore (may be different process)

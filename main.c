@@ -131,7 +131,6 @@ void main(void) {
     timer_init(100);
     interrupts_enable();
     timer_enable_scheduling();
-    scheduler_schedule();
 #endif
 
 #ifdef TEST_BUILD
