@@ -32,6 +32,7 @@ extern void run_syscall_infrastructure_tests(void);
 extern void run_syscall_exit_tests(void);
 extern void run_el0_process_create_tests(void);
 extern void run_el0_hello_tests(void);
+extern void run_scheduler_basic_tests(void);
 extern void demonstrate_el0_execution(void);
 #endif
 
@@ -102,6 +103,7 @@ void main(void) {
     run_syscall_exit_tests();
     run_el0_process_create_tests();
     run_el0_hello_tests();
+    run_scheduler_basic_tests();
 
     print_test_summary();
 
