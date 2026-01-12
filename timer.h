@@ -72,4 +72,10 @@ uint64_t timer_get_frequency(void);
 uint64_t timer_get_counter(void);
 void timer_enable_irq(void);
 
+// Periodic timer support
+void timer_set_quantum(uint64_t ticks);
+void timer_reload(void);
+void timer_stop_periodic(void);
+int timer_is_periodic(void);
+
 #endif

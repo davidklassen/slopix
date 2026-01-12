@@ -6,6 +6,7 @@
 #include "timer.h"
 
 static volatile int timer_irq_received = 0;
+static volatile uint32_t timer_irq_count = 0;
 
 int irq_get_timer_flag(void) {
     return timer_irq_received;
@@ -13,6 +14,14 @@ int irq_get_timer_flag(void) {
 
 void irq_reset_timer_flag(void) {
     timer_irq_received = 0;
+}
+
+uint32_t irq_get_timer_count(void) {
+    return timer_irq_count;
+}
+
+void irq_reset_timer_count(void) {
+    timer_irq_count = 0;
 }
 
 extern void exception_vector_table(void);
@@ -44,7 +53,13 @@ void handle_irq(void) {
 
     if (irq == TIMER_IRQ) {
         timer_irq_received = 1;
-        write_cntv_ctl_el0(0);  // Disable to prevent repeated interrupts
+        timer_irq_count++;
+
+        if (timer_is_periodic()) {
+            timer_reload();
+        } else {
+            write_cntv_ctl_el0(0);  // Disable to prevent repeated interrupts
+        }
     }
 
     gic_end_interrupt(irq);
