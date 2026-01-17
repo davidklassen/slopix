@@ -25,6 +25,7 @@ void kernel_main(void) {
 	TEST_REPORT();
 	TEST_EXIT();
 
-	uart_puts("Hello from Slopix!\n");
+	uart_puts("Welcome to Slopix!\n");
+	uart_puts("To exit, press Ctrl-a x\n\n");
 	echo_loop();
 }
