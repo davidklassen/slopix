@@ -25,9 +25,9 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [ARMv8-A Programmer's Guide](ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 1-4 | Architecture fundamentals |
+| [ARMv8-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 1-4 | Architecture fundamentals |
 | [OSDev: QEMU AArch64 Virt Bare Bones](https://wiki.osdev.org/QEMU_AArch64_Virt_Bare_Bones) | Step-by-step tutorial |
-| [PL011 UART TRM](DDI0183_pl011_uart/DDI0183_pl011_uart.md) Ch 1-3 | Register map |
+| [PL011 UART TRM](docs/DDI0183_pl011_uart/DDI0183_pl011_uart.md) Ch 1-3 | Register map |
 
 ### Deliverables
 - `make run` boots kernel and prints "Hello from Slopix!"
@@ -47,7 +47,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [PL011 UART TRM](DDI0183_pl011_uart/DDI0183_pl011_uart.md) Ch 2-3 | TX/RX FIFOs, baud rate |
+| [PL011 UART TRM](docs/DDI0183_pl011_uart/DDI0183_pl011_uart.md) Ch 2-3 | TX/RX FIFOs, baud rate |
 
 ### Deliverables
 - Type characters and see them echoed
@@ -68,8 +68,8 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [ARM Exception Model](ARM-Exception-Model/ARM-Exception-Model.md) | EL0-EL3, vector layout |
-| [GIC Architecture Spec](IHI0069_gic_architecture/IHI0069_gic_architecture.md) Ch 2, 4, 12 | GICv3 initialization |
+| [ARM Exception Model](docs/ARM-Exception-Model/ARM-Exception-Model.md) | EL0-EL3, vector layout |
+| [GIC Architecture Spec](docs/IHI0069_gic_architecture/IHI0069_gic_architecture.md) Ch 2, 4, 12 | GICv3 initialization |
 
 ### Deliverables
 - Trigger undefined instruction → handler prints message
@@ -90,7 +90,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [ARMv8-A Programmer's Guide](ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 11 | Timer registers |
+| [ARMv8-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 11 | Timer registers |
 
 ### Deliverables
 - Timer fires every 10ms
@@ -112,7 +112,7 @@ Before starting:
 | Resource | Focus |
 |----------|-------|
 | [ARM ARM DDI 0487](https://developer.arm.com/documentation/ddi0487/latest/) Ch D5 | Translation tables |
-| [ARMv8-A Programmer's Guide](ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 12 | MMU practical guide |
+| [ARMv8-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 12 | MMU practical guide |
 
 ### Deliverables
 - MMU enabled at EL1
@@ -133,7 +133,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [xv6 Book](xv6-book-riscv/xv6-book-riscv.md) Ch 3 | Page allocator design |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 3 | Page allocator design |
 | [OSDev: Page Frame Allocation](https://wiki.osdev.org/Page_Frame_Allocation) | Algorithms |
 
 ### Deliverables
@@ -155,8 +155,8 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [AAPCS64](aapcs64/aapcs64.md) | Callee-saved registers |
-| [xv6 Book](xv6-book-riscv/xv6-book-riscv.md) Ch 7 | Scheduling |
+| [AAPCS64](docs/aapcs64/aapcs64.md) | Callee-saved registers |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 7 | Scheduling |
 | [xv6-riscv swtch.S](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/swtch.S) | Context switch pattern |
 
 ### Deliverables
@@ -200,7 +200,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [System V ABI AArch64](sysvabi64/sysvabi64.md) | Syscall conventions |
+| [System V ABI AArch64](docs/sysvabi64/sysvabi64.md) | Syscall conventions |
 | [Linux ARM64 Syscalls](https://syscalls.mebeim.net/?table=arm64) | Reference numbers |
 
 ### Deliverables
@@ -245,7 +245,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [xv6 Book](xv6-book-riscv/xv6-book-riscv.md) Ch 8 | File system design |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 8 | File system design |
 | [OSDev: FAT](https://wiki.osdev.org/FAT) | Simple filesystem |
 
 ### Deliverables
@@ -269,7 +269,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [xv6 Book](xv6-book-riscv/xv6-book-riscv.md) Ch 1 | Shell concepts |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 1 | Shell concepts |
 
 ### Deliverables
 - `ls` lists files
@@ -293,7 +293,7 @@ Before starting:
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [ELF for AArch64](aaelf64/aaelf64.md) | Executable format |
+| [ELF for AArch64](docs/aaelf64/aaelf64.md) | Executable format |
 | [chibicc](https://github.com/rui314/chibicc) | Small C compiler |
 | [tcc](https://bellard.org/tcc/) | Tiny C compiler |
 
@@ -310,7 +310,7 @@ Before starting:
 | Resource | Description |
 |----------|-------------|
 | [OSTEP](https://pages.cs.wisc.edu/~remzi/OSTEP/) | Free OS textbook |
-| [xv6 Book](xv6-book-riscv/xv6-book-riscv.md) | Teaching OS reference |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) | Teaching OS reference |
 
 ### Reference Implementations
 | Project | Description |
