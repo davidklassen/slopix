@@ -23,3 +23,14 @@ make run  - always times out (no exit), kill background shell after
 1. `make tidy` - format code
 2. `make test` - ensure all tests pass
 3. `make run` - verify kernel behaves as expected
+
+## Planning
+
+When planning implementation tasks:
+
+1. Search local documentation first via `docsearch` MCP
+2. Cross-validate with web search for:
+   - Official specs (ARM, OASIS, etc.)
+   - Reference implementations (xv6, raspberry-pi-os, seL4)
+   - OSDev wiki for practical guidance
+3. Cite sources in plan files when referencing specific register layouts or algorithms
