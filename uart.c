@@ -1,16 +1,13 @@
 #include "uart.h"
 
-// PL011 UART base address on QEMU virt board
-#define UART0_BASE 0x09000000
-
-#define UART_DR_OFFSET 0x00
-#define UART_FR_OFFSET 0x18
-#define UART_FR_TXFF   (1 << 5) // TX FIFO full
-
-#define UART_REG(offset) (*(volatile unsigned int *)(UART0_BASE + (offset)))
-
 void uart_init(void) {
-	// QEMU already initializes the UART, nothing to do
+	UART_REG(UART_CR_OFFSET) = 0;
+
+	while (UART_REG(UART_FR_OFFSET) & UART_FR_BUSY)
+		;
+
+	UART_REG(UART_LCR_H_OFFSET) = UART_LCR_H_WLEN8 | UART_LCR_H_FEN;
+	UART_REG(UART_CR_OFFSET) = UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE;
 }
 
 void uart_putc(char c) {
@@ -27,4 +24,17 @@ void uart_puts(const char *s) {
 		}
 		uart_putc(*s++);
 	}
+}
+
+int uart_getc_nb(void) {
+	if (UART_REG(UART_FR_OFFSET) & UART_FR_RXFE) {
+		return -1;
+	}
+	return UART_REG(UART_DR_OFFSET) & 0xFF;
+}
+
+char uart_getc(void) {
+	while (UART_REG(UART_FR_OFFSET) & UART_FR_RXFE)
+		;
+	return UART_REG(UART_DR_OFFSET) & 0xFF;
 }
