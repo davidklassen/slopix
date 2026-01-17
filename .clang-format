@@ -1,0 +1,34 @@
+BasedOnStyle: LLVM
+Language: Cpp
+
+# Indentation
+UseTab: Always
+TabWidth: 8
+IndentWidth: 8
+
+# No short forms
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+# Alignment - macros only
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+# Function arguments - all or nothing
+BinPackArguments: false
+BinPackParameters: false
+
+# Other
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+InsertBraces: true
+SpaceAfterCStyleCast: false
+ColumnLimit: 0
+SpacesInParentheses: false
+SortIncludes: Never
+AlwaysBreakAfterReturnType: None
+InsertNewlineAtEOF: true

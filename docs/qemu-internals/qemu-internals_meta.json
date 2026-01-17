@@ -1,0 +1,1265 @@
+{
+  "table_of_contents": [
+    {
+      "title": "Table of Contents",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          89.947265625,
+          94.41156005859375
+        ],
+        [
+          240.30767822265625,
+          94.41156005859375
+        ],
+        [
+          240.30767822265625,
+          111.62701416015625
+        ],
+        [
+          89.947265625,
+          111.62701416015625
+        ]
+      ]
+    },
+    {
+      "title": "1 Introduction",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          89.947265625,
+          94.41156005859375
+        ],
+        [
+          215.8790283203125,
+          94.41156005859375
+        ],
+        [
+          215.8790283203125,
+          111.62701416015625
+        ],
+        [
+          89.947265625,
+          111.62701416015625
+        ]
+      ]
+    },
+    {
+      "title": "1.1 Features",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          89.05078125,
+          131.77593994140625
+        ],
+        [
+          178.200439453125,
+          131.77593994140625
+        ],
+        [
+          178.200439453125,
+          146.1221923828125
+        ],
+        [
+          89.05078125,
+          146.1221923828125
+        ]
+      ]
+    },
+    {
+      "title": "1.2 x86 and x86-64 emulation",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          89.6484375,
+          96.6539306640625
+        ],
+        [
+          300.7456359863281,
+          96.6539306640625
+        ],
+        [
+          300.7456359863281,
+          111.00018310546875
+        ],
+        [
+          89.6484375,
+          111.00018310546875
+        ]
+      ]
+    },
+    {
+      "title": "Current QEMU limitations:",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          89.6484375,
+          256.39453125
+        ],
+        [
+          223.5234375,
+          256.39453125
+        ],
+        [
+          223.5234375,
+          267.48138427734375
+        ],
+        [
+          89.6484375,
+          267.48138427734375
+        ]
+      ]
+    },
+    {
+      "title": "1.3 ARM emulation",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          90.00003814697266,
+          345.93505859375
+        ],
+        [
+          232.97427368164062,
+          345.93505859375
+        ],
+        [
+          232.97427368164062,
+          360.28125
+        ],
+        [
+          90.00003814697266,
+          360.28125
+        ]
+      ]
+    },
+    {
+      "title": "1.4 MIPS emulation",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          89.947265625,
+          427.3690490722656
+        ],
+        [
+          234.75320434570312,
+          427.3690490722656
+        ],
+        [
+          234.75320434570312,
+          441.7152404785156
+        ],
+        [
+          89.947265625,
+          441.7152404785156
+        ]
+      ]
+    },
+    {
+      "title": "Current QEMU limitations:",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          88.453125,
+          498.50921630859375
+        ],
+        [
+          222.55648803710938,
+          498.50921630859375
+        ],
+        [
+          222.55648803710938,
+          509.4183349609375
+        ],
+        [
+          88.453125,
+          509.4183349609375
+        ]
+      ]
+    },
+    {
+      "title": "1.5 PowerPC emulation",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          89.6484375,
+          591.0880279541016
+        ],
+        [
+          259.4429931640625,
+          591.0880279541016
+        ],
+        [
+          259.4429931640625,
+          605.4342193603516
+        ],
+        [
+          89.6484375,
+          605.4342193603516
+        ]
+      ]
+    },
+    {
+      "title": "1.6 Sparc32 and Sparc64 emulation",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          89.05078125,
+          654.71484375
+        ],
+        [
+          341.273681640625,
+          654.71484375
+        ],
+        [
+          341.273681640625,
+          670.5012359619141
+        ],
+        [
+          89.05078125,
+          670.5012359619141
+        ]
+      ]
+    },
+    {
+      "title": "1.7 Xtensa emulation",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          88.453125,
+          222.36328125
+        ],
+        [
+          242.41403198242188,
+          222.36328125
+        ],
+        [
+          242.41403198242188,
+          236.72821044921875
+        ],
+        [
+          88.453125,
+          236.72821044921875
+        ]
+      ]
+    },
+    {
+      "title": "1.8 Other CPU emulation",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          89.05078125,
+          424.0260009765625
+        ],
+        [
+          275.18072509765625,
+          424.0260009765625
+        ],
+        [
+          275.18072509765625,
+          438.3721923828125
+        ],
+        [
+          89.05078125,
+          438.3721923828125
+        ]
+      ]
+    },
+    {
+      "title": "2 QEMU Internals",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          89.05078125,
+          94.41156005859375
+        ],
+        [
+          251.1361541748047,
+          94.41156005859375
+        ],
+        [
+          251.1361541748047,
+          111.62701416015625
+        ],
+        [
+          89.05078125,
+          111.62701416015625
+        ]
+      ]
+    },
+    {
+      "title": "2.1 QEMU compared to other emulators",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          90.0,
+          137.3509521484375
+        ],
+        [
+          379.4488830566406,
+          137.3509521484375
+        ],
+        [
+          379.4488830566406,
+          151.69720458984375
+        ],
+        [
+          90.0,
+          151.69720458984375
+        ]
+      ]
+    },
+    {
+      "title": "2.2 Portable dynamic translation",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          89.05078125,
+          613.7400665283203
+        ],
+        [
+          325.00506591796875,
+          613.7400665283203
+        ],
+        [
+          325.00506591796875,
+          629.578125
+        ],
+        [
+          89.05078125,
+          629.578125
+        ]
+      ]
+    },
+    {
+      "title": "2.3 Condition code optimisations",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          89.6484375,
+          175.95703125
+        ],
+        [
+          325.34942626953125,
+          175.95703125
+        ],
+        [
+          325.34942626953125,
+          190.99224853515625
+        ],
+        [
+          89.6484375,
+          190.99224853515625
+        ]
+      ]
+    },
+    {
+      "title": "2.4 CPU state optimisations",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          89.05078125,
+          400.8360290527344
+        ],
+        [
+          293.44921875,
+          400.8360290527344
+        ],
+        [
+          293.44921875,
+          415.3359375
+        ],
+        [
+          89.05078125,
+          415.3359375
+        ]
+      ]
+    },
+    {
+      "title": "2.5 Translation cache",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          89.6484375,
+          541.6460266113281
+        ],
+        [
+          241.7971954345703,
+          541.6460266113281
+        ],
+        [
+          241.7971954345703,
+          555.9922180175781
+        ],
+        [
+          89.6484375,
+          555.9922180175781
+        ]
+      ]
+    },
+    {
+      "title": "2.6 Direct block chaining",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          89.6484375,
+          626.484375
+        ],
+        [
+          269.31317138671875,
+          626.484375
+        ],
+        [
+          269.31317138671875,
+          641.9622192382812
+        ],
+        [
+          89.6484375,
+          641.9622192382812
+        ]
+      ]
+    },
+    {
+      "title": "2.7 Self-modifying code and translated code invalidation",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          90.00001525878906,
+          153.06494140625
+        ],
+        [
+          489.6563720703125,
+          153.06494140625
+        ],
+        [
+          489.6563720703125,
+          167.41119384765625
+        ],
+        [
+          90.00001525878906,
+          167.41119384765625
+        ]
+      ]
+    },
+    {
+      "title": "2.8 Exception support",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          89.05078125,
+          371.5150451660156
+        ],
+        [
+          249.04197692871094,
+          371.5150451660156
+        ],
+        [
+          249.04197692871094,
+          385.8612365722656
+        ],
+        [
+          89.05078125,
+          385.8612365722656
+        ]
+      ]
+    },
+    {
+      "title": "2.9 MMU emulation",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          89.349609375,
+          507.2600402832031
+        ],
+        [
+          236.46038818359375,
+          507.2600402832031
+        ],
+        [
+          236.46038818359375,
+          521.6062316894531
+        ],
+        [
+          89.349609375,
+          521.6062316894531
+        ]
+      ]
+    },
+    {
+      "title": "2.10 Device emulation",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          89.05078125,
+          656.1550445556641
+        ],
+        [
+          248.7550811767578,
+          656.1550445556641
+        ],
+        [
+          248.7550811767578,
+          670.5012435913086
+        ],
+        [
+          89.05078125,
+          670.5012435913086
+        ]
+      ]
+    },
+    {
+      "title": "2.11 Hardware interrupts",
+      "heading_level": null,
+      "page_id": 8,
+      "polygon": [
+        [
+          89.6484375,
+          308.5591125488281
+        ],
+        [
+          271.4363708496094,
+          308.5591125488281
+        ],
+        [
+          271.4363708496094,
+          322.9053039550781
+        ],
+        [
+          89.6484375,
+          322.9053039550781
+        ]
+      ]
+    },
+    {
+      "title": "2.12 User emulation specific details",
+      "heading_level": null,
+      "page_id": 8,
+      "polygon": [
+        [
+          90.0,
+          409.2091064453125
+        ],
+        [
+          341.6179504394531,
+          409.2091064453125
+        ],
+        [
+          341.6179504394531,
+          424.6171875
+        ],
+        [
+          90.0,
+          424.6171875
+        ]
+      ]
+    },
+    {
+      "title": "2.12.1 Linux system call translation",
+      "heading_level": null,
+      "page_id": 8,
+      "polygon": [
+        [
+          88.453125,
+          436.60546875
+        ],
+        [
+          321.68280029296875,
+          436.60546875
+        ],
+        [
+          321.68280029296875,
+          450.1800537109375
+        ],
+        [
+          88.453125,
+          450.1800537109375
+        ]
+      ]
+    },
+    {
+      "title": "2.12.2 Linux signals",
+      "heading_level": null,
+      "page_id": 8,
+      "polygon": [
+        [
+          89.05078125,
+          547.20703125
+        ],
+        [
+          218.95849609375,
+          547.20703125
+        ],
+        [
+          218.95849609375,
+          560.5030364990234
+        ],
+        [
+          89.05078125,
+          560.5030364990234
+        ]
+      ]
+    },
+    {
+      "title": "2.12.3 clone() system call and threads",
+      "heading_level": null,
+      "page_id": 9,
+      "polygon": [
+        [
+          89.6484375,
+          96.6796875
+        ],
+        [
+          336.1089172363281,
+          96.6796875
+        ],
+        [
+          336.1089172363281,
+          110.72589111328125
+        ],
+        [
+          89.6484375,
+          110.72589111328125
+        ]
+      ]
+    },
+    {
+      "title": "2.12.4 Self-virtualization",
+      "heading_level": null,
+      "page_id": 9,
+      "polygon": [
+        [
+          89.05078125,
+          223.91015625
+        ],
+        [
+          249.4602508544922,
+          223.91015625
+        ],
+        [
+          249.4602508544922,
+          237.15081787109375
+        ],
+        [
+          89.05078125,
+          237.15081787109375
+        ]
+      ]
+    },
+    {
+      "title": "2.13 Bibliography",
+      "heading_level": null,
+      "page_id": 9,
+      "polygon": [
+        [
+          88.751953125,
+          325.19586181640625
+        ],
+        [
+          217.12167358398438,
+          325.19586181640625
+        ],
+        [
+          217.12167358398438,
+          339.54205322265625
+        ],
+        [
+          88.751953125,
+          339.54205322265625
+        ]
+      ]
+    },
+    {
+      "title": "3 Regression Tests",
+      "heading_level": null,
+      "page_id": 10,
+      "polygon": [
+        [
+          90.0,
+          94.41156005859375
+        ],
+        [
+          250.01715087890625,
+          94.41156005859375
+        ],
+        [
+          250.01715087890625,
+          111.62701416015625
+        ],
+        [
+          90.0,
+          111.62701416015625
+        ]
+      ]
+    },
+    {
+      "title": "3.1 test-i386",
+      "heading_level": null,
+      "page_id": 10,
+      "polygon": [
+        [
+          89.05078125,
+          166.79095458984375
+        ],
+        [
+          185.05751037597656,
+          166.79095458984375
+        ],
+        [
+          185.05751037597656,
+          181.82635498046875
+        ],
+        [
+          89.05078125,
+          181.82635498046875
+        ]
+      ]
+    },
+    {
+      "title": "3.2 linux-test",
+      "heading_level": null,
+      "page_id": 10,
+      "polygon": [
+        [
+          89.05078125,
+          302.6810607910156
+        ],
+        [
+          192.43141174316406,
+          302.6810607910156
+        ],
+        [
+          192.43141174316406,
+          317.7164306640625
+        ],
+        [
+          89.05078125,
+          317.7164306640625
+        ]
+      ]
+    },
+    {
+      "title": "4 Index",
+      "heading_level": null,
+      "page_id": 11,
+      "polygon": [
+        [
+          88.751953125,
+          94.41156005859375
+        ],
+        [
+          157.12286376953125,
+          94.41156005859375
+        ],
+        [
+          157.12286376953125,
+          111.62701416015625
+        ],
+        [
+          88.751953125,
+          111.62701416015625
+        ]
+      ]
+    }
+  ],
+  "page_stats": [
+    {
+      "page_id": 0,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Picture",
+          1
+        ],
+        [
+          "Line",
+          1
+        ],
+        [
+          "Span",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 1,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          186
+        ],
+        [
+          "TableCell",
+          128
+        ],
+        [
+          "Line",
+          33
+        ],
+        [
+          "PageHeader",
+          1
+        ],
+        [
+          "SectionHeader",
+          1
+        ],
+        [
+          "TableOfContents",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 2,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          113
+        ],
+        [
+          "Line",
+          42
+        ],
+        [
+          "ListItem",
+          15
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "ListGroup",
+          4
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageHeader",
+          1
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 3,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          111
+        ],
+        [
+          "Line",
+          36
+        ],
+        [
+          "ListItem",
+          18
+        ],
+        [
+          "SectionHeader",
+          7
+        ],
+        [
+          "ListGroup",
+          6
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "Text",
+          2
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 4,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          78
+        ],
+        [
+          "Line",
+          28
+        ],
+        [
+          "ListItem",
+          12
+        ],
+        [
+          "Text",
+          3
+        ],
+        [
+          "ListGroup",
+          3
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 5,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          82
+        ],
+        [
+          "Line",
+          42
+        ],
+        [
+          "Text",
+          10
+        ],
+        [
+          "SectionHeader",
+          3
+        ],
+        [
+          "PageHeader",
+          1
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 6,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          100
+        ],
+        [
+          "Line",
+          41
+        ],
+        [
+          "Text",
+          10
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 7,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          84
+        ],
+        [
+          "Line",
+          39
+        ],
+        [
+          "Text",
+          12
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 8,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          111
+        ],
+        [
+          "Line",
+          41
+        ],
+        [
+          "Text",
+          11
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 9,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          106
+        ],
+        [
+          "Line",
+          36
+        ],
+        [
+          "ListItem",
+          12
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "SectionHeader",
+          3
+        ],
+        [
+          "PageHeader",
+          2
+        ],
+        [
+          "ListGroup",
+          1
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 10,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          52
+        ],
+        [
+          "Line",
+          15
+        ],
+        [
+          "Text",
+          6
+        ],
+        [
+          "SectionHeader",
+          3
+        ],
+        [
+          "PageHeader",
+          1
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 11,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          5
+        ],
+        [
+          "Line",
+          3
+        ],
+        [
+          "PageHeader",
+          1
+        ],
+        [
+          "SectionHeader",
+          1
+        ],
+        [
+          "Text",
+          1
+        ],
+        [
+          "Reference",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    }
+  ],
+  "debug_data_path": "debug_data/qemu-internals"
+}
