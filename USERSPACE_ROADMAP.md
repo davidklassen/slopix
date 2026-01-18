@@ -151,10 +151,10 @@ TEST(proc_has_usermode_fields) {
 
 ### Deliverables
 
-- [ ] `struct proc` extended with `pagetable`, `sz`, `tf`
-- [ ] Fields initialized to 0 in `proc_alloc()`
-- [ ] Test verifies new fields exist
-- [ ] `make test` passes
+- [x] `struct proc` extended with `pagetable`, `sz`, `tf`
+- [x] Fields initialized to 0 in `proc_alloc()`
+- [x] Test verifies new fields exist
+- [x] `make test` passes
 
 ---
 

@@ -21,6 +21,9 @@ struct proc *proc_alloc(void) {
 				return 0;
 			}
 			p->kstack = (char *)PA_TO_VA(pa);
+			p->pagetable = 0;
+			p->sz = 0;
+			p->tf = 0;
 			return p;
 		}
 	}

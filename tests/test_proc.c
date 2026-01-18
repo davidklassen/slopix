@@ -45,10 +45,24 @@ TEST(proc_create_sets_context) {
 	return 0;
 }
 
+TEST(proc_has_usermode_fields) {
+	struct proc *p = proc_alloc();
+	ASSERT_NOT_NULL(p, "alloc should succeed");
+
+	ASSERT_EQ((unsigned long)p->pagetable, 0, "pagetable should be null");
+	ASSERT_EQ(p->sz, 0, "sz should be 0");
+	ASSERT_EQ((unsigned long)p->tf, 0, "tf should be null");
+
+	pmem_free(VA_TO_PA(p->kstack));
+	p->state = UNUSED;
+	return 0;
+}
+
 TEST_SUITE(proc) {
 	RUN_TEST(proc_alloc_returns_proc);
 	RUN_TEST(proc_alloc_unique_pids);
 	RUN_TEST(proc_create_sets_context);
+	RUN_TEST(proc_has_usermode_fields);
 }
 
 #endif

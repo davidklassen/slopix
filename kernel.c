@@ -16,15 +16,6 @@ DECLARE_SUITE(mmu);
 DECLARE_SUITE(pmem);
 DECLARE_SUITE(proc);
 
-static void cursor_blink(void) {
-	for (;;) {
-		uart_puts("\x1b[?25h");
-		ksleep(50);
-		uart_puts("\x1b[?25l");
-		ksleep(50);
-	}
-}
-
 void kernel_main(void) {
 	uart_init();
 	RUN_SUITE(uart);
@@ -46,6 +37,9 @@ void kernel_main(void) {
 
 	TEST_REPORT();
 	TEST_EXIT();
+
+	uart_puts("Welcome to Slopix!\n");
+	uart_puts("To exit QEMU press Ctrl-a x\n\n");
 
 	proc_create(cursor_blink);
 	proc_create(prompt);

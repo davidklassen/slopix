@@ -1,6 +1,9 @@
 #ifndef PROC_H
 #define PROC_H
 
+#include "mmu.h"
+#include "exception.h"
+
 struct context {
 	unsigned long x19, x20, x21, x22, x23;
 	unsigned long x24, x25, x26, x27, x28;
@@ -18,6 +21,11 @@ struct proc {
 	int pid;
 	char *kstack;
 	struct context ctx;
+
+	// User mode support
+	pte_t *pagetable;
+	unsigned long sz;
+	struct trap_frame *tf;
 };
 
 #define NPROC 8
