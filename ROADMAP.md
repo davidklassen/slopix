@@ -57,19 +57,17 @@ Before starting:
 
 ## Milestone 3: Exception Vectors
 
-**Goal**: Handle interrupts and synchronous exceptions
+**Goal**: Handle synchronous exceptions
 
 ### What You'll Build
 - Vector table (16 entries)
 - Trap frame save/restore
 - Exception handler dispatch
-- GICv3 initialization
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
 | [ARM Exception Model](docs/ARM-Exception-Model/ARM-Exception-Model.md) | EL0-EL3, vector layout |
-| [GIC Architecture Spec](docs/IHI0069_gic_architecture/IHI0069_gic_architecture.md) Ch 2, 4, 12 | GICv3 initialization |
 
 ### Deliverables
 - Trigger undefined instruction → handler prints message
@@ -77,24 +75,27 @@ Before starting:
 
 ---
 
-## Milestone 4: Timer Interrupts
+## Milestone 4: Timer and Interrupts
 
-**Goal**: Periodic timer ticks for preemption
+**Goal**: Working interrupt infrastructure with timer-driven blinking cursor
 
 ### What You'll Build
-- Generic timer driver
-- Timer interrupt handling
+- GICv2 initialization (distributor, CPU interface)
+- Generic timer driver (ARM architectural timer)
+- IRQ handler with interrupt dispatch
 - Tick counter
-- Delay functions
+- Interactive prompt with blinking cursor (`prompt.c`)
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [ARMv8-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 11 | Timer registers |
+| [GIC Architecture Spec](docs/IHI0069_gic_architecture/IHI0069_gic_architecture.md) Ch 2, 4 | GICv2 registers and init sequence |
+| [ARMv8-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/ARMv8-A-Programmer-Guide.md) Ch 11 | Generic timer registers |
 
 ### Deliverables
-- Timer fires every 10ms
-- Prints "Tick: N" every second
+- Timer fires every 10ms, increments global tick counter
+- Prompt displays blinking cursor (toggles every 500ms)
+- Typing interrupts blink cycle, cursor reappears after input
 
 ---
 

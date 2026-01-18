@@ -13,13 +13,17 @@ OBJ = \
 	psci.o \
 	kprintf.o \
 	vectors.o \
-	exception.o
+	exception.o \
+	gic.o \
+	timer.o \
+	prompt.o
 
 TEST_OBJ = \
 	tests/test.o \
 	tests/test_uart.o \
 	tests/test_kprintf.o \
-	tests/test_exception.o
+	tests/test_exception.o \
+	tests/test_timer.o
 
 KERNEL = kernel.elf
 

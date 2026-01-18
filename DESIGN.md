@@ -8,7 +8,7 @@ QEMU virt machine with:
 - CPU: Cortex-A57 (ARMv8-A)
 - RAM: 128MB at 0x4000_0000
 - UART: PL011 at 0x0900_0000
-- Interrupt controller: GICv3
+- Interrupt controller: GICv2
 - Timer: ARM Generic Timer
 - Block device: Virtio-blk at 0x0a00_0000
 
@@ -142,30 +142,41 @@ Saved on kernel stack on exception entry:
 
 Total: 272 bytes (must be 16-byte aligned).
 
-## Interrupt Controller (GICv3)
+## Interrupt Controller (GICv2)
 
-### Registers
+### Memory Map
 
-Distributor (GICD): 0x0800_0000
-Redistributor (GICR): 0x080A_0000 (per-CPU, 128KB each)
-CPU Interface: System registers (ICC_*)
+| Component | Base Address | Size |
+|-----------|--------------|------|
+| Distributor (GICD) | 0x0800_0000 | 64KB |
+| CPU Interface (GICC) | 0x0801_0000 | 64KB |
+
+### Key Registers
+
+Distributor (GICD):
+- GICD_CTLR (0x000): Control register
+- GICD_ISENABLER0 (0x100): Interrupt set-enable for SGI/PPI
+- GICD_IPRIORITYR (0x400+): Interrupt priority (byte per interrupt)
+
+CPU Interface (GICC):
+- GICC_CTLR (0x00): Control register
+- GICC_PMR (0x04): Priority mask
+- GICC_IAR (0x0C): Interrupt acknowledge (read returns INTID)
+- GICC_EOIR (0x10): End of interrupt
 
 ### Initialization Sequence
 
-1. GICD_CTLR: Enable distributor
-2. GICD_IGROUPR: Set interrupt groups
-3. GICR_WAKER: Wake redistributor
-4. ICC_SRE_EL1: Enable system register interface
-5. ICC_PMR_EL1: Set priority mask (0xFF = all)
-6. ICC_IGRPEN1_EL1: Enable group 1 interrupts
+1. GICD_CTLR = 1 (enable distributor)
+2. GICC_PMR = 0xFF (accept all priorities)
+3. GICC_CTLR = 1 (enable CPU interface)
 
 ### Interrupt Flow
 
 1. Device asserts interrupt
 2. GIC signals CPU via IRQ
-3. CPU reads ICC_IAR1_EL1 to acknowledge (returns INTID)
+3. CPU reads GICC_IAR to acknowledge (returns INTID)
 4. CPU handles interrupt
-5. CPU writes INTID to ICC_EOIR1_EL1 to signal completion
+5. CPU writes INTID to GICC_EOIR to signal completion
 
 ### Key Interrupt IDs
 

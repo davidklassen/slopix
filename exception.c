@@ -1,4 +1,6 @@
 #include "exception.h"
+#include "gic.h"
+#include "timer.h"
 #include "kprintf.h"
 
 static const char *vector_names[] = {
@@ -79,5 +81,15 @@ void sync_exception_handler(struct trap_frame *tf) {
 
 void irq_handler(struct trap_frame *tf) {
 	(void)tf;
-	kprintf("IRQ received\n");
+	unsigned int intid = gic_acknowledge_irq();
+
+	if (intid == TIMER_IRQ) {
+		timer_handler();
+	} else if (intid != GIC_SPURIOUS_INTID) {
+		kprintf("Unhandled IRQ: %u\n", intid);
+	}
+
+	if (intid != GIC_SPURIOUS_INTID) {
+		gic_end_irq(intid);
+	}
 }
