@@ -2,6 +2,7 @@
 #include "arch.h"
 #include "uart.h"
 #include "gic.h"
+#include "pmem.h"
 
 // Page tables placed in .pagetables section (4KB aligned)
 #define SECTION_PAGETABLES __attribute__((section(".pagetables"), aligned(4096)))
@@ -37,6 +38,57 @@ static pte_t make_block_desc_normal(paddr_t pa, int exec) {
 		entry |= PTE_PXN;
 	}
 	return entry;
+}
+
+// Create an L3 page descriptor for user memory
+static pte_t make_page_desc_user(paddr_t pa, int write, int exec) {
+	pte_t entry = (pa & PTE_ADDR_MASK) | PTE_AF | PTE_SH_INNER |
+		      PTE_ATTR_NORMAL | PTE_PAGE | PTE_VALID;
+	entry |= write ? PTE_AP_RW_ALL : PTE_AP_RO_ALL;
+	if (!exec) {
+		entry |= PTE_UXN;
+	}
+	entry |= PTE_PXN; // kernel never executes user pages
+	return entry;
+}
+
+// Walk page table from L0 to L3, optionally allocating intermediate tables
+static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
+	pte_t *table = pagetable;
+
+	// Walk L0 -> L1 -> L2 -> L3
+	int indices[3] = {L0_INDEX(va), L1_INDEX(va), L2_INDEX(va)};
+	for (int level = 0; level < 3; level++) {
+		pte_t *entry = &table[indices[level]];
+		if (*entry & PTE_VALID) {
+			table = (pte_t *)PA_TO_VA(*entry & PTE_ADDR_MASK);
+		} else {
+			if (!alloc) {
+				return 0;
+			}
+			paddr_t pa = pmem_alloc();
+			if (pa == 0) {
+				return 0;
+			}
+			*entry = make_table_desc(pa);
+			table = (pte_t *)PA_TO_VA(pa);
+		}
+	}
+
+	return &table[L3_INDEX(va)];
+}
+
+// Map a single 4KB page in a user page table
+int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec) {
+	pte_t *pte = walk(pagetable, va, 1);
+	if (pte == 0) {
+		return -1;
+	}
+	if (*pte & PTE_VALID) {
+		return -1;
+	}
+	*pte = make_page_desc_user(pa, write, exec);
+	return 0;
 }
 
 // Build identity mapping tables (TTBR0)

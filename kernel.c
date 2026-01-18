@@ -15,6 +15,7 @@ DECLARE_SUITE(timer);
 DECLARE_SUITE(mmu);
 DECLARE_SUITE(pmem);
 DECLARE_SUITE(proc);
+DECLARE_SUITE(uvm);
 
 void kernel_main(void) {
 	uart_init();
@@ -29,6 +30,7 @@ void kernel_main(void) {
 	pmem_init();
 	RUN_SUITE(pmem);
 	RUN_SUITE(proc);
+	RUN_SUITE(uvm);
 
 	gic_init();
 	timer_init();

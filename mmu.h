@@ -10,7 +10,10 @@
 #define PTE_PER_TABLE  512
 
 // Page table index extraction (4KB granule, 48-bit VA)
+#define L0_INDEX(va)   (((va) >> 39) & 0x1FF)
+#define L1_INDEX(va)   (((va) >> 30) & 0x1FF)
 #define L2_INDEX(addr) (((addr) >> 21) & 0x1FF)
+#define L3_INDEX(va)   (((va) >> 12) & 0x1FF)
 
 // Page table entry type (64-bit on AArch64)
 typedef unsigned long pte_t;
@@ -49,6 +52,7 @@ typedef unsigned long paddr_t;
 // Page table entry bits
 #define PTE_VALID    (1UL << 0)	 // Entry is valid
 #define PTE_TABLE    (1UL << 1)	 // Points to next-level table (vs block)
+#define PTE_PAGE     (1UL << 1)	 // L3 page descriptor (same bit as PTE_TABLE)
 #define PTE_AF	     (1UL << 10) // Access flag (must be 1 to avoid fault)
 #define PTE_SH_INNER (3UL << 8)	 // Inner shareable
 #define PTE_SH_OUTER (2UL << 8)	 // Outer shareable
@@ -78,5 +82,8 @@ void mmu_init(void);
 
 // Assembly function
 void mmu_enable(void);
+
+// User-space page mapping
+int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
 
 #endif

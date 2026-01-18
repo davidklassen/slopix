@@ -303,12 +303,12 @@ TEST(uvm_map_page_creates_mapping) {
 
 ### Deliverables
 
-- [ ] `L0_INDEX`, `L1_INDEX`, `L3_INDEX` macros
-- [ ] `make_page_desc_user()` function
-- [ ] `walk()` function
-- [ ] `uvm_map_page()` function
-- [ ] Tests for page table walking
-- [ ] `make test` passes
+- [x] `L0_INDEX`, `L1_INDEX`, `L3_INDEX` macros
+- [x] `make_page_desc_user()` function
+- [x] `walk()` function
+- [x] `uvm_map_page()` function
+- [x] Tests for page table walking
+- [x] `make test` passes
 
 ---
 

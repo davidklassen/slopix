@@ -31,7 +31,8 @@ TEST_OBJ = \
 	tests/test_timer.o \
 	tests/test_mmu.o \
 	tests/test_pmem.o \
-	tests/test_proc.o
+	tests/test_proc.o \
+	tests/test_uvm.o
 
 KERNEL = kernel.elf
 
