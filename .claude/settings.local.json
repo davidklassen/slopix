@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(ls:*)",
-      "Bash(make clean:*)",
-      "Bash(make:*)"
-    ]
-  }
-}
