@@ -12,7 +12,7 @@
 
 struct trap_frame {
 	unsigned long regs[31];
-	unsigned long sp;
+	unsigned long sp_el0;
 	unsigned long elr;
 	unsigned long spsr;
 };

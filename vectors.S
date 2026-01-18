@@ -4,14 +4,14 @@
 
 .section .text
 
-// Trap frame: 288 bytes (36 * 8), 16-byte aligned
+// Trap frame: 272 bytes (34 * 8), 16-byte aligned
 // [sp, #0]   - [sp, #240]: x0-x30
-// [sp, #248]: original SP
+// [sp, #248]: SP_EL0
 // [sp, #256]: ELR_EL1
 // [sp, #264]: SPSR_EL1
 
 .macro save_trap_frame
-    sub     sp, sp, #288
+    sub     sp, sp, #272
     stp     x0, x1, [sp, #0]
     stp     x2, x3, [sp, #16]
     stp     x4, x5, [sp, #32]
@@ -29,7 +29,7 @@
     stp     x28, x29, [sp, #224]
     str     x30, [sp, #240]
 
-    add     x0, sp, #288
+    mrs     x0, sp_el0
     str     x0, [sp, #248]
 
     mrs     x0, elr_el1
@@ -45,6 +45,9 @@
 
     ldr     x0, [sp, #256]
     msr     elr_el1, x0
+
+    ldr     x0, [sp, #248]
+    msr     sp_el0, x0
 
     ldp     x0, x1, [sp, #0]
     ldp     x2, x3, [sp, #16]
@@ -62,7 +65,7 @@
     ldp     x26, x27, [sp, #208]
     ldp     x28, x29, [sp, #224]
     ldr     x30, [sp, #240]
-    add     sp, sp, #288
+    add     sp, sp, #272
 .endm
 
 .macro vector_entry label
