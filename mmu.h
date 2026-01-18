@@ -55,6 +55,12 @@ typedef unsigned long paddr_t;
 #define PTE_UXN	     (1UL << 54) // Unprivileged execute never
 #define PTE_PXN	     (1UL << 53) // Privileged execute never
 
+// Access Permission bits [7:6]
+#define PTE_AP_RW_EL1 (0UL << 6) // EL1 R/W, EL0 none (kernel only)
+#define PTE_AP_RW_ALL (1UL << 6) // EL1 R/W, EL0 R/W (user data)
+#define PTE_AP_RO_EL1 (2UL << 6) // EL1 R/O, EL0 none
+#define PTE_AP_RO_ALL (3UL << 6) // EL1 R/O, EL0 R/O (user code)
+
 // AttrIndx encoding (bits 4:2)
 #define PTE_ATTR_DEVICE (MAIR_IDX_DEVICE << 2) // Use MAIR index 0
 #define PTE_ATTR_NORMAL (MAIR_IDX_NORMAL << 2) // Use MAIR index 1
