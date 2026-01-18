@@ -83,7 +83,9 @@ void mmu_init(void);
 // Assembly function
 void mmu_enable(void);
 
-// User-space page mapping
+// User-space page table management
+pte_t *uvm_create(void);
+void uvm_free(pte_t *pagetable);
 int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
 
 #endif

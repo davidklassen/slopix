@@ -415,10 +415,10 @@ TEST(uvm_free_releases_pages) {
 
 ### Deliverables
 
-- [ ] `uvm_create()` function
-- [ ] `uvm_free()` function with recursive cleanup
-- [ ] Tests verify allocation and deallocation
-- [ ] `make test` passes
+- [x] `uvm_create()` function
+- [x] `uvm_free()` function with recursive cleanup
+- [x] Tests verify allocation and deallocation
+- [x] `make test` passes
 
 ---
 

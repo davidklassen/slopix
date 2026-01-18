@@ -4,28 +4,33 @@
 #include "mmu.h"
 #include "pmem.h"
 
-static void test_free_pagetable(pte_t *l0) {
-	for (int i0 = 0; i0 < PTE_PER_TABLE; i0++) {
-		if (!(l0[i0] & PTE_VALID)) {
-			continue;
-		}
-		pte_t *l1 = (pte_t *)PA_TO_VA(l0[i0] & PTE_ADDR_MASK);
-		for (int i1 = 0; i1 < PTE_PER_TABLE; i1++) {
-			if (!(l1[i1] & PTE_VALID)) {
-				continue;
-			}
-			pte_t *l2 = (pte_t *)PA_TO_VA(l1[i1] & PTE_ADDR_MASK);
-			for (int i2 = 0; i2 < PTE_PER_TABLE; i2++) {
-				if (!(l2[i2] & PTE_VALID)) {
-					continue;
-				}
-				pmem_free(l2[i2] & PTE_ADDR_MASK);
-			}
-			pmem_free(l1[i1] & PTE_ADDR_MASK);
-		}
-		pmem_free(l0[i0] & PTE_ADDR_MASK);
+TEST(uvm_create_returns_zeroed_table) {
+	pte_t *pt = uvm_create();
+	ASSERT_NOT_NULL(pt, "should allocate");
+
+	for (int i = 0; i < PTE_PER_TABLE; i++) {
+		ASSERT_EQ(pt[i], 0, "entries should be zero");
 	}
-	pmem_free(VA_TO_PA(l0));
+
+	uvm_free(pt);
+	return 0;
+}
+
+TEST(uvm_free_releases_pages) {
+	unsigned long before = pmem_free_count();
+
+	pte_t *pt = uvm_create();
+	paddr_t page = pmem_alloc();
+	uvm_map_page(pt, 0x1000, page, 1, 0);
+
+	// Used: L0 + L1 + L2 + L3 + data page = 5 pages
+
+	uvm_free(pt);
+
+	unsigned long after = pmem_free_count();
+	ASSERT_EQ(before, after, "all pages should be freed");
+
+	return 0;
 }
 
 TEST(uvm_map_page_creates_mapping) {
@@ -48,8 +53,7 @@ TEST(uvm_map_page_creates_mapping) {
 	paddr_t mapped_pa = l3[L3_INDEX(va)] & PTE_ADDR_MASK;
 	ASSERT_EQ(mapped_pa, page_pa, "L3 entry should map to correct PA");
 
-	pmem_free(page_pa);
-	test_free_pagetable(l0);
+	uvm_free(l0);
 	return 0;
 }
 
@@ -72,8 +76,7 @@ TEST(uvm_map_page_sets_permissions_rw) {
 	ASSERT(pte & PTE_UXN, "Should be non-executable for user");
 	ASSERT(pte & PTE_PXN, "Should be non-executable for kernel");
 
-	pmem_free(page_pa);
-	test_free_pagetable(l0);
+	uvm_free(l0);
 	return 0;
 }
 
@@ -95,8 +98,7 @@ TEST(uvm_map_page_sets_permissions_ro_exec) {
 	ASSERT(!(pte & PTE_UXN), "Should be executable for user");
 	ASSERT(pte & PTE_PXN, "Should be non-executable for kernel");
 
-	pmem_free(page_pa);
-	test_free_pagetable(l0);
+	uvm_free(l0);
 	return 0;
 }
 
@@ -113,9 +115,8 @@ TEST(uvm_map_page_fails_on_double_map) {
 	int ret2 = uvm_map_page(l0, va, page2_pa, 1, 0);
 	ASSERT_EQ(ret2, -1, "Second mapping to same VA should fail");
 
-	pmem_free(page1_pa);
-	pmem_free(page2_pa);
-	test_free_pagetable(l0);
+	pmem_free(page2_pa); // page2 was never mapped
+	uvm_free(l0);
 	return 0;
 }
 
@@ -134,8 +135,7 @@ TEST(uvm_map_page_allocates_intermediate_tables) {
 	// 1 for L0 + 1 for page + 3 for L1/L2/L3 tables = 5 pages
 	ASSERT_EQ(before - after, 5, "Should allocate 5 pages total");
 
-	pmem_free(page_pa);
-	test_free_pagetable(l0);
+	uvm_free(l0);
 	return 0;
 }
 
@@ -158,13 +158,13 @@ TEST(uvm_map_page_reuses_existing_tables) {
 	unsigned long after = pmem_free_count();
 	ASSERT_EQ(before, after, "Should not allocate new tables for nearby VA");
 
-	pmem_free(page1_pa);
-	pmem_free(page2_pa);
-	test_free_pagetable(l0);
+	uvm_free(l0);
 	return 0;
 }
 
 TEST_SUITE(uvm) {
+	RUN_TEST(uvm_create_returns_zeroed_table);
+	RUN_TEST(uvm_free_releases_pages);
 	RUN_TEST(uvm_map_page_creates_mapping);
 	RUN_TEST(uvm_map_page_sets_permissions_rw);
 	RUN_TEST(uvm_map_page_sets_permissions_ro_exec);

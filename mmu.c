@@ -91,6 +91,46 @@ int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int 
 	return 0;
 }
 
+// Allocate an empty user page table (just L0)
+pte_t *uvm_create(void) {
+	paddr_t pa = pmem_alloc();
+	if (pa == 0) {
+		return 0;
+	}
+	return (pte_t *)PA_TO_VA(pa);
+}
+
+// Recursively free page table entries
+static void freewalk(pte_t *pagetable, int level) {
+	for (int i = 0; i < PTE_PER_TABLE; i++) {
+		pte_t entry = pagetable[i];
+		if ((entry & PTE_VALID) == 0) {
+			continue;
+		}
+
+		paddr_t pa = entry & PTE_ADDR_MASK;
+
+		if (level < 3) {
+			// Table descriptor, recurse then free table
+			pte_t *child = (pte_t *)PA_TO_VA(pa);
+			freewalk(child, level + 1);
+			pmem_free(pa);
+		} else {
+			// L3 entry points to data page
+			pmem_free(pa);
+		}
+	}
+}
+
+// Free a user page table and all its pages
+void uvm_free(pte_t *pagetable) {
+	if (pagetable == 0) {
+		return;
+	}
+	freewalk(pagetable, 0);
+	pmem_free(VA_TO_PA(pagetable));
+}
+
 // Build identity mapping tables (TTBR0)
 // Maps physical addresses to same virtual addresses for MMU enable transition
 static void build_identity_tables(void) {
