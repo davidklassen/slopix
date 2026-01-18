@@ -7,7 +7,9 @@
 // Exception class values
 #define EC_UNKNOWN     0x00
 #define EC_SVC_AARCH64 0x15
+#define EC_IABT_LOWER  0x20
 #define EC_IABT_SAME   0x21
+#define EC_DABT_LOWER  0x24
 #define EC_DABT_SAME   0x25
 
 // Data/Instruction Fault Status Code (DFSC/IFSC) - ISS bits [5:0]

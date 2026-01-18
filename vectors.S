@@ -119,10 +119,10 @@ vector_entry vec_serror_spx
 
 // Lower EL using AArch64
 vector_entry vec_sync_lower64
-    panic_vector 8
+    b       sync_lower_entry
 
 vector_entry vec_irq_lower64
-    panic_vector 9
+    b       irq_lower_entry
 
 vector_entry vec_fiq_lower64
     panic_vector 10
@@ -154,6 +154,22 @@ sync_entry:
 
 // IRQ entry
 irq_entry:
+    save_trap_frame
+    mov     x0, sp
+    bl      irq_handler
+    restore_trap_frame
+    eret
+
+// Synchronous exception from lower EL (EL0)
+sync_lower_entry:
+    save_trap_frame
+    mov     x0, sp
+    bl      sync_exception_handler_user
+    restore_trap_frame
+    eret
+
+// IRQ from lower EL (EL0)
+irq_lower_entry:
     save_trap_frame
     mov     x0, sp
     bl      irq_handler

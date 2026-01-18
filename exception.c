@@ -139,3 +139,51 @@ void irq_handler(struct trap_frame *tf) {
 		kprintf("Unhandled IRQ: %u\n", intid);
 	}
 }
+
+void sync_exception_handler_user(struct trap_frame *tf) {
+	unsigned long esr = read_esr_el1();
+	unsigned int ec = ESR_EC(esr);
+	unsigned int iss = ESR_ISS(esr);
+
+	switch (ec) {
+	case EC_SVC_AARCH64:
+		kprintf("SYSCALL #%d from user at 0x%lx\n", iss & 0xFFFF, tf->elr);
+		break;
+
+	case EC_IABT_LOWER: {
+		unsigned int fsc = iss & FSC_MASK;
+		kprintf("USER INSTRUCTION ABORT at 0x%lx\n", tf->elr);
+		kprintf("  FAR: 0x%lx, Fault: %s (0x%x)\n",
+			read_far_el1(),
+			fault_status_string(fsc),
+			fsc);
+		for (;;) {
+			wfi();
+		}
+		break;
+	}
+
+	case EC_DABT_LOWER: {
+		unsigned int fsc = iss & FSC_MASK;
+		const char *op = (iss & ISS_WNR) ? "write" : "read";
+		kprintf("USER DATA ABORT (%s) at 0x%lx\n", op, tf->elr);
+		kprintf("  FAR: 0x%lx, Fault: %s (0x%x)\n",
+			read_far_el1(),
+			fault_status_string(fsc),
+			fsc);
+		for (;;) {
+			wfi();
+		}
+		break;
+	}
+
+	default:
+		kprintf("UNHANDLED USER EXCEPTION: EC=0x%x, ISS=0x%x, ELR=0x%lx\n",
+			ec,
+			iss,
+			tf->elr);
+		for (;;) {
+			wfi();
+		}
+	}
+}
