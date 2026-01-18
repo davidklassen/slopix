@@ -65,6 +65,13 @@ void scheduler(void) {
 			}
 			current = p;
 			p->state = RUNNING;
+
+			// Switch to process page table (if user process)
+			if (p->pagetable) {
+				write_ttbr0_el1(VA_TO_PA(p->pagetable));
+				tlbi_vmalle1();
+			}
+
 			context_switch(&sched_ctx, &p->ctx);
 			current = 0;
 		}

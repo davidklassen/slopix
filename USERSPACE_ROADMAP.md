@@ -498,11 +498,11 @@ Full test comes after user mode entry works.
 
 ### Deliverables
 
-- [ ] `read_ttbr0_el1()` accessor
-- [ ] `tlbi_vmalle1()` TLB invalidation
-- [ ] Scheduler switches TTBR0 for user processes
-- [ ] Kernel processes (pagetable=NULL) still work
-- [ ] `make test` passes
+- [x] `read_ttbr0_el1()` accessor
+- [x] `tlbi_vmalle1()` TLB invalidation
+- [x] Scheduler switches TTBR0 for user processes
+- [x] Kernel processes (pagetable=NULL) still work
+- [x] `make test` passes
 
 ---
 
