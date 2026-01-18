@@ -4,6 +4,7 @@
 
 DECLARE_SUITE(uart);
 DECLARE_SUITE(kprintf);
+DECLARE_SUITE(exception);
 
 static void echo_loop(void) {
 	uart_puts("slopix> ");
@@ -22,6 +23,7 @@ void kernel_main(void) {
 
 	RUN_SUITE(uart);
 	RUN_SUITE(kprintf);
+	RUN_SUITE(exception);
 	TEST_REPORT();
 	TEST_EXIT();
 

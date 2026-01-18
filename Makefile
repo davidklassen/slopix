@@ -11,12 +11,15 @@ OBJ = \
 	kernel.o \
 	uart.o \
 	psci.o \
-	kprintf.o
+	kprintf.o \
+	vectors.o \
+	exception.o
 
 TEST_OBJ = \
 	tests/test.o \
 	tests/test_uart.o \
-	tests/test_kprintf.o
+	tests/test_kprintf.o \
+	tests/test_exception.o
 
 KERNEL = kernel.elf
 
