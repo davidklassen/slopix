@@ -127,13 +127,15 @@ void irq_handler(struct trap_frame *tf) {
 	(void)tf;
 	unsigned int intid = gic_acknowledge_irq();
 
+	// End interrupt before calling handler. Timer handler may yield and never
+	// return, so we must signal completion to GIC before that happens.
+	if (intid != GIC_SPURIOUS_INTID) {
+		gic_end_irq(intid);
+	}
+
 	if (intid == TIMER_IRQ) {
 		timer_handler();
 	} else if (intid != GIC_SPURIOUS_INTID) {
 		kprintf("Unhandled IRQ: %u\n", intid);
-	}
-
-	if (intid != GIC_SPURIOUS_INTID) {
-		gic_end_irq(intid);
 	}
 }

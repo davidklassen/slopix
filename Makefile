@@ -19,7 +19,9 @@ OBJ = \
 	prompt.o \
 	mmu.o \
 	mmu_enable.o \
-	pmem.o
+	pmem.o \
+	proc.o \
+	switch.o
 
 TEST_OBJ = \
 	tests/test.o \
@@ -28,7 +30,8 @@ TEST_OBJ = \
 	tests/test_exception.o \
 	tests/test_timer.o \
 	tests/test_mmu.o \
-	tests/test_pmem.o
+	tests/test_pmem.o \
+	tests/test_proc.o
 
 KERNEL = kernel.elf
 

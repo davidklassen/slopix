@@ -1,6 +1,7 @@
 #include "timer.h"
 #include "gic.h"
 #include "arch.h"
+#include "proc.h"
 
 #define CNTP_CTL_ENABLE (1 << 0)
 
@@ -34,8 +35,10 @@ void timer_init(void) {
 
 void timer_handler(void) {
 	ticks++;
-	// Reload timer for next interrupt
 	write_cntp_tval_el0(timer_period);
+	if (current != 0) {
+		yield();
+	}
 }
 
 unsigned long timer_get_ticks(void) {

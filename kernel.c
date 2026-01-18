@@ -5,6 +5,7 @@
 #include "arch.h"
 #include "mmu.h"
 #include "pmem.h"
+#include "proc.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -13,6 +14,16 @@ DECLARE_SUITE(exception);
 DECLARE_SUITE(timer);
 DECLARE_SUITE(mmu);
 DECLARE_SUITE(pmem);
+DECLARE_SUITE(proc);
+
+static void cursor_blink(void) {
+	for (;;) {
+		uart_puts("\x1b[?25h");
+		ksleep(50);
+		uart_puts("\x1b[?25l");
+		ksleep(50);
+	}
+}
 
 void kernel_main(void) {
 	uart_init();
@@ -26,6 +37,7 @@ void kernel_main(void) {
 
 	pmem_init();
 	RUN_SUITE(pmem);
+	RUN_SUITE(proc);
 
 	gic_init();
 	timer_init();
@@ -35,8 +47,7 @@ void kernel_main(void) {
 	TEST_REPORT();
 	TEST_EXIT();
 
-	uart_puts("Welcome to Slopix!\n");
-	uart_puts("To exit, press Ctrl-a x\n\n");
-
-	prompt();
+	proc_create(cursor_blink);
+	proc_create(prompt);
+	scheduler();
 }
