@@ -31,14 +31,15 @@ SECTIONS
     } > RAM
     __bss_end = .;
 
-    . = ALIGN(16);
-    . = . + 0x10000;  /* 64KB stack */
-    __stack_top = .;
-
     . = ALIGN(4096);
     __pagetables_start = .;
     .pagetables (NOLOAD) : {
         *(.pagetables)
     } > RAM
     __pagetables_end = .;
+
+    /* Stack grows down from __stack_top */
+    . = ALIGN(16);
+    . = . + 0x10000;  /* 64KB stack */
+    __stack_top = .;
 }

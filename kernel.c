@@ -4,6 +4,7 @@
 #include "prompt.h"
 #include "arch.h"
 #include "mmu.h"
+#include "pmem.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -11,6 +12,7 @@ DECLARE_SUITE(kprintf);
 DECLARE_SUITE(exception);
 DECLARE_SUITE(timer);
 DECLARE_SUITE(mmu);
+DECLARE_SUITE(pmem);
 
 void kernel_main(void) {
 	uart_init();
@@ -21,6 +23,9 @@ void kernel_main(void) {
 	mmu_init();
 	uart_use_virtual_address();
 	RUN_SUITE(mmu);
+
+	pmem_init();
+	RUN_SUITE(pmem);
 
 	gic_init();
 	timer_init();
