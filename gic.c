@@ -1,27 +1,31 @@
 #include "gic.h"
 #include "arch.h"
 
+#define GICD_REG(off) (*(volatile unsigned int *)(GICD_VIRT + (off)))
+#define GICC_REG(off) (*(volatile unsigned int *)(GICC_VIRT + (off)))
+
 void gic_init(void) {
-	GIC_REG(GICD_CTLR) = 1;
-	GIC_REG(GICC_PMR) = 0xFF;
-	GIC_REG(GICC_CTLR) = 1;
+	GICD_REG(GICD_CTLR_OFF) = 1;
+	GICC_REG(GICC_PMR_OFF) = 0xFF;
+	GICC_REG(GICC_CTLR_OFF) = 1;
 	isb();
 }
 
 void gic_enable_irq(unsigned int intid) {
 	if (intid < 32) {
-		GIC_REG(GICD_ISENABLER0) = (1u << intid);
+		GICD_REG(GICD_ISENABLER0_OFF) = (1u << intid);
 		volatile unsigned char *prio =
-		    (volatile unsigned char *)(GICD_IPRIORITYR0 + intid);
+		    (volatile unsigned char *)(GICD_VIRT + GICD_IPRIORITYR0_OFF +
+					       intid);
 		*prio = 0x80;
 	}
 	isb();
 }
 
 unsigned int gic_acknowledge_irq(void) {
-	return GIC_REG(GICC_IAR) & 0x3FF;
+	return GICC_REG(GICC_IAR_OFF) & GIC_INTID_MASK;
 }
 
 void gic_end_irq(unsigned int intid) {
-	GIC_REG(GICC_EOIR) = intid;
+	GICC_REG(GICC_EOIR_OFF) = intid;
 }

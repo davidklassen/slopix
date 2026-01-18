@@ -1,10 +1,11 @@
-#include "test.h"
-
 #ifdef RUN_TESTS
 
+#include "test.h"
 #include "arch.h"
 #include "gic.h"
 #include "timer.h"
+
+#define GICC_PMR_REG (*(volatile unsigned int *)(GICC_VIRT + GICC_PMR_OFF))
 
 TEST(arch_irq_mask) {
 	disable_irq();
@@ -25,7 +26,7 @@ TEST(timer_freq) {
 }
 
 TEST(gic_pmr) {
-	unsigned int pmr = GIC_REG(GICC_PMR);
+	unsigned int pmr = GICC_PMR_REG;
 	ASSERT_EQ(pmr, 0xFF, "GICC_PMR should be 0xFF");
 	return 0;
 }
@@ -42,11 +43,11 @@ TEST(timer_ticks) {
 	return 0;
 }
 
-#endif
-
 TEST_SUITE(timer) {
 	RUN_TEST(arch_irq_mask);
 	RUN_TEST(timer_freq);
 	RUN_TEST(gic_pmr);
 	RUN_TEST(timer_ticks);
 }
+
+#endif

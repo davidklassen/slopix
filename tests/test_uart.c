@@ -1,7 +1,9 @@
+#ifdef RUN_TESTS
+
 #include "test.h"
 #include "uart.h"
 
-#ifdef RUN_TESTS
+#define UART_REG(off) (*(volatile unsigned int *)(UART0_PHYS + (off)))
 
 TEST(putc_works) {
 	uart_putc('X');
@@ -26,11 +28,11 @@ TEST(getc_nb_empty) {
 	return 0;
 }
 
-#endif
-
 TEST_SUITE(uart) {
 	RUN_TEST(putc_works);
 	RUN_TEST(puts_works);
 	RUN_TEST(init_enables_rx);
 	RUN_TEST(getc_nb_empty);
 }
+
+#endif

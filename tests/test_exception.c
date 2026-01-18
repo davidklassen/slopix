@@ -1,6 +1,6 @@
-#include "test.h"
-
 #ifdef RUN_TESTS
+
+#include "test.h"
 
 TEST(undefined_instruction) {
 	__asm__ volatile(".word 0x00000000");
@@ -12,9 +12,9 @@ TEST(svc_call) {
 	return 0;
 }
 
-#endif
-
 TEST_SUITE(exception) {
 	RUN_TEST(undefined_instruction);
 	RUN_TEST(svc_call);
 }
+
+#endif

@@ -1,7 +1,8 @@
 #ifndef UART_H
 #define UART_H
 
-#define UART0_BASE	  0x09000000
+#define UART0_PHYS	  0x09000000UL
+#define UART0_VIRT	  0xFFFF000009000000UL
 #define UART_DR_OFFSET	  0x00
 #define UART_FR_OFFSET	  0x18
 #define UART_LCR_H_OFFSET 0x2C
@@ -18,12 +19,11 @@
 #define UART_LCR_H_FEN	 (1 << 4)
 #define UART_LCR_H_WLEN8 (3 << 5)
 
-#define UART_REG(offset) (*(volatile unsigned int *)(UART0_BASE + (offset)))
-
 void uart_init(void);
 void uart_putc(char c);
 void uart_puts(const char *s);
 char uart_getc(void);
 int uart_getc_nb(void);
+void uart_use_virtual_address(void);
 
 #endif

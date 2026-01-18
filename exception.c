@@ -1,4 +1,5 @@
 #include "exception.h"
+#include "arch.h"
 #include "gic.h"
 #include "timer.h"
 #include "kprintf.h"
@@ -34,16 +35,43 @@ void panic(unsigned long vector, unsigned long elr, unsigned long esr) {
 	       ESR_EC(esr));
 }
 
-static inline unsigned long read_esr_el1(void) {
-	unsigned long esr;
-	__asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
-	return esr;
-}
-
-static inline unsigned long read_far_el1(void) {
-	unsigned long far;
-	__asm__ volatile("mrs %0, far_el1" : "=r"(far));
-	return far;
+const char *fault_status_string(unsigned int fsc) {
+	switch (fsc & FSC_MASK) {
+	case FSC_ADDR_L0:
+		return "Address size fault, L0";
+	case FSC_ADDR_L1:
+		return "Address size fault, L1";
+	case FSC_ADDR_L2:
+		return "Address size fault, L2";
+	case FSC_ADDR_L3:
+		return "Address size fault, L3";
+	case FSC_TRANS_L0:
+		return "Translation fault, L0";
+	case FSC_TRANS_L1:
+		return "Translation fault, L1";
+	case FSC_TRANS_L2:
+		return "Translation fault, L2";
+	case FSC_TRANS_L3:
+		return "Translation fault, L3";
+	case FSC_ACCESS_L1:
+		return "Access flag fault, L1";
+	case FSC_ACCESS_L2:
+		return "Access flag fault, L2";
+	case FSC_ACCESS_L3:
+		return "Access flag fault, L3";
+	case FSC_PERM_L1:
+		return "Permission fault, L1";
+	case FSC_PERM_L2:
+		return "Permission fault, L2";
+	case FSC_PERM_L3:
+		return "Permission fault, L3";
+	case FSC_SYNC_EXT:
+		return "Synchronous external abort";
+	case FSC_ALIGN:
+		return "Alignment fault";
+	default:
+		return "Unknown fault";
+	}
 }
 
 void sync_exception_handler(struct trap_frame *tf) {
@@ -61,15 +89,31 @@ void sync_exception_handler(struct trap_frame *tf) {
 		kprintf("SVC #%d at 0x%lx\n", iss & 0xFFFF, tf->elr);
 		break;
 
-	case EC_IABT_SAME:
-		kpanic("INSTRUCTION ABORT at 0x%lx, FAR=0x%lx\n",
+	case EC_IABT_SAME: {
+		unsigned int fsc = iss & FSC_MASK;
+		kpanic("INSTRUCTION ABORT at 0x%lx\n"
+		       "  FAR: 0x%lx\n"
+		       "  Fault: %s (0x%x)\n",
 		       tf->elr,
-		       read_far_el1());
+		       read_far_el1(),
+		       fault_status_string(fsc),
+		       fsc);
+		break;
+	}
 
-	case EC_DABT_SAME:
-		kpanic("DATA ABORT at 0x%lx, FAR=0x%lx\n",
+	case EC_DABT_SAME: {
+		unsigned int fsc = iss & FSC_MASK;
+		const char *op = (iss & ISS_WNR) ? "write" : "read";
+		kpanic("DATA ABORT (%s) at 0x%lx\n"
+		       "  FAR: 0x%lx\n"
+		       "  Fault: %s (0x%x)\n",
+		       op,
 		       tf->elr,
-		       read_far_el1());
+		       read_far_el1(),
+		       fault_status_string(fsc),
+		       fsc);
+		break;
+	}
 
 	default:
 		kpanic("UNHANDLED EXCEPTION: EC=0x%x, ISS=0x%x, ELR=0x%lx\n",

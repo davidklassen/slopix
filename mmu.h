@@ -1,0 +1,76 @@
+#ifndef MMU_H
+#define MMU_H
+
+// RAM layout for QEMU virt board
+#define RAM_BASE 0x40000000UL
+#define RAM_SIZE 0x08000000UL // 128MB
+
+// Page table sizes
+#define BLOCK_SIZE_2MB 0x200000UL
+#define PTE_PER_TABLE  512
+
+// Page table index extraction (4KB granule, 48-bit VA)
+#define L2_INDEX(addr) (((addr) >> 21) & 0x1FF)
+
+// Page table entry type (64-bit on AArch64)
+typedef unsigned long pte_t;
+typedef unsigned long paddr_t;
+
+// TCR_EL1 bit fields
+#define TCR_T0SZ(x)	(((x) & 0x3F) << 0)  // TTBR0 VA size = 64 - T0SZ
+#define TCR_T1SZ(x)	(((x) & 0x3F) << 16) // TTBR1 VA size = 64 - T1SZ
+#define TCR_TG0_4KB	(0UL << 14)	     // TTBR0 granule = 4KB
+#define TCR_TG1_4KB	(2UL << 30)	     // TTBR1 granule = 4KB
+#define TCR_SH0_INNER	(3UL << 12)	     // TTBR0 inner shareable
+#define TCR_SH1_INNER	(3UL << 28)	     // TTBR1 inner shareable
+#define TCR_ORGN0_WB_WA (1UL << 10)	     // TTBR0 outer write-back write-allocate
+#define TCR_IRGN0_WB_WA (1UL << 8)	     // TTBR0 inner write-back write-allocate
+#define TCR_ORGN1_WB_WA (1UL << 26)	     // TTBR1 outer write-back write-allocate
+#define TCR_IRGN1_WB_WA (1UL << 24)	     // TTBR1 inner write-back write-allocate
+#define TCR_IPS_36BIT	(1UL << 32)	     // 36-bit PA space (64GB)
+
+// TCR value for 48-bit VA, 4KB granule
+#define TCR_VALUE                                                            \
+	(TCR_T0SZ(16) | TCR_T1SZ(16) | TCR_TG0_4KB | TCR_TG1_4KB |           \
+	 TCR_SH0_INNER | TCR_SH1_INNER | TCR_ORGN0_WB_WA | TCR_IRGN0_WB_WA | \
+	 TCR_ORGN1_WB_WA | TCR_IRGN1_WB_WA | TCR_IPS_36BIT)
+
+// MAIR_EL1 memory attribute indices
+#define MAIR_DEVICE_nGnRnE 0x00 // Device memory: non-Gathering, non-Reordering, no Early write ack
+#define MAIR_NORMAL_WB	   0xFF // Normal memory: write-back, read/write allocate
+
+// MAIR index encoding (for AttrIndx field)
+#define MAIR_IDX_DEVICE 0
+#define MAIR_IDX_NORMAL 1
+
+// MAIR value: Attr0 = device, Attr1 = normal
+#define MAIR_VALUE ((MAIR_NORMAL_WB << 8) | MAIR_DEVICE_nGnRnE)
+
+// Page table entry bits
+#define PTE_VALID    (1UL << 0)	 // Entry is valid
+#define PTE_TABLE    (1UL << 1)	 // Points to next-level table (vs block)
+#define PTE_AF	     (1UL << 10) // Access flag (must be 1 to avoid fault)
+#define PTE_SH_INNER (3UL << 8)	 // Inner shareable
+#define PTE_SH_OUTER (2UL << 8)	 // Outer shareable
+#define PTE_UXN	     (1UL << 54) // Unprivileged execute never
+#define PTE_PXN	     (1UL << 53) // Privileged execute never
+
+// AttrIndx encoding (bits 4:2)
+#define PTE_ATTR_DEVICE (MAIR_IDX_DEVICE << 2) // Use MAIR index 0
+#define PTE_ATTR_NORMAL (MAIR_IDX_NORMAL << 2) // Use MAIR index 1
+
+// Output address mask for block/table descriptors
+#define PTE_ADDR_MASK 0x0000FFFFFFFFF000UL
+
+// SCTLR_EL1 bits
+#define SCTLR_M (1UL << 0)  // MMU enable
+#define SCTLR_C (1UL << 2)  // Data cache enable
+#define SCTLR_I (1UL << 12) // Instruction cache enable
+
+// Function prototypes
+void mmu_init(void);
+
+// Assembly function
+void mmu_enable(void);
+
+#endif

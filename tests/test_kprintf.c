@@ -1,7 +1,7 @@
+#ifdef RUN_TESTS
+
 #include "test.h"
 #include "kprintf.h"
-
-#ifdef RUN_TESTS
 
 TEST(kprintf_string) {
 	char buf[64];
@@ -85,8 +85,6 @@ TEST(kprintf_mixed) {
 	return 0;
 }
 
-#endif
-
 TEST_SUITE(kprintf) {
 	RUN_TEST(kprintf_string);
 	RUN_TEST(kprintf_decimal);
@@ -99,3 +97,5 @@ TEST_SUITE(kprintf) {
 	RUN_TEST(kprintf_percent);
 	RUN_TEST(kprintf_mixed);
 }
+
+#endif

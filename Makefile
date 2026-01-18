@@ -16,14 +16,17 @@ OBJ = \
 	exception.o \
 	gic.o \
 	timer.o \
-	prompt.o
+	prompt.o \
+	mmu.o \
+	mmu_enable.o
 
 TEST_OBJ = \
 	tests/test.o \
 	tests/test_uart.o \
 	tests/test_kprintf.o \
 	tests/test_exception.o \
-	tests/test_timer.o
+	tests/test_timer.o \
+	tests/test_mmu.o
 
 KERNEL = kernel.elf
 
