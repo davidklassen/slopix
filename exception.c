@@ -22,13 +22,14 @@ static const char *vector_names[] = {
 
 void panic(unsigned long vector, unsigned long elr, unsigned long esr) {
 	const char *name = vector < 16 ? vector_names[vector] : "Unknown";
-	kprintf("\n*** PANIC: %s (vector %lu) ***\n", name, vector);
-	kprintf("  ELR_EL1: 0x%lx\n", elr);
-	kprintf("  ESR_EL1: 0x%lx (EC=0x%x)\n", esr, ESR_EC(esr));
-	kprintf("System halted.\n");
-	for (;;) {
-		__asm__ volatile("wfe");
-	}
+	kpanic("\n*** PANIC: %s (vector %lu) ***\n"
+	       "  ELR_EL1: 0x%lx\n"
+	       "  ESR_EL1: 0x%lx (EC=0x%x)\n",
+	       name,
+	       vector,
+	       elr,
+	       esr,
+	       ESR_EC(esr));
 }
 
 static inline unsigned long read_esr_el1(void) {
@@ -59,28 +60,20 @@ void sync_exception_handler(struct trap_frame *tf) {
 		break;
 
 	case EC_IABT_SAME:
-		kprintf("INSTRUCTION ABORT at 0x%lx, FAR=0x%lx\n", tf->elr, read_far_el1());
-		for (;;) {
-			__asm__ volatile("wfe");
-		}
-		break;
+		kpanic("INSTRUCTION ABORT at 0x%lx, FAR=0x%lx\n",
+		       tf->elr,
+		       read_far_el1());
 
 	case EC_DABT_SAME:
-		kprintf("DATA ABORT at 0x%lx, FAR=0x%lx\n", tf->elr, read_far_el1());
-		for (;;) {
-			__asm__ volatile("wfe");
-		}
-		break;
+		kpanic("DATA ABORT at 0x%lx, FAR=0x%lx\n",
+		       tf->elr,
+		       read_far_el1());
 
 	default:
-		kprintf("UNHANDLED EXCEPTION: EC=0x%x, ISS=0x%x, ELR=0x%lx\n",
-			ec,
-			iss,
-			tf->elr);
-		for (;;) {
-			__asm__ volatile("wfe");
-		}
-		break;
+		kpanic("UNHANDLED EXCEPTION: EC=0x%x, ISS=0x%x, ELR=0x%lx\n",
+		       ec,
+		       iss,
+		       tf->elr);
 	}
 }
 

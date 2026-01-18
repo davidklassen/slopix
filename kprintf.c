@@ -193,3 +193,16 @@ void kprintf(const char *fmt, ...) {
 	va_end(ap);
 	uart_puts(buf);
 }
+
+__attribute__((noreturn)) void kpanic(const char *fmt, ...) {
+	char buf[256];
+	va_list ap;
+	va_start(ap, fmt);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+	uart_puts(buf);
+	uart_puts("System halted.\n");
+	for (;;) {
+		__asm__ volatile("wfe");
+	}
+}
