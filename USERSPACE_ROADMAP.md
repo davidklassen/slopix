@@ -618,11 +618,11 @@ TEST(lower_el_vectors_defined) {
 
 ### Deliverables
 
-- [ ] `vec_sync_lower64` routes to `sync_lower_entry`
-- [ ] `vec_irq_lower64` routes to `irq_lower_entry`
-- [ ] `sync_exception_handler_user()` handles syscalls and faults
-- [ ] IRQs from user mode handled by existing `irq_handler()`
-- [ ] `make test` passes
+- [x] `vec_sync_lower64` routes to `sync_lower_entry`
+- [x] `vec_irq_lower64` routes to `irq_lower_entry`
+- [x] `sync_exception_handler_user()` handles syscalls and faults
+- [x] IRQs from user mode handled by existing `irq_handler()`
+- [x] `make test` passes
 
 ---
 
