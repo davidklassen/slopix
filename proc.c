@@ -56,6 +56,43 @@ void proc_create(proc_func func) {
 	p->ctx.sp = (unsigned long)sp;
 }
 
+extern void usertrap_return(paddr_t pagetable_pa);
+
+static void usertrap_first(void) {
+	enable_irq();
+	usertrap_return(VA_TO_PA(current->pagetable));
+}
+
+int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack) {
+	struct proc *p = proc_alloc();
+	if (!p) {
+		return -1;
+	}
+
+	p->pagetable = pagetable;
+
+	char *sp = p->kstack + PAGE_SIZE;
+	sp -= sizeof(struct trap_frame);
+	sp = (char *)((unsigned long)sp & ~0xFUL);
+
+	struct trap_frame *tf = (struct trap_frame *)sp;
+	p->tf = tf;
+
+	for (int i = 0; i < 31; i++) {
+		tf->regs[i] = 0;
+	}
+
+	tf->sp_el0 = ustack;
+	tf->elr = entry;
+	tf->spsr = 0;
+
+	p->ctx.x30 = (unsigned long)usertrap_first;
+	p->ctx.sp = (unsigned long)tf;
+	p->ctx.x29 = 0;
+
+	return p->pid;
+}
+
 void scheduler(void) {
 	for (;;) {
 		for (int i = 0; i < NPROC; i++) {

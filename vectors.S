@@ -175,3 +175,22 @@ irq_lower_entry:
     bl      irq_handler
     restore_trap_frame
     eret
+
+// Return to user mode for the first time
+// x0 = process pagetable physical address
+// sp = points to trapframe
+.global usertrap_return
+usertrap_return:
+    // Disable interrupts during TTBR0 switch
+    msr     daifset, #2
+
+    // Switch to user page table
+    msr     ttbr0_el1, x0
+    isb
+    tlbi    vmalle1
+    dsb     sy
+    isb
+
+    // Restore trapframe and return to EL0
+    restore_trap_frame
+    eret

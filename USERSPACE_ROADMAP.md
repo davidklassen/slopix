@@ -719,10 +719,11 @@ Requires a working user program. See Step 8.
 
 ### Deliverables
 
-- [ ] `usertrap_return` assembly routine
-- [ ] `proc_create_user()` function
-- [ ] `usertrap_first()` entry point
-- [ ] Code compiles without error
+- [x] `usertrap_return` assembly routine
+- [x] `proc_create_user()` function
+- [x] `usertrap_first()` entry point
+- [x] Code compiles without error
+- [x] `make test` passes
 
 ---
 
