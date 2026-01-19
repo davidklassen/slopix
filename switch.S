@@ -1,3 +1,5 @@
+// vim: ft=arm64asm
+
 .global context_switch
 context_switch:
 	// Save callee-saved registers to prev (x0)

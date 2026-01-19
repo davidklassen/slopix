@@ -22,15 +22,13 @@
 #define MAIR_NORMAL     0xFF
 #define MAIR_VALUE      ((MAIR_NORMAL << 8) | MAIR_DEVICE)
 
-/*
- * early_mmu_setup - Set up page tables and MMU registers before MMU enable
- *
- * Requires page table symbols:
- *   identity_l0, identity_l1, identity_l2_dev, identity_l2_ram
- *   kernel_l0, kernel_l1, kernel_l2_dev, kernel_l2_ram
- *
- * Uses x0-x15 as scratch registers
- */
+// early_mmu_setup - Set up page tables and MMU registers before MMU enable
+//
+// Requires page table symbols:
+//   identity_l0, identity_l1, identity_l2_dev, identity_l2_ram
+//   kernel_l0, kernel_l1, kernel_l2_dev, kernel_l2_ram
+//
+// Uses x0-x15 as scratch registers
 early_mmu_setup:
     stp     x29, x30, [sp, #-16]!
     mov     x29, sp
