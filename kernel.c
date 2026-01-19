@@ -83,7 +83,6 @@ void kernel_main(void) {
 
 	start_user_init();
 
-	proc_create(cursor_blink);
 	proc_create(prompt);
 	scheduler();
 }

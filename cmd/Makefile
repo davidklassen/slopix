@@ -9,7 +9,7 @@ LDFLAGS = -nostdlib -T link.ld
 
 COMMON_OBJ = crt0.o syscall.o libc.o
 
-PROGS = init.elf hello.elf
+PROGS = init.elf hello.elf cursor_blink.elf
 
 all: initramfs.bin
 

@@ -346,9 +346,9 @@ Files:
 - cmd/cursor_blink.c
 
 Deliverables:
-- [ ] cursor_blink runs as first user process
-- [ ] Cursor blinks via write() and sleep()
-- [ ] Remove kernel cursor_blink
+- [x] cursor_blink runs as first user process
+- [x] Cursor blinks via write() and sleep()
+- [x] Remove kernel cursor_blink
 
 ### Step 7: fork() and wait() Syscalls
 
