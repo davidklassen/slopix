@@ -64,9 +64,6 @@ void kernel_main(void) {
 	RUN_SUITE(uart);
 	RUN_SUITE(kprintf);
 	RUN_SUITE(exception);
-
-	// Page tables already set up by early_mmu_setup in boot.S
-	uart_use_virtual_address();
 	RUN_SUITE(mmu);
 
 	pmem_init();

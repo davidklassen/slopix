@@ -3,8 +3,6 @@
 #include "test.h"
 #include "uart.h"
 
-#define UART_REG(off) (*(volatile unsigned int *)(UART0_PHYS + (off)))
-
 TEST(putc_works) {
 	uart_putc('X');
 	return 0;

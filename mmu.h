@@ -1,13 +1,10 @@
 #ifndef MMU_H
 #define MMU_H
 
-// RAM layout for QEMU virt board
-#define RAM_BASE 0x40000000UL
-#define RAM_SIZE 0x08000000UL // 128MB
+#include "mem.h"
 
 // Page table sizes
-#define BLOCK_SIZE_2MB 0x200000UL
-#define PTE_PER_TABLE  512
+#define PTE_PER_TABLE 512
 
 // Page table index extraction (4KB granule, 48-bit VA)
 #define L0_INDEX(va)   (((va) >> 39) & 0x1FF)
@@ -17,7 +14,6 @@
 
 // Page table entry type (64-bit on AArch64)
 typedef unsigned long pte_t;
-typedef unsigned long paddr_t;
 
 // TCR_EL1 bit fields
 #define TCR_T0SZ(x)	(((x) & 0x3F) << 0)  // TTBR0 VA size = 64 - T0SZ
@@ -76,12 +72,6 @@ typedef unsigned long paddr_t;
 #define SCTLR_M (1UL << 0)  // MMU enable
 #define SCTLR_C (1UL << 2)  // Data cache enable
 #define SCTLR_I (1UL << 12) // Instruction cache enable
-
-// Function prototypes
-void mmu_init(void);
-
-// Assembly function
-void mmu_enable(void);
 
 // User-space page table management
 pte_t *uvm_create(void);

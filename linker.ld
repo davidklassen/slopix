@@ -24,6 +24,12 @@ SECTIONS
         *(.text.boot)
     } > BOOT
 
+    /* Page tables at physical address, 4KB aligned */
+    . = ALIGN(4096);
+    .tables : {
+        *(.tables)
+    } > BOOT
+
     /* Rest of kernel at high VA, loaded after boot section */
     . = ORIGIN(KERNEL);
 
@@ -46,13 +52,6 @@ SECTIONS
         *(COMMON)
     } > KERNEL
     __bss_end = .;
-
-    . = ALIGN(4096);
-    __pagetables_start = .;
-    .pagetables (NOLOAD) : {
-        *(.pagetables)
-    } > KERNEL
-    __pagetables_end = .;
 
     /* Stack grows down from __stack_top */
     . = ALIGN(16);

@@ -1,11 +1,12 @@
 #ifndef GIC_H
 #define GIC_H
 
-// GICv2 memory-mapped base addresses for QEMU virt
-// Source: https://github.com/qemu/qemu/blob/master/hw/arm/virt.c
-#define GICD_PHYS 0x08000000UL
-#define GICD_VIRT 0xFFFF000008000000UL
-#define GICC_VIRT 0xFFFF000008010000UL
+#include "mem.h"
+
+// Legacy names for backward compatibility
+#define GICD_PHYS GICD_PA
+#define GICD_VIRT GICD_VA
+#define GICC_VIRT GICC_VA
 
 // Distributor register offsets
 #define GICD_CTLR_OFF	     0x000

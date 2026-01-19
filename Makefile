@@ -8,6 +8,7 @@ LDFLAGS = -nostdlib -T linker.ld
 
 OBJ = \
 	boot.o \
+	tables.o \
 	kernel.o \
 	uart.o \
 	psci.o \
@@ -17,9 +18,7 @@ OBJ = \
 	gic.o \
 	timer.o \
 	prompt.o \
-	early_mmu.o \
 	mmu.o \
-	mmu_enable.o \
 	pmem.o \
 	proc.o \
 	switch.o

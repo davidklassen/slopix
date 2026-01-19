@@ -170,6 +170,8 @@ Before starting:
 
 **Goal**: Run user process at EL0
 
+**Prerequisite**: Milestone 5 (Virtual Memory) with higher-half kernel. The kernel must run from TTBR1 (high addresses) so that TTBR0 can be used for per-process user address spaces.
+
 ### What You'll Build
 - TTBR0 per-process
 - User stack setup

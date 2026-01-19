@@ -4,6 +4,7 @@
 #include "arch.h"
 #include "mmu.h"
 #include "uart.h"
+#include "pmem.h"
 
 TEST(mmu_enabled) {
 	unsigned long sctlr = read_sctlr_el1();
@@ -28,14 +29,52 @@ TEST(tcr_configured) {
 }
 
 TEST(kernel_va_accessible) {
-	volatile unsigned int *uart = (volatile unsigned int *)UART0_VIRT;
+	volatile unsigned int *uart = (volatile unsigned int *)UART0_VA;
 	(void)*uart;
 	return 0;
 }
 
 TEST(identity_va_accessible) {
-	volatile unsigned int *uart = (volatile unsigned int *)UART0_PHYS;
+	volatile unsigned int *uart = (volatile unsigned int *)UART0_PA;
 	(void)*uart;
+	return 0;
+}
+
+TEST(kernel_runs_from_high_address) {
+	unsigned long pc;
+	__asm__ volatile("adr %0, ." : "=r"(pc));
+	ASSERT((pc >> 48) == 0xFFFF, "Kernel must run at high VA");
+	return 0;
+}
+
+TEST(ttbr0_and_ttbr1_are_different) {
+	unsigned long ttbr0, ttbr1;
+	__asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr0));
+	__asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
+	// Use PTE_ADDR_MASK to extract base address (bits [47:12])
+	ASSERT_NE(ttbr0 & PTE_ADDR_MASK, ttbr1 & PTE_ADDR_MASK, "Separate tables");
+	return 0;
+}
+
+TEST(ttbr0_switch_preserves_kernel) {
+	unsigned long original;
+	__asm__ volatile("mrs %0, ttbr0_el1" : "=r"(original));
+	__asm__ volatile("msr ttbr0_el1, %0; dsb sy; tlbi vmalle1; dsb sy; isb"
+			 :
+			 : "r"(0UL));
+	volatile unsigned long test = 42;
+	__asm__ volatile("msr ttbr0_el1, %0; dsb sy; tlbi vmalle1; dsb sy; isb"
+			 :
+			 : "r"(original));
+	ASSERT_EQ(test, 42, "Kernel survives TTBR0 switch");
+	return 0;
+}
+
+TEST(va_pa_roundtrip) {
+	paddr_t pa = RAM_BASE + 0x1000;
+	void *va = PA_TO_VA(pa);
+	paddr_t pa2 = VA_TO_PA(va);
+	ASSERT_EQ(pa, pa2, "Round-trip");
 	return 0;
 }
 
@@ -45,6 +84,10 @@ TEST_SUITE(mmu) {
 	RUN_TEST(tcr_configured);
 	RUN_TEST(kernel_va_accessible);
 	RUN_TEST(identity_va_accessible);
+	RUN_TEST(kernel_runs_from_high_address);
+	RUN_TEST(ttbr0_and_ttbr1_are_different);
+	RUN_TEST(ttbr0_switch_preserves_kernel);
+	RUN_TEST(va_pa_roundtrip);
 }
 
 #endif

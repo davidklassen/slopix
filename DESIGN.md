@@ -15,17 +15,23 @@ QEMU virt machine with:
 ## Boot Sequence
 
 1. QEMU loads kernel.elf at 0x4000_0000, jumps to _start
-2. _start (boot.S):
-   - Set SP to __stack_top
-   - Set VBAR_EL1 to exception vectors
+2. _start (boot.S) - runs at physical address:
+   - Configure MMU registers (MAIR, TCR, TTBR0, TTBR1)
+   - Enable MMU with data and instruction caches
+   - Set VBAR_EL1 to exception vectors (high VA)
+   - Set SP to __stack_top (high VA)
    - Enable FP/SIMD via CPACR_EL1
    - Zero BSS section
-   - Call kernel_main()
-3. kernel_main():
+   - Jump to kernel_main at high VA
+3. kernel_main() - runs at high virtual address:
    - Initialize UART
+   - Initialize physical memory allocator
    - Initialize interrupts (GIC + timer)
-   - Initialize memory manager
-   - Start first process
+   - Start first user process
+
+Page tables are statically defined in tables.S:
+- Identity tables (TTBR0): VA = PA for boot code
+- Kernel tables (TTBR1): VA = PA + 0xFFFF_0000_0000_0000
 
 ## Memory Map
 
