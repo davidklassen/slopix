@@ -95,14 +95,6 @@ int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack
 	return p->pid;
 }
 
-void proc_free(struct proc *p) {
-	if (p->pagetable) {
-		uvm_free(p->pagetable);
-	}
-	pmem_free(VA_TO_PA(p->kstack));
-	p->state = UNUSED;
-}
-
 void scheduler(void) {
 	for (;;) {
 		// Reap dead processes
@@ -124,6 +116,11 @@ void scheduler(void) {
 			if (p->state != RUNNABLE) {
 				continue;
 			}
+
+			// Disable IRQs while current is set but we're in scheduler
+			// context. If IRQ fired and timer_handler called yield(),
+			// it would corrupt state by saving scheduler sp to process ctx.
+			disable_irq();
 			current = p;
 			p->state = RUNNING;
 
@@ -135,6 +132,7 @@ void scheduler(void) {
 
 			context_switch(&sched_ctx, &p->ctx);
 			current = 0;
+			enable_irq();
 		}
 	}
 }
@@ -150,6 +148,7 @@ void yield(void) {
 
 void ksleep(unsigned long ticks) {
 	unsigned long target = timer_get_ticks() + ticks;
+	enable_irq();
 	while (timer_get_ticks() < target) {
 		yield();
 	}

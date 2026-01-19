@@ -396,12 +396,13 @@ Final test program with all features.
 
 Files:
 - cmd/ticker.c
+- cmd/libc.c (add atoi, itoa)
 
 Deliverables:
-- [ ] Parses interval argument
-- [ ] Prints ticks periodically
-- [ ] Exits on 'q' keypress
-- [ ] All programs work together
+- [x] Parses interval argument
+- [x] Prints ticks periodically
+- [x] Exits on 'q' keypress
+- [x] All programs work together
 
 ---
 
@@ -412,7 +413,7 @@ After completing all steps:
 - [x] `shell` starts automatically on boot
 - [x] Cursor blinks in background
 - [x] `echo hello world` prints "hello world"
-- [ ] `ticker 500` prints ticks every 500ms
-- [ ] Pressing 'q' stops ticker
+- [x] `ticker 500` prints ticks every 500ms
+- [x] Pressing 'q' stops ticker
 - [x] Multiple commands work in sequence
 - [x] No kernel code for prompt/cursor_blink
