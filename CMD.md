@@ -30,6 +30,7 @@ Goal: Run user programs compiled from C with a minimal shell.
 | Timer | ✓ | 10ms tick, ksleep() in kernel |
 | User build system | ✓ | cmd/ with Makefile, libc, crt0 |
 | ELF loader | ✓ | elf_load() maps PT_LOAD segments |
+| Initramfs | ✓ | initramfs_find() locates embedded files |
 
 ### What We Need
 
@@ -38,7 +39,6 @@ Goal: Run user programs compiled from C with a minimal shell.
 | `fork()` syscall | High | Medium |
 | `wait()` syscall | High | Small |
 | `exec()` syscall | High | Large |
-| Initramfs | High | Medium |
 | argc/argv setup | High | Small |
 
 ---
@@ -321,9 +321,9 @@ Files:
 - Makefile (links initramfs.o)
 
 Deliverables:
-- [ ] Build initramfs from cmd/*.elf
-- [ ] Embed in kernel image
-- [ ] initramfs_find(name) returns file data
+- [x] Build initramfs from cmd/*.elf
+- [x] Embed in kernel image
+- [x] initramfs_find(name) returns file data
 
 ### Step 5: exec() Syscall
 

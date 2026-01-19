@@ -45,6 +45,13 @@ SECTIONS
         *(.data*)
     } > KERNEL
 
+    . = ALIGN(4);
+    _initramfs_start = .;
+    .initramfs : {
+        *(.initramfs)
+    } > KERNEL
+    _initramfs_end = .;
+
     . = ALIGN(8);
     __bss_start = .;
     .bss : {

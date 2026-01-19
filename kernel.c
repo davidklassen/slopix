@@ -21,6 +21,7 @@ DECLARE_SUITE(pmem);
 DECLARE_SUITE(proc);
 DECLARE_SUITE(uvm);
 DECLARE_SUITE(elf);
+DECLARE_SUITE(initramfs);
 
 static void start_user_init(void) {
 	pte_t *pt = uvm_create();
@@ -79,6 +80,7 @@ void kernel_main(void) {
 	RUN_SUITE(proc);
 	RUN_SUITE(uvm);
 	RUN_SUITE(elf);
+	RUN_SUITE(initramfs);
 
 	gic_init();
 	timer_init();

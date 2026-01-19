@@ -2,3 +2,5 @@
 *.elf
 docsearch.db*
 .claude/
+cmd/mkramfs
+cmd/initramfs.bin

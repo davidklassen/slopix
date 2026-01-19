@@ -1,6 +1,7 @@
 CROSS = aarch64-elf-
 CC = $(CROSS)gcc
 LD = $(CROSS)ld
+OBJCOPY = $(CROSS)objcopy
 
 CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I.
 ASFLAGS = -g -mcpu=cortex-a57
@@ -23,7 +24,9 @@ OBJ = \
 	proc.o \
 	switch.o \
 	syscall.o \
-	elf.o
+	elf.o \
+	initramfs.o \
+	initramfs_data.o
 
 TEST_OBJ = \
 	tests/test.o \
@@ -35,7 +38,8 @@ TEST_OBJ = \
 	tests/test_pmem.o \
 	tests/test_proc.o \
 	tests/test_uvm.o \
-	tests/test_elf.o
+	tests/test_elf.o \
+	tests/test_initramfs.o
 
 KERNEL = kernel.elf
 
@@ -54,6 +58,14 @@ $(KERNEL): $(OBJ)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+cmd/initramfs.bin:
+	$(MAKE) -C cmd initramfs.bin
+
+initramfs_data.o: cmd/initramfs.bin
+	$(OBJCOPY) -I binary -O elf64-littleaarch64 -B aarch64 \
+		--rename-section .data=.initramfs \
+		$< $@
+
 run: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL)
 
@@ -64,6 +76,7 @@ test: clean $(OBJ) $(TEST_OBJ)
 
 clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(KERNEL)
+	$(MAKE) -C cmd clean
 
 tidy:
 	clang-format -i *.c *.h tests/*.c tests/*.h cmd/*.c cmd/*.h
