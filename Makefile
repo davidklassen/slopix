@@ -21,7 +21,8 @@ OBJ = \
 	mmu.o \
 	pmem.o \
 	proc.o \
-	switch.o
+	switch.o \
+	syscall.o
 
 TEST_OBJ = \
 	tests/test.o \

@@ -3,6 +3,7 @@
 #include "test.h"
 #include "proc.h"
 #include "pmem.h"
+#include "mmu.h"
 
 TEST(proc_alloc_returns_proc) {
 	struct proc *p = proc_alloc();
@@ -58,11 +59,45 @@ TEST(proc_has_usermode_fields) {
 	return 0;
 }
 
+TEST(proc_free_releases_all_memory) {
+	unsigned long before = pmem_free_count();
+
+	// Create user page table with mappings
+	pte_t *pt = uvm_create();
+	ASSERT_NOT_NULL(pt, "uvm_create should succeed");
+	paddr_t page = pmem_alloc();
+	ASSERT(page != 0, "pmem_alloc should succeed");
+	int ret = uvm_map_page(pt, 0x1000, page, 1, 0);
+	ASSERT_EQ(ret, 0, "uvm_map_page should succeed");
+
+	// Create user process
+	int pid = proc_create_user(pt, 0x1000, 0x2000);
+	ASSERT(pid > 0, "proc_create_user should succeed");
+
+	// Find the process
+	struct proc *p = 0;
+	for (int i = 0; i < NPROC; i++) {
+		if (procs[i].pid == pid) {
+			p = &procs[i];
+			break;
+		}
+	}
+	ASSERT_NOT_NULL(p, "should find process");
+
+	// Free the process
+	proc_free(p);
+
+	unsigned long after = pmem_free_count();
+	ASSERT_EQ(before, after, "all pages should be freed");
+	return 0;
+}
+
 TEST_SUITE(proc) {
 	RUN_TEST(proc_alloc_returns_proc);
 	RUN_TEST(proc_alloc_unique_pids);
 	RUN_TEST(proc_create_sets_context);
 	RUN_TEST(proc_has_usermode_fields);
+	RUN_TEST(proc_free_releases_all_memory);
 }
 
 #endif

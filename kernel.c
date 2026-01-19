@@ -33,9 +33,16 @@ static void start_user_init(void) {
 	}
 
 	unsigned int *code = (unsigned int *)PA_TO_VA(code_pa);
-	code[0] = 0xd2800000; // mov x0, #0
-	code[1] = 0x91000400; // add x0, x0, #1
-	code[2] = 0x17ffffff; // b -4
+	// write(1, "Hi\n", 3); exit(0);
+	code[0] = 0xd2800020; // mov x0, #1        (fd)
+	code[1] = 0x100000e1; // adr x1, pc+28     (buf -> code[8])
+	code[2] = 0xd2800062; // mov x2, #3        (len)
+	code[3] = 0xd2800008; // mov x8, #0        (SYS_write)
+	code[4] = 0xd4000001; // svc #0
+	code[5] = 0xd2800000; // mov x0, #0        (status)
+	code[6] = 0xd2800028; // mov x8, #1        (SYS_exit)
+	code[7] = 0xd4000001; // svc #0
+	code[8] = 0x000a6948; // "Hi\n\0"
 
 	if (uvm_map_page(pt, USER_BASE, code_pa, 0, 1) < 0) {
 		kpanic("failed to map code page");

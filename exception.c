@@ -3,6 +3,7 @@
 #include "gic.h"
 #include "timer.h"
 #include "kprintf.h"
+#include "syscall.h"
 
 static const char *vector_names[] = {
     "SP0 Sync",
@@ -147,7 +148,7 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 
 	switch (ec) {
 	case EC_SVC_AARCH64:
-		kprintf("SYSCALL #%d from user at 0x%lx\n", iss & 0xFFFF, tf->elr);
+		syscall(tf);
 		break;
 
 	case EC_IABT_LOWER: {

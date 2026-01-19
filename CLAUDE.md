@@ -31,6 +31,8 @@ Commit message format:
 - Second line: empty
 - Remaining lines: commit body with details
 
+When asked to create a commit message, do not use git commands. Just output the message to chat.
+
 ## Test Framework
 
 The test macros in `tests/test.h` are designed to work without `#ifdef` guards in application code:

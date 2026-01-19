@@ -1,5 +1,6 @@
 #include "proc.h"
 #include "pmem.h"
+#include "mmu.h"
 #include "arch.h"
 #include "timer.h"
 
@@ -93,8 +94,30 @@ int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack
 	return p->pid;
 }
 
+void proc_free(struct proc *p) {
+	if (p->pagetable) {
+		uvm_free(p->pagetable);
+	}
+	pmem_free(VA_TO_PA(p->kstack));
+	p->state = UNUSED;
+}
+
 void scheduler(void) {
 	for (;;) {
+		// Reap dead processes
+		for (int i = 0; i < NPROC; i++) {
+			struct proc *p = &procs[i];
+			if (p->state == UNUSED && p->kstack != 0) {
+				if (p->pagetable) {
+					uvm_free(p->pagetable);
+					p->pagetable = 0;
+				}
+				pmem_free(VA_TO_PA(p->kstack));
+				p->kstack = 0;
+			}
+		}
+
+		// Schedule runnable processes
 		for (int i = 0; i < NPROC; i++) {
 			struct proc *p = &procs[i];
 			if (p->state != RUNNABLE) {
