@@ -64,4 +64,4 @@ clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(KERNEL)
 
 tidy:
-	clang-format -i *.c *.h tests/*.c tests/*.h
+	clang-format -i *.c *.h tests/*.c tests/*.h cmd/*.c cmd/*.h
