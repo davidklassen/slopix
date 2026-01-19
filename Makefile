@@ -18,13 +18,13 @@ OBJ = \
 	exception.o \
 	gic.o \
 	timer.o \
-	prompt.o \
 	mmu.o \
 	pmem.o \
 	proc.o \
 	switch.o \
 	syscall.o \
 	elf.o \
+	init.o \
 	initramfs.o \
 	initramfs_data.o
 

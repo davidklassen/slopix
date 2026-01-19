@@ -6,8 +6,8 @@ Goal: Run user programs compiled from C with a minimal shell.
 
 | Program | Description |
 |---------|-------------|
-| **init** | Interactive shell based on prompt.c, spawns cursor_blink |
-| **cursor_blink** | Blinks cursor every 500ms, spawned by init |
+| **shell** | Interactive shell, spawns cursor_blink |
+| **cursor_blink** | Blinks cursor every 500ms, spawned by shell |
 | **echo** | Outputs arguments to stdout |
 | **ticker [ms]** | Prints "tick N" every ms milliseconds, exits on 'q' |
 
@@ -131,7 +131,7 @@ cmd/
   syscall.S          # Syscall stubs
   libc.c             # Minimal libc (strlen, memset, etc.)
   libc.h
-  init.c
+  shell.c
   cursor_blink.c
   echo.c
   ticker.c
@@ -178,7 +178,7 @@ exec:   mov x8, #7; svc #0; ret
 
 ## Program Specifications
 
-### init
+### shell
 
 ```c
 // Spawn cursor_blink as background process
@@ -376,18 +376,19 @@ Deliverables:
 - [x] Sets up argc/argv on user stack
 - [x] echo prints its arguments
 
-### Step 9: init Shell
+### Step 9: Shell and Kernel Init
 
-Full interactive shell.
+Full interactive shell and kernel init() function.
 
 Files:
-- cmd/init.c
+- cmd/shell.c (userspace shell)
+- init.c, init.h (kernel init function)
 - Remove kernel prompt.c dependency
 
 Deliverables:
-- [ ] init spawns cursor_blink
-- [ ] Reads commands, fork+exec+wait
-- [ ] Kernel boots directly to init
+- [x] shell spawns cursor_blink
+- [x] Reads commands, fork+exec+wait
+- [x] Kernel init("shell") boots into shell
 
 ### Step 10: ticker Program
 
@@ -408,10 +409,10 @@ Deliverables:
 
 After completing all steps:
 
-- [ ] `init` starts automatically on boot
-- [ ] Cursor blinks in background
-- [ ] `echo hello world` prints "hello world"
+- [x] `shell` starts automatically on boot
+- [x] Cursor blinks in background
+- [x] `echo hello world` prints "hello world"
 - [ ] `ticker 500` prints ticks every 500ms
 - [ ] Pressing 'q' stops ticker
-- [ ] Multiple commands work in sequence
-- [ ] No kernel code for prompt/cursor_blink
+- [x] Multiple commands work in sequence
+- [x] No kernel code for prompt/cursor_blink
