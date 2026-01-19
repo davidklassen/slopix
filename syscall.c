@@ -48,7 +48,11 @@ static long sys_read(int fd, char *buf, unsigned long len) {
 	return i;
 }
 
-static long sys_sleep(unsigned long ticks) {
+static long sys_sleep(unsigned long ms) {
+	unsigned long ticks = ms / 10;
+	if (ticks == 0 && ms > 0) {
+		ticks = 1;
+	}
 	ksleep(ticks);
 	return 0;
 }

@@ -1,11 +1,11 @@
 #include "libc.h"
 
 int main(int argc, char **argv) {
-	int interval = 100; // default 1 second (100 ticks)
+	int interval = 1000;
 	if (argc > 1) {
-		interval = atoi(argv[1]) / 10; // convert ms to ticks
-		if (interval < 1) {
-			interval = 1;
+		interval = atoi(argv[1]);
+		if (interval < 10) {
+			interval = 10;
 		}
 	}
 

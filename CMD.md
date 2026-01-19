@@ -22,7 +22,7 @@ Goal: Run user programs compiled from C with a minimal shell.
 | `write(fd, buf, len)` | ✓ | SYS_write=0, stdout only |
 | `exit(status)` | ✓ | SYS_exit=1 |
 | `read(fd, buf, len)` | ✓ | SYS_read=2, stdin only, non-blocking |
-| `sleep(ticks)` | ✓ | SYS_sleep=3, calls ksleep() |
+| `sleep(ms)` | ✓ | SYS_sleep=3, converts ms to ticks, calls ksleep() |
 | `getpid()` | ✓ | SYS_getpid=4 |
 | Page table management | ✓ | uvm_create/map_page/free |
 | Process scheduling | ✓ | Round-robin with timer preemption |
