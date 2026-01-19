@@ -7,10 +7,9 @@
 #include "mmu.h"
 #include "pmem.h"
 #include "proc.h"
+#include "initramfs.h"
+#include "elf.h"
 #include "tests/test.h"
-
-#define USER_BASE  0x0000000000000000UL
-#define USER_STACK 0x0000000080000000UL
 
 DECLARE_SUITE(uart);
 DECLARE_SUITE(kprintf);
@@ -24,30 +23,19 @@ DECLARE_SUITE(elf);
 DECLARE_SUITE(initramfs);
 
 static void start_user_init(void) {
+	struct initramfs_entry entry;
+	if (initramfs_find("init", &entry) < 0) {
+		kpanic("init not found in initramfs");
+	}
+
 	pte_t *pt = uvm_create();
 	if (!pt) {
 		kpanic("failed to create user page table");
 	}
 
-	paddr_t code_pa = pmem_alloc();
-	if (code_pa == 0) {
-		kpanic("failed to allocate code page");
-	}
-
-	unsigned int *code = (unsigned int *)PA_TO_VA(code_pa);
-	// write(1, "Hi\n", 3); exit(0);
-	code[0] = 0xd2800020; // mov x0, #1        (fd)
-	code[1] = 0x100000e1; // adr x1, pc+28     (buf -> code[8])
-	code[2] = 0xd2800062; // mov x2, #3        (len)
-	code[3] = 0xd2800008; // mov x8, #0        (SYS_write)
-	code[4] = 0xd4000001; // svc #0
-	code[5] = 0xd2800000; // mov x0, #0        (status)
-	code[6] = 0xd2800028; // mov x8, #1        (SYS_exit)
-	code[7] = 0xd4000001; // svc #0
-	code[8] = 0x000a6948; // "Hi\n\0"
-
-	if (uvm_map_page(pt, USER_BASE, code_pa, 0, 1) < 0) {
-		kpanic("failed to map code page");
+	unsigned long entry_addr;
+	if (elf_load(entry.data, entry.size, pt, &entry_addr) < 0) {
+		kpanic("failed to load init ELF");
 	}
 
 	paddr_t stack_pa = pmem_alloc();
@@ -60,7 +48,7 @@ static void start_user_init(void) {
 		kpanic("failed to map stack page");
 	}
 
-	int pid = proc_create_user(pt, USER_BASE, USER_STACK);
+	int pid = proc_create_user(pt, entry_addr, USER_STACK);
 	if (pid < 0) {
 		kpanic("failed to create user process");
 	}

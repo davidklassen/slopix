@@ -73,6 +73,9 @@ typedef unsigned long pte_t;
 #define SCTLR_C (1UL << 2)  // Data cache enable
 #define SCTLR_I (1UL << 12) // Instruction cache enable
 
+// User memory layout
+#define USER_STACK 0x0000000080000000UL
+
 // User-space page table management
 pte_t *uvm_create(void);
 void uvm_free(pte_t *pagetable);

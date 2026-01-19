@@ -31,6 +31,7 @@ Goal: Run user programs compiled from C with a minimal shell.
 | User build system | ✓ | cmd/ with Makefile, libc, crt0 |
 | ELF loader | ✓ | elf_load() maps PT_LOAD segments |
 | Initramfs | ✓ | initramfs_find() locates embedded files |
+| `exec()` syscall | ✓ | Loads ELF from initramfs, sets up argc/argv |
 
 ### What We Need
 
@@ -38,8 +39,6 @@ Goal: Run user programs compiled from C with a minimal shell.
 |-----------|----------|--------|
 | `fork()` syscall | High | Medium |
 | `wait()` syscall | High | Small |
-| `exec()` syscall | High | Large |
-| argc/argv setup | High | Small |
 
 ---
 
@@ -334,10 +333,10 @@ Files:
 - proc.c (helper functions)
 
 Deliverables:
-- [ ] exec(name) finds program in initramfs
-- [ ] Creates new address space, loads ELF
-- [ ] Sets up argc/argv (initially just argv[0])
-- [ ] Jumps to entry point
+- [x] exec(name) finds program in initramfs
+- [x] Creates new address space, loads ELF
+- [x] Sets up argc/argv (initially just argv[0])
+- [x] Jumps to entry point
 
 ### Step 6: Simple Test Program
 
