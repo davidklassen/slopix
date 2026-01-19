@@ -57,16 +57,43 @@ static long sys_getpid(void) {
 	return current->pid;
 }
 
-static long sys_exec(const char *name) {
-	char kname[32];
+static long sys_exec(const char *cmdline) {
+	// Copy command line to kernel buffer
+	char kcmd[128];
 	int i;
-	for (i = 0; i < 31 && name[i]; i++) {
-		kname[i] = name[i];
+	for (i = 0; i < 127 && cmdline[i]; i++) {
+		kcmd[i] = cmdline[i];
 	}
-	kname[i] = '\0';
+	kcmd[i] = '\0';
 
+	// Parse into argv (max 16 args)
+	char *argv[16];
+	int argc = 0;
+	char *p = kcmd;
+
+	while (*p && argc < 16) {
+		while (*p == ' ') {
+			p++;
+		}
+		if (*p == '\0') {
+			break;
+		}
+		argv[argc++] = p;
+		while (*p && *p != ' ') {
+			p++;
+		}
+		if (*p) {
+			*p++ = '\0';
+		}
+	}
+
+	if (argc == 0) {
+		return -1;
+	}
+
+	// First arg is program name
 	struct initramfs_entry entry;
-	if (initramfs_find(kname, &entry) < 0) {
+	if (initramfs_find(argv[0], &entry) < 0) {
 		return -1;
 	}
 
@@ -94,27 +121,42 @@ static long sys_exec(const char *name) {
 	}
 
 	// Set up argc/argv on stack
-	// Layout (high to low): string, argv[1]=NULL, argv[0]=&string, sp
-	int namelen = 0;
-	while (kname[namelen]) {
-		namelen++;
+	// Layout (high to low): strings, argv[argc]=NULL, argv[0..argc-1], sp
+	char *kstack_top = (char *)PA_TO_VA(stack_pa) + PAGE_SIZE;
+	unsigned long ustack_top = USER_STACK;
+
+	// Copy strings to stack (from top down)
+	unsigned long ustr[16];
+	for (int j = argc - 1; j >= 0; j--) {
+		int len = 0;
+		while (argv[j][len]) {
+			len++;
+		}
+		len++;
+		kstack_top -= len;
+		ustack_top -= len;
+		for (int k = 0; k < len; k++) {
+			kstack_top[k] = argv[j][k];
+		}
+		ustr[j] = ustack_top;
 	}
-	int str_padded = (namelen + 1 + 7) & ~7;
 
-	unsigned long sp = USER_STACK - str_padded - 16;
-	sp &= ~0xFUL;
+	// Align to 8 bytes
+	ustack_top &= ~7UL;
+	kstack_top = (char *)PA_TO_VA(stack_pa) + PAGE_SIZE - (USER_STACK - ustack_top);
 
-	// Kernel pointer to stack
-	char *kstack = (char *)PA_TO_VA(stack_pa);
-	unsigned long offset = sp - (USER_STACK - PAGE_SIZE);
-	unsigned long *kargv = (unsigned long *)(kstack + offset);
-	char *kstr = (char *)(kargv + 2);
-
-	for (int j = 0; j <= namelen; j++) {
-		kstr[j] = kname[j];
+	// argv array: argv[0..argc-1], NULL
+	int argv_size = (argc + 1) * 8;
+	ustack_top -= argv_size;
+	kstack_top -= argv_size;
+	unsigned long *kargv = (unsigned long *)kstack_top;
+	for (int j = 0; j < argc; j++) {
+		kargv[j] = ustr[j];
 	}
-	kargv[0] = sp + 16;
-	kargv[1] = 0;
+	kargv[argc] = 0;
+
+	// 16-byte align sp
+	unsigned long sp = ustack_top & ~0xFUL;
 
 	// Switch to new address space
 	pte_t *old_pt = current->pagetable;
@@ -128,9 +170,9 @@ static long sys_exec(const char *name) {
 	// Update trap frame for new program
 	current->tf->elr = entry_addr;
 	current->tf->sp_el0 = sp;
-	current->tf->regs[1] = sp;
+	current->tf->regs[1] = ustack_top;
 
-	return 1;
+	return argc;
 }
 
 static long sys_fork(void) {

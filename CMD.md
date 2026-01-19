@@ -31,7 +31,7 @@ Goal: Run user programs compiled from C with a minimal shell.
 | User build system | ✓ | cmd/ with Makefile, libc, crt0 |
 | ELF loader | ✓ | elf_load() maps PT_LOAD segments |
 | Initramfs | ✓ | initramfs_find() locates embedded files |
-| `exec()` syscall | ✓ | Loads ELF from initramfs, sets up argc/argv |
+| `exec()` syscall | ✓ | Loads ELF from initramfs, parses args, sets up argc/argv |
 | `fork()` syscall | ✓ | Copies address space via uvm_copy() |
 | `wait()` syscall | ✓ | Blocks until child exits (ZOMBIE state) |
 
@@ -372,9 +372,9 @@ Files:
 - cmd/libc.c (string parsing)
 
 Deliverables:
-- [ ] exec() parses arguments
-- [ ] Sets up argc/argv on user stack
-- [ ] echo prints its arguments
+- [x] exec() parses arguments
+- [x] Sets up argc/argv on user stack
+- [x] echo prints its arguments
 
 ### Step 9: init Shell
 
