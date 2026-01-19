@@ -29,6 +29,7 @@ Goal: Run user programs compiled from C with a minimal shell.
 | Scheduler reaping | ✓ | Frees dead process resources |
 | Timer | ✓ | 10ms tick, ksleep() in kernel |
 | User build system | ✓ | cmd/ with Makefile, libc, crt0 |
+| ELF loader | ✓ | elf_load() maps PT_LOAD segments |
 
 ### What We Need
 
@@ -37,7 +38,6 @@ Goal: Run user programs compiled from C with a minimal shell.
 | `fork()` syscall | High | Medium |
 | `wait()` syscall | High | Small |
 | `exec()` syscall | High | Large |
-| ELF loader | High | Medium |
 | Initramfs | High | Medium |
 | argc/argv setup | High | Small |
 
@@ -306,9 +306,9 @@ Files:
 - elf.c (load_elf function)
 
 Deliverables:
-- [ ] Parse ELF header and program headers
-- [ ] Load PT_LOAD segments with correct permissions
-- [ ] Return entry point
+- [x] Parse ELF header and program headers
+- [x] Load PT_LOAD segments with correct permissions
+- [x] Return entry point
 
 ### Step 4: Initramfs
 

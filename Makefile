@@ -22,7 +22,8 @@ OBJ = \
 	pmem.o \
 	proc.o \
 	switch.o \
-	syscall.o
+	syscall.o \
+	elf.o
 
 TEST_OBJ = \
 	tests/test.o \
@@ -33,7 +34,8 @@ TEST_OBJ = \
 	tests/test_mmu.o \
 	tests/test_pmem.o \
 	tests/test_proc.o \
-	tests/test_uvm.o
+	tests/test_uvm.o \
+	tests/test_elf.o
 
 KERNEL = kernel.elf
 
