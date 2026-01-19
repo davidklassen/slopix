@@ -4,7 +4,7 @@
 // Must be called while running at physical addresses with identity
 // mapping in TTBR0, so the instruction stream continues after MMU enable.
 
-.section .text
+.section .text.boot
 .global mmu_enable
 
 mmu_enable:

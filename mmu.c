@@ -8,16 +8,26 @@
 #define SECTION_PAGETABLES __attribute__((section(".pagetables"), aligned(4096)))
 
 // Identity map tables (TTBR0) - VA = PA during MMU enable transition
-static pte_t identity_l0[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t identity_l1[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t identity_l2_dev[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t identity_l2_ram[PTE_PER_TABLE] SECTION_PAGETABLES;
+// Not static - referenced by early_mmu.S
+pte_t identity_l0[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t identity_l1[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t identity_l2_dev[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t identity_l2_ram[PTE_PER_TABLE] SECTION_PAGETABLES;
 
 // Kernel map tables (TTBR1) - high address mapping
-static pte_t kernel_l0[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t kernel_l1[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t kernel_l2_dev[PTE_PER_TABLE] SECTION_PAGETABLES;
-static pte_t kernel_l2_ram[PTE_PER_TABLE] SECTION_PAGETABLES;
+// Not static - referenced by early_mmu.S
+pte_t kernel_l0[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t kernel_l1[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t kernel_l2_dev[PTE_PER_TABLE] SECTION_PAGETABLES;
+pte_t kernel_l2_ram[PTE_PER_TABLE] SECTION_PAGETABLES;
+
+// Convert kernel VA to PA for page table setup (before high address jump)
+static paddr_t table_pa(void *table) {
+	return (paddr_t)table - KERNEL_BASE;
+}
+
+// Get physical address of static array for early boot access
+#define EARLY_PA(arr) ((pte_t *)((paddr_t)(arr) - KERNEL_BASE))
 
 // Create a table descriptor pointing to next-level table
 static pte_t make_table_desc(paddr_t next_table_pa) {
@@ -133,29 +143,33 @@ void uvm_free(pte_t *pagetable) {
 
 // Build identity mapping tables (TTBR0)
 // Maps physical addresses to same virtual addresses for MMU enable transition
+// Uses EARLY_PA() to access arrays at physical addresses before MMU enable
 static void build_identity_tables(void) {
-	// Clear all tables
+	pte_t *l0 = EARLY_PA(identity_l0);
+	pte_t *l1 = EARLY_PA(identity_l1);
+	pte_t *l2_dev = EARLY_PA(identity_l2_dev);
+	pte_t *l2_ram = EARLY_PA(identity_l2_ram);
+
+	// Clear all tables (already done by BSS clear, but be explicit)
 	for (int i = 0; i < PTE_PER_TABLE; i++) {
-		identity_l0[i] = 0;
-		identity_l1[i] = 0;
-		identity_l2_dev[i] = 0;
-		identity_l2_ram[i] = 0;
+		l0[i] = 0;
+		l1[i] = 0;
+		l2_dev[i] = 0;
+		l2_ram[i] = 0;
 	}
 
 	// L0[0] -> L1 (covers first 512GB)
-	identity_l0[0] = make_table_desc((paddr_t)identity_l1);
+	l0[0] = make_table_desc(table_pa(identity_l1));
 
 	// L1[0] -> L2_dev for device memory (covers first 1GB: 0x0 - 0x3FFF_FFFF)
-	identity_l1[0] = make_table_desc((paddr_t)identity_l2_dev);
+	l1[0] = make_table_desc(table_pa(identity_l2_dev));
 
 	// L1[1] -> L2_ram for RAM (covers second 1GB: 0x4000_0000 - 0x7FFF_FFFF)
-	identity_l1[1] = make_table_desc((paddr_t)identity_l2_ram);
+	l1[1] = make_table_desc(table_pa(identity_l2_ram));
 
 	// Device mappings in L2_dev (2MB blocks)
-	identity_l2_dev[L2_INDEX(GICD_PHYS)] =
-	    make_block_desc_device(GICD_PHYS);
-	identity_l2_dev[L2_INDEX(UART0_PHYS)] =
-	    make_block_desc_device(UART0_PHYS);
+	l2_dev[L2_INDEX(GICD_PHYS)] = make_block_desc_device(GICD_PHYS);
+	l2_dev[L2_INDEX(UART0_PHYS)] = make_block_desc_device(UART0_PHYS);
 
 	// RAM mappings in L2_ram (2MB blocks)
 	// Map 128MB of RAM starting at 0x4000_0000
@@ -164,43 +178,47 @@ static void build_identity_tables(void) {
 	for (int i = 0; i < num_ram_blocks; i++) {
 		paddr_t pa = RAM_BASE + (i * BLOCK_SIZE_2MB);
 		// Executable for code region
-		identity_l2_ram[i] = make_block_desc_normal(pa, 1);
+		l2_ram[i] = make_block_desc_normal(pa, 1);
 	}
 }
 
 // Build kernel mapping tables (TTBR1)
 // Maps kernel virtual addresses (0xFFFF_0000_xxxx_xxxx) to physical
+// Uses EARLY_PA() to access arrays at physical addresses before MMU enable
 static void build_kernel_tables(void) {
-	// Clear all tables
+	pte_t *l0 = EARLY_PA(kernel_l0);
+	pte_t *l1 = EARLY_PA(kernel_l1);
+	pte_t *l2_dev = EARLY_PA(kernel_l2_dev);
+	pte_t *l2_ram = EARLY_PA(kernel_l2_ram);
+
+	// Clear all tables (already done by BSS clear, but be explicit)
 	for (int i = 0; i < PTE_PER_TABLE; i++) {
-		kernel_l0[i] = 0;
-		kernel_l1[i] = 0;
-		kernel_l2_dev[i] = 0;
-		kernel_l2_ram[i] = 0;
+		l0[i] = 0;
+		l1[i] = 0;
+		l2_dev[i] = 0;
+		l2_ram[i] = 0;
 	}
 
 	// L0[0] -> L1 (covers VA 0xFFFF_0000_0000_0000 - 0xFFFF_007F_FFFF_FFFF)
-	kernel_l0[0] = make_table_desc((paddr_t)kernel_l1);
+	l0[0] = make_table_desc(table_pa(kernel_l1));
 
 	// L1[0] -> L2_dev for devices (covers VA 0xFFFF_0000_0000_0000 - 0xFFFF_0000_3FFF_FFFF)
-	kernel_l1[0] = make_table_desc((paddr_t)kernel_l2_dev);
+	l1[0] = make_table_desc(table_pa(kernel_l2_dev));
 
 	// L1[1] -> L2_ram for kernel (covers VA 0xFFFF_0000_4000_0000 - 0xFFFF_0000_7FFF_FFFF)
-	kernel_l1[1] = make_table_desc((paddr_t)kernel_l2_ram);
+	l1[1] = make_table_desc(table_pa(kernel_l2_ram));
 
 	// Device mappings in L2_dev (2MB blocks)
 	// Kernel VA 0xFFFF_0000_xxxx_xxxx maps to PA xxxx_xxxx
-	kernel_l2_dev[L2_INDEX(GICD_PHYS)] =
-	    make_block_desc_device(GICD_PHYS);
-	kernel_l2_dev[L2_INDEX(UART0_PHYS)] =
-	    make_block_desc_device(UART0_PHYS);
+	l2_dev[L2_INDEX(GICD_PHYS)] = make_block_desc_device(GICD_PHYS);
+	l2_dev[L2_INDEX(UART0_PHYS)] = make_block_desc_device(UART0_PHYS);
 
 	// RAM mappings in L2_ram (2MB blocks)
 	// Kernel VA 0xFFFF_0000_4000_0000 -> PA 0x4000_0000
 	int num_ram_blocks = RAM_SIZE / BLOCK_SIZE_2MB;
 	for (int i = 0; i < num_ram_blocks; i++) {
 		paddr_t pa = RAM_BASE + (i * BLOCK_SIZE_2MB);
-		kernel_l2_ram[i] = make_block_desc_normal(pa, 1);
+		l2_ram[i] = make_block_desc_normal(pa, 1);
 	}
 }
 
@@ -213,10 +231,10 @@ static void configure_mmu_registers(void) {
 	write_tcr_el1(TCR_VALUE);
 
 	// Set TTBR0 for identity mapping (VA = PA)
-	write_ttbr0_el1((unsigned long)identity_l0);
+	write_ttbr0_el1(table_pa(identity_l0));
 
 	// Set TTBR1 for kernel high-address mapping
-	write_ttbr1_el1((unsigned long)kernel_l0);
+	write_ttbr1_el1(table_pa(kernel_l0));
 
 	isb();
 }

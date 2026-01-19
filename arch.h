@@ -71,6 +71,12 @@ static inline void write_ttbr1_el1(unsigned long v) {
 	__asm__ volatile("msr ttbr1_el1, %0" : : "r"(v));
 }
 
+static inline unsigned long read_ttbr1_el1(void) {
+	unsigned long v;
+	__asm__ volatile("mrs %0, ttbr1_el1" : "=r"(v));
+	return v;
+}
+
 static inline unsigned long read_esr_el1(void) {
 	unsigned long v;
 	__asm__ volatile("mrs %0, esr_el1" : "=r"(v));

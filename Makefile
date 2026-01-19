@@ -17,6 +17,7 @@ OBJ = \
 	gic.o \
 	timer.o \
 	prompt.o \
+	early_mmu.o \
 	mmu.o \
 	mmu_enable.o \
 	pmem.o \

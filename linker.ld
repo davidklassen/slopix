@@ -1,41 +1,57 @@
 ENTRY(_start)
 
+/*
+ * Boot code runs at physical 0x40000000 before MMU enable.
+ * Kernel code/data runs at high virtual 0xFFFF000040000000 via TTBR1.
+ */
+__phys_base = 0x40000000;
+__virt_base = 0xFFFF000040000000;
+
 MEMORY
 {
-    /* QEMU virt board RAM starts at 0x40000000. RWX for simplicity. */
-    RAM (rwx) : ORIGIN = 0x40000000, LENGTH = 128M
+    /* Boot code at physical address (before MMU) */
+    BOOT (rx) : ORIGIN = 0x40000000, LENGTH = 64K
+
+    /* Kernel at high virtual address (after MMU) */
+    KERNEL (rwx) : ORIGIN = 0xFFFF000040010000, LENGTH = 128M - 64K
 }
 
 SECTIONS
 {
-    . = ORIGIN(RAM);
+    /* Boot section at physical address - entry point */
+    . = ORIGIN(BOOT);
+    .text.boot : {
+        *(.text.boot)
+    } > BOOT
 
-    .text : {
-        *(.text.boot)  /* boot code first */
+    /* Rest of kernel at high VA, loaded after boot section */
+    . = ORIGIN(KERNEL);
+
+    .text : AT(0x40010000) {
         *(.text*)
-    } > RAM
+    } > KERNEL
 
     .rodata : {
         *(.rodata*)
-    } > RAM
+    } > KERNEL
 
     .data : {
         *(.data*)
-    } > RAM
+    } > KERNEL
 
     . = ALIGN(8);
     __bss_start = .;
     .bss : {
         *(.bss*)
         *(COMMON)
-    } > RAM
+    } > KERNEL
     __bss_end = .;
 
     . = ALIGN(4096);
     __pagetables_start = .;
     .pagetables (NOLOAD) : {
         *(.pagetables)
-    } > RAM
+    } > KERNEL
     __pagetables_end = .;
 
     /* Stack grows down from __stack_top */

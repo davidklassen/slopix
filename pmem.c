@@ -17,7 +17,8 @@ static void zero_page(paddr_t pa) {
 }
 
 void pmem_init(void) {
-	paddr_t start = PAGE_ALIGN((paddr_t)__stack_top);
+	// __stack_top is now a high VA, convert to PA
+	paddr_t start = PAGE_ALIGN(VA_TO_PA((paddr_t)__stack_top));
 	paddr_t end = RAM_BASE + RAM_SIZE;
 
 	freelist = 0;

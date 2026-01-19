@@ -855,12 +855,12 @@ USER DATA ABORT (read) at 0x0
 
 ### Deliverables
 
-- [ ] User code (loop) embedded or compiled
-- [ ] `start_user_init()` creates user process
-- [ ] User process runs at EL0
-- [ ] Timer interrupts work from EL0
-- [ ] Page faults from user mode are caught
-- [ ] Kernel processes still work alongside user process
+- [x] User code (loop) embedded or compiled
+- [x] `start_user_init()` creates user process
+- [x] User process runs at EL0
+- [x] Timer interrupts work from EL0
+- [x] Page faults from user mode are caught
+- [x] Kernel processes still work alongside user process
 
 ---
 
