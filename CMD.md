@@ -21,19 +21,19 @@ Goal: Run user programs compiled from C with a minimal shell.
 | Syscall dispatch | ✓ | x8=number, x0-x7=args, x0=return |
 | `write(fd, buf, len)` | ✓ | SYS_write=0, stdout only |
 | `exit(status)` | ✓ | SYS_exit=1 |
+| `read(fd, buf, len)` | ✓ | SYS_read=2, stdin only, non-blocking |
+| `sleep(ticks)` | ✓ | SYS_sleep=3, calls ksleep() |
+| `getpid()` | ✓ | SYS_getpid=4 |
 | Page table management | ✓ | uvm_create/map_page/free |
 | Process scheduling | ✓ | Round-robin with timer preemption |
 | Scheduler reaping | ✓ | Frees dead process resources |
 | Timer | ✓ | 10ms tick, ksleep() in kernel |
+| User build system | ✓ | cmd/ with Makefile, libc, crt0 |
 
 ### What We Need
 
 | Component | Priority | Effort |
 |-----------|----------|--------|
-| User build system | High | Medium |
-| `read()` syscall | High | Small |
-| `sleep()` syscall | High | Small |
-| `getpid()` syscall | Medium | Small |
 | `fork()` syscall | High | Medium |
 | `wait()` syscall | High | Small |
 | `exec()` syscall | High | Large |
@@ -280,8 +280,8 @@ Files:
 - cmd/libc.h, cmd/libc.c
 
 Deliverables:
-- [ ] Can compile a minimal "hello" program to ELF
-- [ ] `make` in cmd/ produces .elf files
+- [x] Can compile a minimal "hello" program to ELF
+- [x] `make` in cmd/ produces .elf files
 
 ### Step 2: New Syscalls (read, sleep, getpid)
 
@@ -292,10 +292,10 @@ Files:
 - syscall.c (implement sys_read, sys_sleep, sys_getpid)
 
 Deliverables:
-- [ ] sys_read returns bytes from UART or 0 if empty
-- [ ] sys_sleep calls ksleep()
-- [ ] sys_getpid returns current->pid
-- [ ] Tests pass
+- [x] sys_read returns bytes from UART or 0 if empty
+- [x] sys_sleep calls ksleep()
+- [x] sys_getpid returns current->pid
+- [x] Tests pass
 
 ### Step 3: ELF Loader
 

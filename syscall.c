@@ -23,6 +23,32 @@ static long sys_exit(int status) {
 	return 0;
 }
 
+static long sys_read(int fd, char *buf, unsigned long len) {
+	if (fd != 0) {
+		return -1;
+	}
+
+	// TODO: validate user pointer
+	unsigned long i = 0;
+	while (i < len) {
+		int c = uart_getc_nb();
+		if (c < 0) {
+			break;
+		}
+		buf[i++] = c;
+	}
+	return i;
+}
+
+static long sys_sleep(unsigned long ticks) {
+	ksleep(ticks);
+	return 0;
+}
+
+static long sys_getpid(void) {
+	return current->pid;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -33,6 +59,15 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_exit:
 		ret = sys_exit(tf->regs[0]);
+		break;
+	case SYS_read:
+		ret = sys_read(tf->regs[0], (char *)tf->regs[1], tf->regs[2]);
+		break;
+	case SYS_sleep:
+		ret = sys_sleep(tf->regs[0]);
+		break;
+	case SYS_getpid:
+		ret = sys_getpid();
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
