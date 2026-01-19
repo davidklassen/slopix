@@ -14,11 +14,13 @@ struct context {
 
 enum proc_state { UNUSED,
 		  RUNNABLE,
-		  RUNNING };
+		  RUNNING,
+		  ZOMBIE };
 
 struct proc {
 	enum proc_state state;
 	int pid;
+	int parent;
 	char *kstack;
 	struct context ctx;
 

@@ -80,5 +80,6 @@ typedef unsigned long pte_t;
 pte_t *uvm_create(void);
 void uvm_free(pte_t *pagetable);
 int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
+pte_t *uvm_copy(pte_t *src);
 
 #endif

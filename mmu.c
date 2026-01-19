@@ -101,3 +101,74 @@ void uvm_free(pte_t *pagetable) {
 	freewalk(pagetable, 0);
 	pmem_free(VA_TO_PA(pagetable));
 }
+
+// Helper to copy page data
+static void copy_page(paddr_t dst, paddr_t src) {
+	char *d = (char *)PA_TO_VA(dst);
+	char *s = (char *)PA_TO_VA(src);
+	for (unsigned long i = 0; i < PAGE_SIZE; i++) {
+		d[i] = s[i];
+	}
+}
+
+// Recursively copy page table entries
+static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
+	for (int i = 0; i < PTE_PER_TABLE; i++) {
+		pte_t entry = src[i];
+		if ((entry & PTE_VALID) == 0) {
+			continue;
+		}
+
+		paddr_t src_pa = entry & PTE_ADDR_MASK;
+
+		if (level < 3) {
+			// Table descriptor: allocate new table and recurse
+			paddr_t dst_pa = pmem_alloc();
+			if (dst_pa == 0) {
+				return -1;
+			}
+			dst[i] = make_table_desc(dst_pa);
+
+			pte_t *src_child = (pte_t *)PA_TO_VA(src_pa);
+			pte_t *dst_child = (pte_t *)PA_TO_VA(dst_pa);
+
+			unsigned long child_va = va;
+			if (level == 0) {
+				child_va |= (unsigned long)i << 39;
+			} else if (level == 1) {
+				child_va |= (unsigned long)i << 30;
+			} else {
+				child_va |= (unsigned long)i << 21;
+			}
+
+			if (copywalk(dst_child, src_child, level + 1, child_va) < 0) {
+				return -1;
+			}
+		} else {
+			// L3 entry: allocate new page and copy data
+			paddr_t dst_pa = pmem_alloc();
+			if (dst_pa == 0) {
+				return -1;
+			}
+			copy_page(dst_pa, src_pa);
+			// Copy entry with same flags, but new address
+			dst[i] = (entry & ~PTE_ADDR_MASK) | dst_pa;
+		}
+	}
+	return 0;
+}
+
+// Copy a user page table and all its pages
+pte_t *uvm_copy(pte_t *src) {
+	pte_t *dst = uvm_create();
+	if (dst == 0) {
+		return 0;
+	}
+
+	if (copywalk(dst, src, 0, 0) < 0) {
+		uvm_free(dst);
+		return 0;
+	}
+
+	return dst;
+}

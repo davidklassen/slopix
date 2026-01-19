@@ -32,13 +32,12 @@ Goal: Run user programs compiled from C with a minimal shell.
 | ELF loader | ✓ | elf_load() maps PT_LOAD segments |
 | Initramfs | ✓ | initramfs_find() locates embedded files |
 | `exec()` syscall | ✓ | Loads ELF from initramfs, sets up argc/argv |
+| `fork()` syscall | ✓ | Copies address space via uvm_copy() |
+| `wait()` syscall | ✓ | Blocks until child exits (ZOMBIE state) |
 
 ### What We Need
 
-| Component | Priority | Effort |
-|-----------|----------|--------|
-| `fork()` syscall | High | Medium |
-| `wait()` syscall | High | Small |
+All core syscalls implemented!
 
 ---
 
@@ -360,9 +359,9 @@ Files:
 - mmu.c (uvm_copy)
 
 Deliverables:
-- [ ] fork() copies address space
-- [ ] Returns 0 in child, pid in parent
-- [ ] wait() blocks until child exits, returns pid
+- [x] fork() copies address space
+- [x] Returns 0 in child, pid in parent
+- [x] wait() blocks until child exits, returns pid
 
 ### Step 8: Argument Passing
 

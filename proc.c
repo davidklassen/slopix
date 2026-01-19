@@ -22,6 +22,7 @@ struct proc *proc_alloc(void) {
 				return 0;
 			}
 			p->kstack = (char *)PA_TO_VA(pa);
+			p->parent = 0;
 			p->pagetable = 0;
 			p->sz = 0;
 			p->tf = 0;
@@ -59,7 +60,7 @@ void proc_create(proc_func func) {
 
 extern void usertrap_return(paddr_t pagetable_pa);
 
-static void usertrap_first(void) {
+void usertrap_first(void) {
 	enable_irq();
 	usertrap_return(VA_TO_PA(current->pagetable));
 }

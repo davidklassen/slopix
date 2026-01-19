@@ -22,7 +22,11 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 
 static long sys_exit(int status) {
 	kprintf("Process %d exited with status %d\n", current->pid, status);
-	current->state = UNUSED;
+	if (current->parent) {
+		current->state = ZOMBIE;
+	} else {
+		current->state = UNUSED;
+	}
 	sched();
 	return 0;
 }
@@ -129,6 +133,64 @@ static long sys_exec(const char *name) {
 	return 1;
 }
 
+static long sys_fork(void) {
+	pte_t *child_pt = uvm_copy(current->pagetable);
+	if (child_pt == 0) {
+		return -1;
+	}
+
+	struct proc *child = proc_alloc();
+	if (child == 0) {
+		uvm_free(child_pt);
+		return -1;
+	}
+
+	child->pagetable = child_pt;
+	child->parent = current->pid;
+
+	// Copy trap frame to child's kernel stack
+	char *sp = child->kstack + PAGE_SIZE;
+	sp -= sizeof(struct trap_frame);
+	sp = (char *)((unsigned long)sp & ~0xFUL);
+
+	struct trap_frame *child_tf = (struct trap_frame *)sp;
+	child->tf = child_tf;
+
+	// Copy parent's trap frame
+	for (int i = 0; i < 31; i++) {
+		child_tf->regs[i] = current->tf->regs[i];
+	}
+	child_tf->sp_el0 = current->tf->sp_el0;
+	child_tf->elr = current->tf->elr;
+	child_tf->spsr = current->tf->spsr;
+
+	// Child returns 0 from fork
+	child_tf->regs[0] = 0;
+
+	// Set up child context to return to userspace
+	extern void usertrap_first(void);
+	child->ctx.x30 = (unsigned long)usertrap_first;
+	child->ctx.sp = (unsigned long)child_tf;
+	child->ctx.x29 = 0;
+
+	// Parent returns child's pid
+	return child->pid;
+}
+
+static long sys_wait(void) {
+	for (;;) {
+		for (int i = 0; i < NPROC; i++) {
+			struct proc *p = &procs[i];
+			if (p->state == ZOMBIE && p->parent == current->pid) {
+				int pid = p->pid;
+				p->state = UNUSED;
+				return pid;
+			}
+		}
+		yield();
+	}
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -151,6 +213,12 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_exec:
 		ret = sys_exec((const char *)tf->regs[0]);
+		break;
+	case SYS_fork:
+		ret = sys_fork();
+		break;
+	case SYS_wait:
+		ret = sys_wait();
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
