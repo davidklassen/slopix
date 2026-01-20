@@ -26,8 +26,6 @@ static pte_t make_page_desc_user(paddr_t pa, int write, int exec) {
 // Walk page table from L0 to L3, optionally allocating intermediate tables
 static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 	pte_t *table = pagetable;
-
-	// Walk L0 -> L1 -> L2 -> L3
 	int indices[3] = {L0_INDEX(va), L1_INDEX(va), L2_INDEX(va)};
 	for (int level = 0; level < 3; level++) {
 		pte_t *entry = &table[indices[level]];
@@ -102,7 +100,6 @@ void vmm_free(pte_t *pagetable) {
 	pmm_free(VA_TO_PA(pagetable));
 }
 
-// Helper to copy page data
 static void copy_page(paddr_t dst, paddr_t src) {
 	char *d = (char *)PA_TO_VA(dst);
 	char *s = (char *)PA_TO_VA(src);
@@ -241,7 +238,6 @@ int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned lon
 	unsigned long i = 0;
 	unsigned long cur_page = srcva & ~(PAGE_SIZE - 1);
 
-	// Validate first page
 	if (validate_page(pagetable, srcva) < 0) {
 		return -1;
 	}

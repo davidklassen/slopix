@@ -36,6 +36,7 @@ void timer_init(void) {
 void timer_handler(void) {
 	ticks++;
 	write_cntp_tval_el0(timer_period);
+	wakeup_timed();
 	if (current != 0) {
 		yield();
 	}

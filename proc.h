@@ -15,12 +15,13 @@ struct context {
 enum proc_state { UNUSED,
 		  RUNNABLE,
 		  RUNNING,
+		  SLEEPING,
 		  ZOMBIE };
 
 struct proc {
 	enum proc_state state;
 	int pid;
-	int parent;
+	struct proc *parent;
 	char *kstack;
 	struct context ctx;
 
@@ -28,6 +29,10 @@ struct proc {
 	pte_t *pagetable;
 	unsigned long sz;
 	struct trap_frame *tf;
+
+	// Sleep channel support
+	void *chan;
+	unsigned long wakeup_tick;
 };
 
 #define NPROC 8
@@ -46,5 +51,8 @@ void scheduler(void);
 void sched(void);
 void yield(void);
 void ksleep(unsigned long ticks);
+void sleep(void *chan);
+void wakeup(void *chan);
+void wakeup_timed(void);
 
 #endif

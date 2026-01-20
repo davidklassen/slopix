@@ -22,31 +22,9 @@
 
 ## Sleep and Scheduling
 
-### Sleep channels
-Current sleep is busy-wait with yield. Process stays RUNNABLE, keeps getting scheduled.
-
-Proper sleep:
-```c
-void sleep(void *chan) {
-    current->chan = chan;
-    current->state = SLEEPING;
-    sched();
-    current->chan = 0;
-}
-
-void wakeup(void *chan) {
-    for each proc p:
-        if p->state == SLEEPING && p->chan == chan:
-            p->state = RUNNABLE;
-}
-```
-
-SLEEPING processes not scheduled, saves CPU, foundation for blocking I/O.
-
 ### Blocking read
 - `read()` sleeps until data available
 - UART RX interrupt calls `wakeup()` on waiting processes
-- Requires sleep channels
 
 ### Waiting on multiple events
 Ticker doesn't respond to 'q' while sleeping because it can only wait on one thing. Solutions:

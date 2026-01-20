@@ -28,6 +28,7 @@ static long sys_exit(int status) {
 	(void)status;
 	if (current->parent) {
 		current->state = ZOMBIE;
+		wakeup(current->parent);
 	} else {
 		current->state = UNUSED;
 	}
@@ -197,7 +198,7 @@ static long sys_fork(void) {
 	}
 
 	child->pagetable = child_pt;
-	child->parent = current->pid;
+	child->parent = current;
 
 	// Copy trap frame to child's kernel stack
 	char *sp = child->kstack + PAGE_SIZE;
@@ -232,13 +233,13 @@ static long sys_wait(void) {
 	for (;;) {
 		for (int i = 0; i < NPROC; i++) {
 			struct proc *p = &procs[i];
-			if (p->state == ZOMBIE && p->parent == current->pid) {
+			if (p->state == ZOMBIE && p->parent == current) {
 				int pid = p->pid;
 				p->state = UNUSED;
 				return pid;
 			}
 		}
-		yield();
+		sleep(current);
 	}
 }
 

@@ -5,7 +5,7 @@
 #include "gic.h"
 #include "timer.h"
 
-#define GICC_PMR_REG (*(volatile unsigned int *)(GICC_VIRT + GICC_PMR_OFF))
+#define GICC_PMR_REG (*(volatile unsigned int *)(GICC_VA + GICC_PMR_OFF))
 
 TEST(arch_irq_mask) {
 	disable_irq();

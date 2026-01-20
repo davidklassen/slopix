@@ -26,6 +26,8 @@ struct proc *proc_alloc(void) {
 			p->pagetable = 0;
 			p->sz = 0;
 			p->tf = 0;
+			p->chan = 0;
+			p->wakeup_tick = 0;
 			return p;
 		}
 	}
@@ -146,10 +148,39 @@ void yield(void) {
 	sched();
 }
 
-void ksleep(unsigned long ticks) {
-	unsigned long target = timer_get_ticks() + ticks;
-	enable_irq();
-	while (timer_get_ticks() < target) {
-		yield();
+void sleep(void *chan) {
+	current->chan = chan;
+	current->state = SLEEPING;
+	sched();
+	current->chan = 0;
+}
+
+void wakeup(void *chan) {
+	for (int i = 0; i < NPROC; i++) {
+		struct proc *p = &procs[i];
+		if (p->state == SLEEPING && p->chan == chan) {
+			p->state = RUNNABLE;
+		}
 	}
+}
+
+void wakeup_timed(void) {
+	unsigned long now = timer_get_ticks();
+	for (int i = 0; i < NPROC; i++) {
+		struct proc *p = &procs[i];
+		if (p->state == SLEEPING && p->wakeup_tick != 0 &&
+		    now >= p->wakeup_tick) {
+			p->wakeup_tick = 0;
+			p->state = RUNNABLE;
+		}
+	}
+}
+
+void ksleep(unsigned long ticks) {
+	if (ticks == 0) {
+		return;
+	}
+	current->wakeup_tick = timer_get_ticks() + ticks;
+	sleep(&current->wakeup_tick);
+	current->wakeup_tick = 0;
 }

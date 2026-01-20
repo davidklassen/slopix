@@ -1,8 +1,8 @@
 #include "gic.h"
 #include "cpu.h"
 
-#define GICD_REG(off) (*(volatile unsigned int *)(GICD_VIRT + (off)))
-#define GICC_REG(off) (*(volatile unsigned int *)(GICC_VIRT + (off)))
+#define GICD_REG(off) (*(volatile unsigned int *)(GICD_VA + (off)))
+#define GICC_REG(off) (*(volatile unsigned int *)(GICC_VA + (off)))
 
 void gic_init(void) {
 	GICD_REG(GICD_CTLR_OFF) = 1;
@@ -15,7 +15,7 @@ void gic_enable_irq(unsigned int intid) {
 	if (intid < 32) {
 		GICD_REG(GICD_ISENABLER0_OFF) = (1u << intid);
 		volatile unsigned char *prio =
-		    (volatile unsigned char *)(GICD_VIRT + GICD_IPRIORITYR0_OFF +
+		    (volatile unsigned char *)(GICD_VA + GICD_IPRIORITYR0_OFF +
 					       intid);
 		*prio = 0x80;
 	}

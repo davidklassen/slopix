@@ -3,11 +3,6 @@
 
 #include "board.h"
 
-// Legacy names for backward compatibility
-#define GICD_PHYS GICD_PA
-#define GICD_VIRT GICD_VA
-#define GICC_VIRT GICC_VA
-
 // Distributor register offsets
 #define GICD_CTLR_OFF	     0x000
 #define GICD_ISENABLER0_OFF  0x100

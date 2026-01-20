@@ -18,7 +18,6 @@ int main(int argc, char **argv) {
 			break;
 		}
 
-		// Print "tick N\n"
 		write(1, "tick ", 5);
 		int len = itoa(n++, buf);
 		write(1, buf, len);

@@ -24,7 +24,6 @@ static int readline(char *buf, int max) {
 }
 
 int main(void) {
-	// Spawn cursor_blink as background process
 	if (fork() == 0) {
 		exec("cursor_blink");
 		exit(1);
