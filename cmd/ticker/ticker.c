@@ -1,4 +1,5 @@
-#include "libc.h"
+#include <string.h>
+#include <unistd.h>
 
 int main(int argc, char **argv) {
 	int interval = 1000;
@@ -17,7 +18,6 @@ int main(int argc, char **argv) {
 		write(1, buf, len);
 		write(1, "\n", 1);
 
-		// Wait for input or timeout - wakes early on keypress
 		if (poll(0, interval) > 0) {
 			char c;
 			read(0, &c, 1);

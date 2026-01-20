@@ -1,6 +1,8 @@
 *.o
+*.a
 *.elf
 docsearch.db*
 .claude/
 cmd/mkramfs
 cmd/initramfs.bin
+cmd/initramfs-test.bin

@@ -1,4 +1,4 @@
-#include "libc.h"
+#include <unistd.h>
 
 static int readline(char *buf, int max) {
 	int n = 0;

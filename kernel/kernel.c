@@ -40,12 +40,14 @@ void kernel_main(void) {
 	RUN_SUITE(timer);
 
 	TEST_REPORT();
-	TEST_EXIT();
 
+#ifdef RUN_TESTS
+	init("tests");
+#else
 	uart_puts("Welcome to Slopix!\n");
 	uart_puts("To exit QEMU press Ctrl-a x\n\n");
-
 	init("shell");
+#endif
 
 	scheduler();
 }

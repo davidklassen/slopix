@@ -1,4 +1,4 @@
-#include "libc.h"
+#include <unistd.h>
 
 int main(void) {
 	for (;;) {

@@ -39,9 +39,9 @@ void test_report(void) {
 	kprintf("  %d failed\n", __tests_failed);
 
 	if (__tests_failed > 0) {
-		kprintf("TESTS FAILED\n");
+		kprintf("TESTS FAILED\n\n");
 	} else {
-		kprintf("ALL PASSED\n");
+		kprintf("ALL PASSED\n\n");
 	}
 }
 

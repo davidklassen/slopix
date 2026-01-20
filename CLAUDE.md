@@ -4,7 +4,7 @@ Bare-metal AArch64 kernel for QEMU virt board.
 
 ## Running QEMU Commands
 
-Always use a 3000ms timeout when running `make run` or `make test`. QEMU may hang if something breaks.
+Always use a 5000ms timeout when running `make run` or `make test`. QEMU may hang if something breaks.
 
 ```
 make test - exits cleanly via PSCI if tests pass; timeout means failure

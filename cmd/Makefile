@@ -3,32 +3,59 @@ CC = $(CROSS)gcc
 LD = $(CROSS)ld
 HOSTCC = cc
 
-CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I.
-ASFLAGS = -g -mcpu=cortex-a57
+CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I../libc/include
 LDFLAGS = -nostdlib -T link.ld
 
-COMMON_OBJ = crt0.o syscall.o libc.o
+LIBC = ../libc/libc.a
 
-PROGS = shell.elf cursor_blink.elf echo.elf ticker.elf
+APPS = shell cursor_blink echo ticker shutdown true false
+TEST_APPS = tests true false
+
+PROGS = $(addsuffix .elf,$(APPS))
+TEST_PROGS = $(addsuffix .elf,$(TEST_APPS))
 
 all: initramfs.bin
+
+$(LIBC):
+	$(MAKE) -C ../libc
 
 mkramfs: ../tools/mkramfs.c
 	$(HOSTCC) -Wall -o $@ $<
 
-$(PROGS): %.elf: %.o $(COMMON_OBJ)
-	$(LD) $(LDFLAGS) -o $@ $(COMMON_OBJ) $<
+shell.elf: shell/shell.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-initramfs.bin: mkramfs $(PROGS)
-	./mkramfs $@ $(PROGS)
+cursor_blink.elf: cursor_blink/cursor_blink.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-%.o: %.S
-	$(CC) $(ASFLAGS) -c $< -o $@
+echo.elf: echo/echo.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+ticker.elf: ticker/ticker.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+shutdown.elf: shutdown/shutdown.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+true.elf: true/true.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+false.elf: false/false.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+tests.elf: tests/tests.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+initramfs.bin: mkramfs $(PROGS)
+	./mkramfs $@ $(PROGS)
+
+initramfs-test.bin: mkramfs $(TEST_PROGS)
+	./mkramfs $@ $(TEST_PROGS)
+
 clean:
-	rm -f *.o *.elf mkramfs initramfs.bin
+	rm -f */*.o *.elf mkramfs initramfs.bin initramfs-test.bin
 
 .PHONY: all clean

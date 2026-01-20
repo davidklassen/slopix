@@ -3,11 +3,11 @@
 #include "test.h"
 #include "initramfs.h"
 
-TEST(initramfs_find_shell) {
+TEST(initramfs_find_tests) {
 	struct initramfs_entry entry;
-	int ret = initramfs_find("shell", &entry);
+	int ret = initramfs_find("tests", &entry);
 
-	ASSERT_EQ(ret, 0, "should find shell");
+	ASSERT_EQ(ret, 0, "should find tests");
 	ASSERT(entry.size > 0, "size should be > 0");
 	ASSERT(entry.data != 0, "data should not be null");
 
@@ -23,9 +23,9 @@ TEST(initramfs_find_nonexistent) {
 	return 0;
 }
 
-TEST(initramfs_shell_is_valid_elf) {
+TEST(initramfs_tests_is_valid_elf) {
 	struct initramfs_entry entry;
-	initramfs_find("shell", &entry);
+	initramfs_find("tests", &entry);
 
 	unsigned int magic = *(unsigned int *)entry.data;
 	ASSERT_EQ(magic, 0x464C457F, "should be ELF magic");
@@ -34,9 +34,9 @@ TEST(initramfs_shell_is_valid_elf) {
 }
 
 TEST_SUITE(initramfs) {
-	RUN_TEST(initramfs_find_shell);
+	RUN_TEST(initramfs_find_tests);
 	RUN_TEST(initramfs_find_nonexistent);
-	RUN_TEST(initramfs_shell_is_valid_elf);
+	RUN_TEST(initramfs_tests_is_valid_elf);
 }
 
 #endif

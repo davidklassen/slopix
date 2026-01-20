@@ -1,4 +1,4 @@
-.global write, exit, read, sleep, getpid, fork, wait, exec, poll
+.global write, exit, read, sleep, getpid, fork, wait, exec, poll, poweroff
 
 write:
 	mov x8, #0
@@ -42,5 +42,10 @@ exec:
 
 poll:
 	mov x8, #8
+	svc #0
+	ret
+
+poweroff:
+	mov x8, #9
 	svc #0
 	ret

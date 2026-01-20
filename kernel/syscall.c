@@ -8,6 +8,7 @@
 #include "pmm.h"
 #include "cpu.h"
 #include "vmm.h"
+#include "psci.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd != 1) {
@@ -25,7 +26,7 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
-	(void)status;
+	current->exit_status = status;
 	if (current->parent) {
 		current->state = ZOMBIE;
 		wakeup(current->parent);
@@ -223,13 +224,20 @@ static long sys_fork(void) {
 
 static long sys_wait(void) {
 	for (;;) {
+		int has_children = 0;
 		for (int i = 0; i < NPROC; i++) {
 			struct proc *p = &procs[i];
-			if (p->state == ZOMBIE && p->parent == current) {
-				int pid = p->pid;
-				p->state = UNUSED;
-				return pid;
+			if (p->parent == current && p->state != UNUSED) {
+				has_children = 1;
+				if (p->state == ZOMBIE) {
+					int status = p->exit_status;
+					p->state = UNUSED;
+					return status;
+				}
 			}
+		}
+		if (!has_children) {
+			return -1;
 		}
 		sleep(current);
 	}
@@ -246,6 +254,11 @@ static long sys_poll(int fd, long timeout_ms) {
 	}
 
 	return uart_poll_timeout(ticks);
+}
+
+static long sys_poweroff(void) {
+	psci_system_off();
+	return 0;
 }
 
 void syscall(struct trap_frame *tf) {
@@ -279,6 +292,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_poll:
 		ret = sys_poll(tf->regs[0], tf->regs[1]);
+		break;
+	case SYS_poweroff:
+		ret = sys_poweroff();
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

@@ -13,6 +13,7 @@ TEST(proc_alloc_returns_proc) {
 	ASSERT_NOT_NULL(p->kstack, "kstack should be non-null");
 
 	pmm_free(VA_TO_PA(p->kstack));
+	p->kstack = 0;
 	p->state = UNUSED;
 	return 0;
 }
@@ -27,6 +28,8 @@ TEST(proc_alloc_unique_pids) {
 
 	pmm_free(VA_TO_PA(p1->kstack));
 	pmm_free(VA_TO_PA(p2->kstack));
+	p1->kstack = 0;
+	p2->kstack = 0;
 	p1->state = UNUSED;
 	p2->state = UNUSED;
 	return 0;
@@ -42,6 +45,7 @@ TEST(proc_create_sets_context) {
 	sp = (char *)((unsigned long)sp & ~0xFUL);
 
 	pmm_free(VA_TO_PA(p->kstack));
+	p->kstack = 0;
 	p->state = UNUSED;
 	return 0;
 }
@@ -55,6 +59,7 @@ TEST(proc_has_usermode_fields) {
 	ASSERT_EQ((unsigned long)p->tf, 0, "tf should be null");
 
 	pmm_free(VA_TO_PA(p->kstack));
+	p->kstack = 0;
 	p->state = UNUSED;
 	return 0;
 }

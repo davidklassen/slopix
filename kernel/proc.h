@@ -33,6 +33,8 @@ struct proc {
 	// Sleep channel support
 	void *chan;
 	unsigned long wakeup_tick;
+
+	int exit_status;
 };
 
 #define NPROC 8

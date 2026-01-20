@@ -409,9 +409,7 @@ Planned syscalls (for filesystem):
 
 ## Virtio Block Device
 
-MMIO transport at 0x0a00_0000.
-
-Note: QEMU uses legacy virtio interface by default. Use `-global virtio-mmio.force-legacy=false` for modern interface. Registers below are for modern (v2) interface.
+MMIO transport at 0x0a00_0000, using legacy (v1) interface (QEMU default).
 
 ### Registers (offsets from base)
 
@@ -421,34 +419,50 @@ Note: QEMU uses legacy virtio interface by default. Use `-global virtio-mmio.for
 | 0x004 | Version | R |
 | 0x008 | DeviceID | R |
 | 0x00c | VendorID | R |
-| 0x010 | DeviceFeatures | R |
-| 0x014 | DeviceFeaturesSel | W |
-| 0x020 | DriverFeatures | W |
-| 0x024 | DriverFeaturesSel | W |
+| 0x010 | HostFeatures | R |
+| 0x014 | HostFeaturesSel | W |
+| 0x020 | GuestFeatures | W |
+| 0x024 | GuestFeaturesSel | W |
+| 0x028 | GuestPageSize | W |
 | 0x030 | QueueSel | W |
 | 0x034 | QueueNumMax | R |
 | 0x038 | QueueNum | W |
-| 0x044 | QueueReady | W |
+| 0x03c | QueueAlign | W |
+| 0x040 | QueuePFN | RW |
 | 0x050 | QueueNotify | W |
 | 0x060 | InterruptStatus | R |
 | 0x064 | InterruptACK | W |
 | 0x070 | Status | RW |
-| 0x100 | QueueDescLow | W |
-| 0x104 | QueueDescHigh | W |
-| 0x110 | QueueDriverLow | W |
-| 0x114 | QueueDriverHigh | W |
-| 0x120 | QueueDeviceLow | W |
-| 0x124 | QueueDeviceHigh | W |
 
 ### Initialization
 
 1. Write 0 to Status (reset)
 2. Write 1 to Status (ACKNOWLEDGE)
 3. Write 3 to Status (ACKNOWLEDGE | DRIVER)
-4. Read/negotiate features
-5. Write 11 to Status (ACKNOWLEDGE | DRIVER | FEATURES_OK)
-6. Setup virtqueue
-7. Write 15 to Status (ACKNOWLEDGE | DRIVER | FEATURES_OK | DRIVER_OK)
+4. Read HostFeatures, write supported subset to GuestFeatures
+5. Write page size to GuestPageSize (4096)
+6. Select queue with QueueSel, read QueueNumMax
+7. Write queue size to QueueNum, alignment to QueueAlign
+8. Write queue PFN to QueuePFN (phys_addr >> 12)
+9. Write 7 to Status (ACKNOWLEDGE | DRIVER | DRIVER_OK)
+
+### Virtqueue Layout (legacy)
+
+Legacy interface requires contiguous memory for all three virtqueue areas:
+
+```
++-------------------+
+| Descriptor Table  |  16 bytes × queue_num
++-------------------+
+| Available Ring    |  6 + 2 × queue_num bytes
++-------------------+
+| Padding           |  to QueueAlign boundary
++-------------------+
+| Used Ring         |  6 + 8 × queue_num bytes
++-------------------+
+```
+
+QueuePFN = physical_address >> 12 (page frame number).
 
 ### Block Request
 
