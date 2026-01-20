@@ -184,3 +184,14 @@ void ksleep(unsigned long ticks) {
 	sleep(&current->wakeup_tick);
 	current->wakeup_tick = 0;
 }
+
+void sleep_timeout(void *chan, unsigned long ticks) {
+	current->chan = chan;
+	if (ticks > 0) {
+		current->wakeup_tick = timer_get_ticks() + ticks;
+	}
+	current->state = SLEEPING;
+	sched();
+	current->chan = 0;
+	current->wakeup_tick = 0;
+}

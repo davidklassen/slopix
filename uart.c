@@ -1,4 +1,14 @@
 #include "uart.h"
+#include "proc.h"
+#include "gic.h"
+
+#define UART_RX_BUF_SIZE 64
+
+static struct {
+	char buf[UART_RX_BUF_SIZE];
+	unsigned int head;
+	unsigned int tail;
+} uart_rx;
 
 void uart_init(void) {
 	UART_REG(UART_CR_OFFSET) = 0;
@@ -36,4 +46,52 @@ char uart_getc(void) {
 	while (UART_REG(UART_FR_OFFSET) & UART_FR_RXFE)
 		;
 	return UART_REG(UART_DR_OFFSET) & 0xFF;
+}
+
+void uart_init_irq(void) {
+	uart_rx.head = 0;
+	uart_rx.tail = 0;
+	UART_REG(UART_IMSC_OFFSET) = UART_IMSC_RXIM;
+	gic_enable_irq(UART_IRQ);
+}
+
+void uart_irq_handler(void) {
+	while (!(UART_REG(UART_FR_OFFSET) & UART_FR_RXFE)) {
+		char c = UART_REG(UART_DR_OFFSET) & 0xFF;
+		unsigned int next = (uart_rx.head + 1) % UART_RX_BUF_SIZE;
+		if (next != uart_rx.tail) {
+			uart_rx.buf[uart_rx.head] = c;
+			uart_rx.head = next;
+		}
+	}
+	UART_REG(UART_ICR_OFFSET) = UART_IMSC_RXIM;
+	wakeup(&uart_rx);
+}
+
+int uart_read(char *buf, unsigned long len) {
+	unsigned long i = 0;
+	while (i < len) {
+		while (uart_rx.head == uart_rx.tail) {
+			sleep(&uart_rx);
+		}
+		buf[i++] = uart_rx.buf[uart_rx.tail];
+		uart_rx.tail = (uart_rx.tail + 1) % UART_RX_BUF_SIZE;
+		break;
+	}
+	return i;
+}
+
+int uart_poll(void) {
+	return uart_rx.head != uart_rx.tail;
+}
+
+int uart_poll_timeout(unsigned long ticks) {
+	if (uart_poll()) {
+		return 1;
+	}
+	if (ticks == 0) {
+		return 0;
+	}
+	sleep_timeout(&uart_rx, ticks);
+	return uart_poll();
 }

@@ -1,4 +1,4 @@
-.global write, exit, read, sleep, getpid, fork, wait, exec
+.global write, exit, read, sleep, getpid, fork, wait, exec, poll
 
 write:
 	mov x8, #0
@@ -37,5 +37,10 @@ wait:
 
 exec:
 	mov x8, #7
+	svc #0
+	ret
+
+poll:
+	mov x8, #8
 	svc #0
 	ret

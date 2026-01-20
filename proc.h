@@ -52,6 +52,7 @@ void sched(void);
 void yield(void);
 void ksleep(unsigned long ticks);
 void sleep(void *chan);
+void sleep_timeout(void *chan, unsigned long ticks);
 void wakeup(void *chan);
 void wakeup_timed(void);
 

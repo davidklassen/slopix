@@ -12,6 +12,7 @@ int getpid(void);
 int fork(void);
 int wait(void);
 int exec(const char *name);
+int poll(int fd, long timeout_ms);
 
 // String functions
 size_t strlen(const char *s);

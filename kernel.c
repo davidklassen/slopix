@@ -35,6 +35,7 @@ void kernel_main(void) {
 
 	gic_init();
 	timer_init();
+	uart_init_irq();
 	enable_irq();
 	RUN_SUITE(timer);
 

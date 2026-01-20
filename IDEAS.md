@@ -20,18 +20,6 @@
 - Or use `-device loader` to put args at known address
 - Kernel checks args to decide: run shell vs run test suite
 
-## Sleep and Scheduling
-
-### Blocking read
-- `read()` sleeps until data available
-- UART RX interrupt calls `wakeup()` on waiting processes
-
-### Waiting on multiple events
-Ticker doesn't respond to 'q' while sleeping because it can only wait on one thing. Solutions:
-- `select()`/`poll()` - wait on multiple fds/events
-- `read()` with timeout
-- Signals (SIGINT to interrupt sleep)
-
 ## MCP Integration
 
 ### QEMU wrapper MCP

@@ -2,6 +2,7 @@
 #include "cpu.h"
 #include "gic.h"
 #include "timer.h"
+#include "uart.h"
 #include "kprintf.h"
 #include "syscall.h"
 
@@ -136,6 +137,8 @@ void irq_handler(struct trap_frame *tf) {
 
 	if (intid == TIMER_IRQ) {
 		timer_handler();
+	} else if (intid == UART_IRQ) {
+		uart_irq_handler();
 	} else if (intid != GIC_SPURIOUS_INTID) {
 		kprintf("Unhandled IRQ: %u\n", intid);
 	}

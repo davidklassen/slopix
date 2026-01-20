@@ -23,7 +23,20 @@
 #define UART_LCR_H_FEN	 (1 << 4)
 #define UART_LCR_H_WLEN8 (3 << 5)
 
+// Interrupt registers
+#define UART_IMSC_OFFSET 0x38
+#define UART_ICR_OFFSET	 0x44
+#define UART_IMSC_RXIM	 (1 << 4)
+
+// UART0 interrupt (SPI 1 = INTID 33)
+#define UART_IRQ 33
+
 void uart_init(void);
+void uart_init_irq(void);
+void uart_irq_handler(void);
+int uart_read(char *buf, unsigned long len);
+int uart_poll(void);
+int uart_poll_timeout(unsigned long ticks);
 void uart_putc(char c);
 void uart_puts(const char *s);
 char uart_getc(void);

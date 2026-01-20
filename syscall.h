@@ -9,6 +9,7 @@
 #define SYS_fork   5
 #define SYS_wait   6
 #define SYS_exec   7
+#define SYS_poll   8
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);

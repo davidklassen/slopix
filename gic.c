@@ -12,13 +12,13 @@ void gic_init(void) {
 }
 
 void gic_enable_irq(unsigned int intid) {
-	if (intid < 32) {
-		GICD_REG(GICD_ISENABLER0_OFF) = (1u << intid);
-		volatile unsigned char *prio =
-		    (volatile unsigned char *)(GICD_VA + GICD_IPRIORITYR0_OFF +
-					       intid);
-		*prio = 0x80;
-	}
+	unsigned int reg_off = GICD_ISENABLER0_OFF + 4 * (intid / 32);
+	unsigned int bit = intid % 32;
+	GICD_REG(reg_off) = (1u << bit);
+
+	volatile unsigned char *prio =
+	    (volatile unsigned char *)(GICD_VA + GICD_IPRIORITYR0_OFF + intid);
+	*prio = 0x80;
 	isb();
 }
 

@@ -4,7 +4,7 @@
 // Boot code runs at physical address 0x40000000.
 // After MMU enable, jumps to kernel at high VA 0xFFFF000040000000.
 
-#define CPACR_EL1_FPEN (3 << 20)
+.equ CPACR_EL1_FPEN, (3 << 20)
 
 .section .text.boot
 .global _start

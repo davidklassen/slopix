@@ -45,15 +45,7 @@ static long sys_read(int fd, char *buf, unsigned long len) {
 		return -1;
 	}
 
-	unsigned long i = 0;
-	while (i < len) {
-		int c = uart_getc_nb();
-		if (c < 0) {
-			break;
-		}
-		buf[i++] = c;
-	}
-	return i;
+	return uart_read(buf, len);
 }
 
 static long sys_sleep(unsigned long ms) {
@@ -243,6 +235,19 @@ static long sys_wait(void) {
 	}
 }
 
+static long sys_poll(int fd, long timeout_ms) {
+	if (fd != 0) {
+		return -1;
+	}
+
+	unsigned long ticks = timeout_ms / 10;
+	if (ticks == 0 && timeout_ms > 0) {
+		ticks = 1;
+	}
+
+	return uart_poll_timeout(ticks);
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -271,6 +276,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_wait:
 		ret = sys_wait();
+		break;
+	case SYS_poll:
+		ret = sys_poll(tf->regs[0], tf->regs[1]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
