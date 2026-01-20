@@ -1,7 +1,7 @@
 #ifndef PROC_H
 #define PROC_H
 
-#include "mmu.h"
+#include "vmm.h"
 #include "exception.h"
 
 struct context {

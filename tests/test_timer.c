@@ -1,7 +1,7 @@
 #ifdef RUN_TESTS
 
 #include "test.h"
-#include "arch.h"
+#include "cpu.h"
 #include "gic.h"
 #include "timer.h"
 

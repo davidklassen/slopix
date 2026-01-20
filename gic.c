@@ -1,5 +1,5 @@
 #include "gic.h"
-#include "arch.h"
+#include "cpu.h"
 
 #define GICD_REG(off) (*(volatile unsigned int *)(GICD_VIRT + (off)))
 #define GICC_REG(off) (*(volatile unsigned int *)(GICC_VIRT + (off)))

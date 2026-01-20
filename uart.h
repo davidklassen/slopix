@@ -1,7 +1,7 @@
 #ifndef UART_H
 #define UART_H
 
-#include "mem.h"
+#include "board.h"
 
 // Register access macro
 #define UART_REG(off) (*(volatile unsigned int *)(UART0_VA + (off)))

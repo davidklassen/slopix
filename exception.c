@@ -1,5 +1,5 @@
 #include "exception.h"
-#include "arch.h"
+#include "cpu.h"
 #include "gic.h"
 #include "timer.h"
 #include "kprintf.h"

@@ -2,8 +2,8 @@
 #include "elf.h"
 #include "initramfs.h"
 #include "kprintf.h"
-#include "mmu.h"
-#include "pmem.h"
+#include "vmm.h"
+#include "pmm.h"
 #include "proc.h"
 
 void init(const char *program) {
@@ -12,7 +12,7 @@ void init(const char *program) {
 		kpanic("init: program not found");
 	}
 
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	if (!pt) {
 		kpanic("init: failed to create page table");
 	}
@@ -22,13 +22,13 @@ void init(const char *program) {
 		kpanic("init: failed to load ELF");
 	}
 
-	paddr_t stack_pa = pmem_alloc();
+	paddr_t stack_pa = pmm_alloc();
 	if (stack_pa == 0) {
 		kpanic("init: failed to allocate stack");
 	}
 
 	unsigned long stack_va = USER_STACK - PAGE_SIZE;
-	if (uvm_map_page(pt, stack_va, stack_pa, 1, 0) < 0) {
+	if (vmm_map_page(pt, stack_va, stack_pa, 1, 0) < 0) {
 		kpanic("init: failed to map stack");
 	}
 

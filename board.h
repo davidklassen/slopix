@@ -1,6 +1,6 @@
-// mem.h - Memory layout constants (single source of truth)
-#ifndef MEM_H
-#define MEM_H
+// board.h - Memory layout constants for QEMU virt board
+#ifndef BOARD_H
+#define BOARD_H
 
 // Address space
 #define KERNEL_BASE 0xFFFF000000000000UL

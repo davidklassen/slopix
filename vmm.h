@@ -1,7 +1,7 @@
-#ifndef MMU_H
-#define MMU_H
+#ifndef VMM_H
+#define VMM_H
 
-#include "mem.h"
+#include "board.h"
 
 // Page table sizes
 #define PTE_PER_TABLE 512
@@ -74,12 +74,14 @@ typedef unsigned long pte_t;
 #define SCTLR_I (1UL << 12) // Instruction cache enable
 
 // User memory layout
-#define USER_STACK 0x0000000080000000UL
+#define USER_STACK 0x0001000000000000UL
 
 // User-space page table management
-pte_t *uvm_create(void);
-void uvm_free(pte_t *pagetable);
-int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
-pte_t *uvm_copy(pte_t *src);
+pte_t *vmm_create(void);
+void vmm_free(pte_t *pagetable);
+int vmm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
+pte_t *vmm_copy(pte_t *src);
+int vmm_validate(pte_t *pagetable, unsigned long va, unsigned long len, int write);
+int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned long max);
 
 #endif

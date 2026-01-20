@@ -2,8 +2,8 @@
 
 #include "test.h"
 #include "proc.h"
-#include "pmem.h"
-#include "mmu.h"
+#include "pmm.h"
+#include "vmm.h"
 
 TEST(proc_alloc_returns_proc) {
 	struct proc *p = proc_alloc();
@@ -12,7 +12,7 @@ TEST(proc_alloc_returns_proc) {
 	ASSERT_EQ(p->pid, 1, "first pid should be 1");
 	ASSERT_NOT_NULL(p->kstack, "kstack should be non-null");
 
-	pmem_free(VA_TO_PA(p->kstack));
+	pmm_free(VA_TO_PA(p->kstack));
 	p->state = UNUSED;
 	return 0;
 }
@@ -25,8 +25,8 @@ TEST(proc_alloc_unique_pids) {
 	ASSERT_NOT_NULL(p2, "second alloc should succeed");
 	ASSERT_NE(p1->pid, p2->pid, "pids should be different");
 
-	pmem_free(VA_TO_PA(p1->kstack));
-	pmem_free(VA_TO_PA(p2->kstack));
+	pmm_free(VA_TO_PA(p1->kstack));
+	pmm_free(VA_TO_PA(p2->kstack));
 	p1->state = UNUSED;
 	p2->state = UNUSED;
 	return 0;
@@ -41,7 +41,7 @@ TEST(proc_create_sets_context) {
 	char *sp = p->kstack + PAGE_SIZE;
 	sp = (char *)((unsigned long)sp & ~0xFUL);
 
-	pmem_free(VA_TO_PA(p->kstack));
+	pmm_free(VA_TO_PA(p->kstack));
 	p->state = UNUSED;
 	return 0;
 }
@@ -54,7 +54,7 @@ TEST(proc_has_usermode_fields) {
 	ASSERT_EQ(p->sz, 0, "sz should be 0");
 	ASSERT_EQ((unsigned long)p->tf, 0, "tf should be null");
 
-	pmem_free(VA_TO_PA(p->kstack));
+	pmm_free(VA_TO_PA(p->kstack));
 	p->state = UNUSED;
 	return 0;
 }

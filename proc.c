@@ -1,7 +1,7 @@
 #include "proc.h"
-#include "pmem.h"
-#include "mmu.h"
-#include "arch.h"
+#include "pmm.h"
+#include "vmm.h"
+#include "cpu.h"
 #include "timer.h"
 
 struct proc procs[NPROC];
@@ -16,7 +16,7 @@ struct proc *proc_alloc(void) {
 		if (p->state == UNUSED) {
 			p->state = RUNNABLE;
 			p->pid = nextpid++;
-			paddr_t pa = pmem_alloc();
+			paddr_t pa = pmm_alloc();
 			if (pa == 0) {
 				p->state = UNUSED;
 				return 0;
@@ -102,10 +102,10 @@ void scheduler(void) {
 			struct proc *p = &procs[i];
 			if (p->state == UNUSED && p->kstack != 0) {
 				if (p->pagetable) {
-					uvm_free(p->pagetable);
+					vmm_free(p->pagetable);
 					p->pagetable = 0;
 				}
-				pmem_free(VA_TO_PA(p->kstack));
+				pmm_free(VA_TO_PA(p->kstack));
 				p->kstack = 0;
 			}
 		}

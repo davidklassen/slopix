@@ -1,7 +1,7 @@
 #ifndef GIC_H
 #define GIC_H
 
-#include "mem.h"
+#include "board.h"
 
 // Legacy names for backward compatibility
 #define GICD_PHYS GICD_PA

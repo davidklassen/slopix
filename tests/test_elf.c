@@ -2,8 +2,8 @@
 
 #include "test.h"
 #include "elf.h"
-#include "mmu.h"
-#include "pmem.h"
+#include "vmm.h"
+#include "pmm.h"
 
 // Minimal synthetic ELF: header + 1 program header + 8 bytes of code
 // Total: 64 + 56 + 8 = 128 bytes
@@ -144,7 +144,7 @@ static const unsigned char minimal_elf[] = {
 };
 
 TEST(elf_load_valid_elf) {
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	unsigned long entry = 0;
 
 	int ret = elf_load((const char *)minimal_elf, sizeof(minimal_elf), pt, &entry);
@@ -152,20 +152,20 @@ TEST(elf_load_valid_elf) {
 	ASSERT_EQ(ret, 0, "elf_load should succeed");
 	ASSERT_EQ(entry, 0x10000, "entry point should be 0x10000");
 
-	uvm_free(pt);
+	vmm_free(pt);
 	return 0;
 }
 
 TEST(elf_load_invalid_magic) {
 	unsigned char bad_elf[] = {0x00, 0x00, 0x00, 0x00};
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	unsigned long entry = 0;
 
 	int ret = elf_load((const char *)bad_elf, sizeof(bad_elf), pt, &entry);
 
 	ASSERT_EQ(ret, -1, "should reject invalid magic");
 
-	uvm_free(pt);
+	vmm_free(pt);
 	return 0;
 }
 
@@ -178,19 +178,19 @@ TEST(elf_load_wrong_machine) {
 	wrong_machine[18] = 0x3e;
 	wrong_machine[19] = 0x00;
 
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	unsigned long entry = 0;
 
 	int ret = elf_load((const char *)wrong_machine, sizeof(wrong_machine), pt, &entry);
 
 	ASSERT_EQ(ret, -1, "should reject wrong machine type");
 
-	uvm_free(pt);
+	vmm_free(pt);
 	return 0;
 }
 
 TEST(elf_load_truncated) {
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	unsigned long entry = 0;
 
 	// Only pass 32 bytes (less than ELF header size)
@@ -198,12 +198,12 @@ TEST(elf_load_truncated) {
 
 	ASSERT_EQ(ret, -1, "should reject truncated ELF");
 
-	uvm_free(pt);
+	vmm_free(pt);
 	return 0;
 }
 
 TEST(elf_load_maps_page) {
-	pte_t *pt = uvm_create();
+	pte_t *pt = vmm_create();
 	unsigned long entry = 0;
 
 	elf_load((const char *)minimal_elf, sizeof(minimal_elf), pt, &entry);
@@ -220,7 +220,7 @@ TEST(elf_load_maps_page) {
 
 	ASSERT_NE(l3[l3_idx], 0, "page should be mapped");
 
-	uvm_free(pt);
+	vmm_free(pt);
 	return 0;
 }
 

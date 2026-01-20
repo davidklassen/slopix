@@ -18,8 +18,8 @@ OBJ = \
 	exception.o \
 	gic.o \
 	timer.o \
-	mmu.o \
-	pmem.o \
+	vmm.o \
+	pmm.o \
 	proc.o \
 	switch.o \
 	syscall.o \
@@ -34,10 +34,10 @@ TEST_OBJ = \
 	tests/test_kprintf.o \
 	tests/test_exception.o \
 	tests/test_timer.o \
-	tests/test_mmu.o \
-	tests/test_pmem.o \
+	tests/test_vmm.o \
+	tests/test_pmm.o \
 	tests/test_proc.o \
-	tests/test_uvm.o \
+	tests/test_vmm_user.o \
 	tests/test_elf.o \
 	tests/test_initramfs.o
 
@@ -45,7 +45,7 @@ KERNEL = kernel.elf
 
 QEMU = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 
-.PHONY: all clean run test tidy
+.PHONY: all clean run debug test tidy
 
 all: $(KERNEL)
 
@@ -69,13 +69,16 @@ initramfs_data.o: cmd/initramfs.bin
 run: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL)
 
+debug: clean $(KERNEL)
+	$(QEMU) -kernel $(KERNEL) -s -S
+
 test: CFLAGS += -DRUN_TESTS
 test: clean $(OBJ) $(TEST_OBJ)
 	$(LD) $(LDFLAGS) -o $(KERNEL) $(OBJ) $(TEST_OBJ)
 	$(QEMU) -kernel $(KERNEL)
 
 clean:
-	rm -f $(OBJ) $(TEST_OBJ) $(KERNEL)
+	rm -f *.o *.elf tests/*.o tests/*.elf
 	$(MAKE) -C cmd clean
 
 tidy:

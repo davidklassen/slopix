@@ -1,4 +1,4 @@
-#include "pmem.h"
+#include "pmm.h"
 
 extern char __stack_top[];
 
@@ -16,7 +16,7 @@ static void zero_page(paddr_t pa) {
 	}
 }
 
-void pmem_init(void) {
+void pmm_init(void) {
 	// __stack_top is now a high VA, convert to PA
 	paddr_t start = PAGE_ALIGN(VA_TO_PA((paddr_t)__stack_top));
 	paddr_t end = RAM_BASE + RAM_SIZE;
@@ -25,11 +25,11 @@ void pmem_init(void) {
 	free_count = 0;
 
 	for (paddr_t pa = start; pa + PAGE_SIZE <= end; pa += PAGE_SIZE) {
-		pmem_free(pa);
+		pmm_free(pa);
 	}
 }
 
-paddr_t pmem_alloc(void) {
+paddr_t pmm_alloc(void) {
 	struct run *r = freelist;
 	if (!r) {
 		return 0;
@@ -42,7 +42,7 @@ paddr_t pmem_alloc(void) {
 	return pa;
 }
 
-void pmem_free(paddr_t pa) {
+void pmm_free(paddr_t pa) {
 	if (pa < RAM_BASE || pa >= RAM_BASE + RAM_SIZE) {
 		return;
 	}
@@ -58,6 +58,6 @@ void pmem_free(paddr_t pa) {
 	free_count++;
 }
 
-unsigned long pmem_free_count(void) {
+unsigned long pmm_free_count(void) {
 	return free_count;
 }

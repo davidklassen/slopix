@@ -1,6 +1,6 @@
 #include "timer.h"
 #include "gic.h"
-#include "arch.h"
+#include "cpu.h"
 #include "proc.h"
 
 #define CNTP_CTL_ENABLE (1 << 0)

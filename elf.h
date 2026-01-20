@@ -1,7 +1,7 @@
 #ifndef ELF_H
 #define ELF_H
 
-#include "mmu.h"
+#include "vmm.h"
 
 #define ELF_MAGIC 0x464C457F
 

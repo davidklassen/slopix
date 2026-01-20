@@ -5,15 +5,19 @@
 #include "kprintf.h"
 #include "initramfs.h"
 #include "elf.h"
-#include "pmem.h"
-#include "arch.h"
+#include "pmm.h"
+#include "cpu.h"
+#include "vmm.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd != 1) {
 		return -1;
 	}
 
-	// TODO: validate user pointer
+	if (vmm_validate(current->pagetable, (unsigned long)buf, len, 0) < 0) {
+		return -1;
+	}
+
 	for (unsigned long i = 0; i < len; i++) {
 		uart_putc(buf[i]);
 	}
@@ -21,7 +25,7 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
-	kprintf("Process %d exited with status %d\n", current->pid, status);
+	(void)status;
 	if (current->parent) {
 		current->state = ZOMBIE;
 	} else {
@@ -36,7 +40,10 @@ static long sys_read(int fd, char *buf, unsigned long len) {
 		return -1;
 	}
 
-	// TODO: validate user pointer
+	if (vmm_validate(current->pagetable, (unsigned long)buf, len, 1) < 0) {
+		return -1;
+	}
+
 	unsigned long i = 0;
 	while (i < len) {
 		int c = uart_getc_nb();
@@ -62,13 +69,11 @@ static long sys_getpid(void) {
 }
 
 static long sys_exec(const char *cmdline) {
-	// Copy command line to kernel buffer
+	// Safely copy command line from user space
 	char kcmd[128];
-	int i;
-	for (i = 0; i < 127 && cmdline[i]; i++) {
-		kcmd[i] = cmdline[i];
+	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 128) < 0) {
+		return -1;
 	}
-	kcmd[i] = '\0';
 
 	// Parse into argv (max 16 args)
 	char *argv[16];
@@ -101,26 +106,26 @@ static long sys_exec(const char *cmdline) {
 		return -1;
 	}
 
-	pte_t *new_pt = uvm_create();
+	pte_t *new_pt = vmm_create();
 	if (!new_pt) {
 		return -1;
 	}
 
 	unsigned long entry_addr;
 	if (elf_load(entry.data, entry.size, new_pt, &entry_addr) < 0) {
-		uvm_free(new_pt);
+		vmm_free(new_pt);
 		return -1;
 	}
 
-	paddr_t stack_pa = pmem_alloc();
+	paddr_t stack_pa = pmm_alloc();
 	if (stack_pa == 0) {
-		uvm_free(new_pt);
+		vmm_free(new_pt);
 		return -1;
 	}
 
-	if (uvm_map_page(new_pt, USER_STACK - PAGE_SIZE, stack_pa, 1, 0) < 0) {
-		pmem_free(stack_pa);
-		uvm_free(new_pt);
+	if (vmm_map_page(new_pt, USER_STACK - PAGE_SIZE, stack_pa, 1, 0) < 0) {
+		pmm_free(stack_pa);
+		vmm_free(new_pt);
 		return -1;
 	}
 
@@ -168,7 +173,7 @@ static long sys_exec(const char *cmdline) {
 	write_ttbr0_el1(VA_TO_PA(new_pt));
 	tlbi_vmalle1();
 	if (old_pt) {
-		uvm_free(old_pt);
+		vmm_free(old_pt);
 	}
 
 	// Update trap frame for new program
@@ -180,14 +185,14 @@ static long sys_exec(const char *cmdline) {
 }
 
 static long sys_fork(void) {
-	pte_t *child_pt = uvm_copy(current->pagetable);
+	pte_t *child_pt = vmm_copy(current->pagetable);
 	if (child_pt == 0) {
 		return -1;
 	}
 
 	struct proc *child = proc_alloc();
 	if (child == 0) {
-		uvm_free(child_pt);
+		vmm_free(child_pt);
 		return -1;
 	}
 

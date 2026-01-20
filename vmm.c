@@ -1,10 +1,10 @@
-// mmu.c - User page table management
+// vmm.c - User page table management
 //
 // Kernel page tables are now static (defined in tables.S).
 // This file only handles dynamic user-space page tables.
 
-#include "mmu.h"
-#include "pmem.h"
+#include "vmm.h"
+#include "pmm.h"
 
 // Create a table descriptor pointing to next-level table
 static pte_t make_table_desc(paddr_t next_table_pa) {
@@ -37,7 +37,7 @@ static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 			if (!alloc) {
 				return 0;
 			}
-			paddr_t pa = pmem_alloc();
+			paddr_t pa = pmm_alloc();
 			if (pa == 0) {
 				return 0;
 			}
@@ -50,7 +50,7 @@ static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 }
 
 // Map a single 4KB page in a user page table
-int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec) {
+int vmm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec) {
 	pte_t *pte = walk(pagetable, va, 1);
 	if (pte == 0) {
 		return -1;
@@ -63,8 +63,8 @@ int uvm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int 
 }
 
 // Allocate an empty user page table (just L0)
-pte_t *uvm_create(void) {
-	paddr_t pa = pmem_alloc();
+pte_t *vmm_create(void) {
+	paddr_t pa = pmm_alloc();
 	if (pa == 0) {
 		return 0;
 	}
@@ -85,21 +85,21 @@ static void freewalk(pte_t *pagetable, int level) {
 			// Table descriptor, recurse then free table
 			pte_t *child = (pte_t *)PA_TO_VA(pa);
 			freewalk(child, level + 1);
-			pmem_free(pa);
+			pmm_free(pa);
 		} else {
 			// L3 entry points to data page
-			pmem_free(pa);
+			pmm_free(pa);
 		}
 	}
 }
 
 // Free a user page table and all its pages
-void uvm_free(pte_t *pagetable) {
+void vmm_free(pte_t *pagetable) {
 	if (pagetable == 0) {
 		return;
 	}
 	freewalk(pagetable, 0);
-	pmem_free(VA_TO_PA(pagetable));
+	pmm_free(VA_TO_PA(pagetable));
 }
 
 // Helper to copy page data
@@ -123,7 +123,7 @@ static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
 
 		if (level < 3) {
 			// Table descriptor: allocate new table and recurse
-			paddr_t dst_pa = pmem_alloc();
+			paddr_t dst_pa = pmm_alloc();
 			if (dst_pa == 0) {
 				return -1;
 			}
@@ -146,7 +146,7 @@ static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
 			}
 		} else {
 			// L3 entry: allocate new page and copy data
-			paddr_t dst_pa = pmem_alloc();
+			paddr_t dst_pa = pmm_alloc();
 			if (dst_pa == 0) {
 				return -1;
 			}
@@ -159,16 +159,117 @@ static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
 }
 
 // Copy a user page table and all its pages
-pte_t *uvm_copy(pte_t *src) {
-	pte_t *dst = uvm_create();
+pte_t *vmm_copy(pte_t *src) {
+	pte_t *dst = vmm_create();
 	if (dst == 0) {
 		return 0;
 	}
 
 	if (copywalk(dst, src, 0, 0) < 0) {
-		uvm_free(dst);
+		vmm_free(dst);
 		return 0;
 	}
 
 	return dst;
+}
+
+// Validate a single user page for read access
+// Returns 0 if valid, -1 if invalid
+static int validate_page(pte_t *pagetable, unsigned long va) {
+	if (va >= USER_STACK) {
+		return -1;
+	}
+
+	pte_t *pte = walk(pagetable, va, 0);
+	if (pte == 0 || (*pte & PTE_VALID) == 0) {
+		return -1;
+	}
+
+	// Check user access (AP[0] must be set for EL0 access)
+	if ((*pte & PTE_AP_RW_ALL) == 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+// Validate user pointer range
+// Returns 0 if valid, -1 if invalid
+// write=1 means we need write permission, write=0 means read-only is ok
+int vmm_validate(pte_t *pagetable, unsigned long va, unsigned long len, int write) {
+	if (len == 0) {
+		return 0;
+	}
+
+	// Check for overflow
+	if (va + len < va) {
+		return -1;
+	}
+
+	// Check address is in user space (below the hole)
+	if (va >= USER_STACK || va + len > USER_STACK) {
+		return -1;
+	}
+
+	// Check each page in the range
+	unsigned long start = va & ~(PAGE_SIZE - 1);
+	unsigned long end = (va + len - 1) & ~(PAGE_SIZE - 1);
+
+	for (unsigned long page = start; page <= end; page += PAGE_SIZE) {
+		pte_t *pte = walk(pagetable, page, 0);
+		if (pte == 0 || (*pte & PTE_VALID) == 0) {
+			return -1;
+		}
+
+		// Check user access (AP[0] must be set for EL0 access)
+		if ((*pte & PTE_AP_RW_ALL) == 0) {
+			return -1;
+		}
+
+		// If write access needed, check not read-only (AP[1] must be clear)
+		if (write && (*pte & (2UL << 6))) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+// Safely copy a null-terminated string from user space to kernel buffer
+// Returns string length on success, -1 on failure
+int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned long max) {
+	unsigned long i = 0;
+	unsigned long cur_page = srcva & ~(PAGE_SIZE - 1);
+
+	// Validate first page
+	if (validate_page(pagetable, srcva) < 0) {
+		return -1;
+	}
+
+	while (i < max - 1) {
+		unsigned long addr = srcva + i;
+
+		// Check if we crossed into a new page
+		unsigned long page = addr & ~(PAGE_SIZE - 1);
+		if (page != cur_page) {
+			if (validate_page(pagetable, addr) < 0) {
+				return -1;
+			}
+			cur_page = page;
+		}
+
+		// Get physical address and read byte
+		pte_t *pte = walk(pagetable, addr, 0);
+		paddr_t pa = (*pte & PTE_ADDR_MASK) + (addr & (PAGE_SIZE - 1));
+		char c = *(char *)PA_TO_VA(pa);
+
+		dst[i] = c;
+		if (c == '\0') {
+			return i;
+		}
+		i++;
+	}
+
+	dst[i] = '\0';
+	return i;
 }

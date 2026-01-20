@@ -1,10 +1,10 @@
 #ifdef RUN_TESTS
 
 #include "test.h"
-#include "arch.h"
-#include "mmu.h"
+#include "cpu.h"
+#include "vmm.h"
 #include "uart.h"
-#include "pmem.h"
+#include "pmm.h"
 
 TEST(mmu_enabled) {
 	unsigned long sctlr = read_sctlr_el1();
@@ -78,7 +78,7 @@ TEST(va_pa_roundtrip) {
 	return 0;
 }
 
-TEST_SUITE(mmu) {
+TEST_SUITE(vmm) {
 	RUN_TEST(mmu_enabled);
 	RUN_TEST(cache_enabled);
 	RUN_TEST(tcr_configured);

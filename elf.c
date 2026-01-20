@@ -1,6 +1,6 @@
 #include "elf.h"
-#include "pmem.h"
-#include "mem.h"
+#include "pmm.h"
+#include "board.h"
 
 static void memcpy(void *dst, const void *src, unsigned long n) {
 	char *d = dst;
@@ -56,7 +56,7 @@ int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned lo
 
 		for (unsigned long page_va = va_start; page_va < va_end;
 		     page_va += PAGE_SIZE) {
-			paddr_t pa = pmem_alloc();
+			paddr_t pa = pmm_alloc();
 			if (pa == 0) {
 				return -1;
 			}
@@ -79,7 +79,7 @@ int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned lo
 				       copy_len);
 			}
 
-			if (uvm_map_page(pagetable, page_va, pa, write, exec) <
+			if (vmm_map_page(pagetable, page_va, pa, write, exec) <
 			    0) {
 				return -1;
 			}

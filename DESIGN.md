@@ -33,6 +33,34 @@ Page tables are statically defined in tables.S:
 - Identity tables (TTBR0): VA = PA for boot code
 - Kernel tables (TTBR1): VA = PA + 0xFFFF_0000_0000_0000
 
+## Subsystems
+
+| Subsystem | Files | Prefix | Description |
+|-----------|-------|--------|-------------|
+| CPU | cpu.h | - | CPU primitives (wfi, isb, irq control, system registers) |
+| Board | board.h | - | QEMU virt constants (addresses, PA/VA conversion) |
+| UART | uart.c/h | uart_ | PL011 serial driver |
+| GIC | gic.c/h | gic_ | GICv2 interrupt controller driver |
+| Timer | timer.c/h | timer_ | ARM Generic Timer driver |
+| Exception | exception.c, vectors.S | - | Exception dispatch and trap frame handling |
+| PMM | pmm.c/h | pmm_ | Physical memory manager (page allocator) |
+| VMM | vmm.c/h | vmm_ | Virtual memory manager (user page tables) |
+| Process | proc.c/h, switch.S | proc_, swtch | Process management and scheduling |
+| Syscall | syscall.c | sys_ | System call implementations |
+| ELF | elf.c/h | elf_ | ELF binary loader |
+| InitRAMFS | initramfs.c/h | initramfs_ | Initial RAM filesystem |
+| Utilities | kprintf.c/h | kprintf, kpanic, ksleep | Kernel utilities (k-prefix) |
+
+### API Conventions
+
+Function naming: `subsystem_action()` (e.g., `pmm_alloc`, `vmm_map_page`, `timer_init`)
+
+Return values:
+- Pointers: NULL on failure
+- Integers: 0 on success, -1 on failure
+
+Kernel utilities use `k` prefix to distinguish from userspace equivalents.
+
 ## Memory Map
 
 ### Physical Memory (QEMU virt)
@@ -58,10 +86,8 @@ Hardware selects TTBR based on bit 63 of virtual address.
 
 ```
 User (TTBR0, per-process):
-0x0000_0000_0000_0000   Code (.text)
-0x0000_0000_0040_0000   Data (.data, .bss)
-0x0000_0000_8000_0000   Heap (grows up)
-0x0000_7FFF_FFFF_F000   Stack (grows down)
+0x0000_0000_0001_0000   Code (.text) - starts at 64KB to catch NULL derefs
+0x0001_0000_0000_0000   Stack (grows down from top of user space)
 
 Kernel (TTBR1, shared):
 0xFFFF_0000_0000_0000   Direct map of all physical RAM
@@ -350,28 +376,35 @@ struct dirent {
 
 ## System Call Table
 
+Implemented syscalls:
+
 | x8 | Name | x0 | x1 | x2 | Return |
 |----|------|----|----|-----|--------|
-| 0 | fork | - | - | - | child pid or 0 |
+| 0 | write | fd | buf | n | bytes written |
 | 1 | exit | status | - | - | - |
-| 2 | wait | &status | - | - | child pid |
-| 3 | pipe | fds[2] | - | - | 0 or -1 |
-| 4 | read | fd | buf | n | bytes read |
-| 5 | write | fd | buf | n | bytes written |
-| 6 | close | fd | - | - | 0 or -1 |
-| 7 | kill | pid | - | - | 0 or -1 |
-| 8 | exec | path | argv | - | -1 on error |
-| 9 | open | path | flags | - | fd or -1 |
-| 10 | mknod | path | major | minor | 0 or -1 |
-| 11 | unlink | path | - | - | 0 or -1 |
+| 2 | read | fd | buf | n | bytes read |
+| 3 | sleep | ms | - | - | 0 |
+| 4 | getpid | - | - | - | pid |
+| 5 | fork | - | - | - | child pid or 0 |
+| 6 | wait | - | - | - | child pid |
+| 7 | exec | cmdline | - | - | argc or -1 |
+
+Planned syscalls (for filesystem):
+
+| x8 | Name | x0 | x1 | x2 | Return |
+|----|------|----|----|-----|--------|
+| 8 | open | path | flags | - | fd or -1 |
+| 9 | close | fd | - | - | 0 or -1 |
+| 10 | pipe | fds[2] | - | - | 0 or -1 |
+| 11 | dup | fd | - | - | new fd |
 | 12 | fstat | fd | &stat | - | 0 or -1 |
-| 13 | link | old | new | - | 0 or -1 |
-| 14 | mkdir | path | - | - | 0 or -1 |
-| 15 | chdir | path | - | - | 0 or -1 |
-| 16 | dup | fd | - | - | new fd |
-| 17 | getpid | - | - | - | pid |
+| 13 | mkdir | path | - | - | 0 or -1 |
+| 14 | chdir | path | - | - | 0 or -1 |
+| 15 | mknod | path | major | minor | 0 or -1 |
+| 16 | link | old | new | - | 0 or -1 |
+| 17 | unlink | path | - | - | 0 or -1 |
 | 18 | sbrk | n | - | - | old break |
-| 19 | sleep | ticks | - | - | 0 |
+| 19 | kill | pid | - | - | 0 or -1 |
 | 20 | uptime | - | - | - | ticks |
 
 ## Virtio Block Device
