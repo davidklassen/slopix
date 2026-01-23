@@ -67,27 +67,27 @@ Negotiate device features and transition through status bits.
 
 **Exit criteria**: Boot prints "virtio-blk: capacity = N sectors". All feature tests pass.
 
-### M3: Virtqueue Setup
+### M3: Virtqueue Setup ✓
 
 Allocate and configure the request virtqueue.
 
-- [ ] Define virtqueue structures:
+- [x] Define virtqueue structures:
   - `struct virtq_desc` (16 bytes)
   - `struct virtq_avail` (6 + 2*N bytes)
   - `struct virtq_used` (6 + 8*N bytes)
-- [ ] Choose queue size (8 is sufficient for simple use)
-- [ ] Allocate contiguous pages for virtqueue
-- [ ] Zero the memory
-- [ ] Configure queue registers:
+- [x] Choose queue size (8 is sufficient for simple use)
+- [x] Allocate contiguous pages for virtqueue
+- [x] Zero the memory
+- [x] Configure queue registers:
   - Write GuestPageSize (4096)
   - Write QueueSel (0)
   - Verify QueueNumMax >= our size
   - Write QueueNum
   - Write QueueAlign (4096)
   - Write QueuePFN
-- [ ] Set DRIVER_OK status bit
-- [ ] Initialize descriptor free list
-- [ ] Add `virtio_queue` suite (4 tests)
+- [x] Set DRIVER_OK status bit
+- [x] Initialize descriptor free list
+- [x] Add `virtio_queue` suite (4 tests)
 
 **Exit criteria**: Device status remains DRIVER_OK after setup. All queue tests pass.
 

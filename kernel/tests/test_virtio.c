@@ -35,8 +35,9 @@ TEST_SUITE(virtio) {
 // M2: Feature negotiation (read-only, verify virtio_init set correct state)
 
 TEST(virtio_status_initialized) {
-	unsigned int expected = VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER;
-	ASSERT_EQ(VIRTIO_REG(VIRTIO_MMIO_STATUS), expected, "Status should be ACKNOWLEDGE|DRIVER");
+	unsigned int required = VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER;
+	unsigned int status = VIRTIO_REG(VIRTIO_MMIO_STATUS);
+	ASSERT((status & required) == required, "Status should have ACKNOWLEDGE|DRIVER");
 	return 0;
 }
 
@@ -51,6 +52,42 @@ TEST(virtio_config_capacity) {
 TEST_SUITE(virtio_features) {
 	RUN_TEST(virtio_status_initialized);
 	RUN_TEST(virtio_config_capacity);
+}
+
+// M3: Virtqueue setup (read-only, verify virtio_init configured queue)
+
+TEST(virtio_queue_num_max) {
+	VIRTIO_REG(VIRTIO_MMIO_QUEUE_SEL) = 0;
+	unsigned int num_max = VIRTIO_REG(VIRTIO_MMIO_QUEUE_NUM_MAX);
+	ASSERT(num_max > 0, "QueueNumMax should be > 0");
+	return 0;
+}
+
+TEST(virtio_queue_alloc) {
+	unsigned int status = VIRTIO_REG(VIRTIO_MMIO_STATUS);
+	ASSERT_EQ(status & VIRTIO_STATUS_DRIVER_OK, VIRTIO_STATUS_DRIVER_OK, "DRIVER_OK implies queue alloc succeeded");
+	return 0;
+}
+
+TEST(virtio_queue_pfn_written) {
+	VIRTIO_REG(VIRTIO_MMIO_QUEUE_SEL) = 0;
+	unsigned int pfn = VIRTIO_REG(VIRTIO_MMIO_QUEUE_PFN);
+	ASSERT(pfn != 0, "QueuePFN should be non-zero after setup");
+	return 0;
+}
+
+TEST(virtio_status_driver_ok) {
+	unsigned int expected =
+	    VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_DRIVER_OK;
+	ASSERT_EQ(VIRTIO_REG(VIRTIO_MMIO_STATUS), expected, "Status should be ACKNOWLEDGE|DRIVER|DRIVER_OK");
+	return 0;
+}
+
+TEST_SUITE(virtio_queue) {
+	RUN_TEST(virtio_queue_num_max);
+	RUN_TEST(virtio_queue_alloc);
+	RUN_TEST(virtio_queue_pfn_written);
+	RUN_TEST(virtio_status_driver_ok);
 }
 
 #endif
