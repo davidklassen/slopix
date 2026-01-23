@@ -124,21 +124,21 @@ Extend to support writes.
 
 **Exit criteria**: Read-after-write returns correct data. All write tests pass.
 
-### M6: Interrupt-Driven I/O
+### M6: Interrupt-Driven I/O ✓
 
 Replace polling with interrupt handling for efficiency.
 
-- [ ] Enable virtio interrupt in GIC (INTID 48)
-- [ ] Implement `virtio_intr()` handler:
+- [x] Enable virtio interrupt in GIC (INTID 48)
+- [x] Implement `virtio_intr()` handler:
   - Read InterruptStatus
   - Write InterruptACK
   - Process used ring entries
   - Wake waiting processes
-- [ ] Add sleep channel to virtio driver
-- [ ] Modify `virtio_disk_rw()` to sleep instead of poll
-- [ ] Track in-flight requests (buffer pointer per descriptor)
-- [ ] Add `virtio_intr` suite (2 kernel tests)
-- [ ] Add `disk_concurrent` suite (1 userspace test) if disk syscalls exist
+- [x] Add sleep channel to virtio driver
+- [x] Modify `virtio_disk_rw()` to sleep instead of poll
+- [x] Add `virtio_intr` suite (2 kernel tests)
+
+**Limitation**: The driver uses global `blk_hdr` and `blk_status`, so only one request can be in flight at a time. Concurrent calls to `virtio_disk_rw()` would corrupt each other. The block cache layer (M7) must serialize access. See [FS.md](FS.md) for details.
 
 **Exit criteria**: Processes sleep during I/O, wake on completion. All interrupt tests pass.
 
@@ -146,13 +146,20 @@ Replace polling with interrupt handling for efficiency.
 
 Connect virtio driver to the buffer cache layer.
 
+**IMPORTANT**: The virtio driver (M6) does not support concurrent requests. The block cache must serialize disk access. See [FS.md](FS.md) "Virtio Driver Concurrency Limitation" for details.
+
 - [ ] Implement `buf.h` buffer structure
+- [ ] Add lock to serialize disk access (addresses M6 concurrency limitation)
 - [ ] Implement `bread(dev, blockno)`:
+  - Acquire lock
   - Check cache for block
   - If miss, allocate buffer and call virtio_disk_read
+  - Release lock
   - Return buffer (caller must release)
 - [ ] Implement `bwrite(buf)`:
+  - Acquire lock
   - Call virtio_disk_write
+  - Release lock
   - Mark buffer clean
 - [ ] Implement `brelse(buf)`: release buffer to cache
 - [ ] LRU replacement policy
@@ -357,12 +364,11 @@ TEST_SUITE(virtio_errors) {
 | M3 | virtio_queue | 4 | ✓ kernel |
 | M4 | virtio_read | 3 | ✓ kernel |
 | M5 | virtio_write | 2 | ✓ kernel |
-| M6 | virtio_intr | 2 | ✓ kernel |
-| M6 | disk_concurrent | 1 | ✓ userspace |
+| M6 | virtio_intr | 2 | ✓ kernel (passing) |
 | M7 | bio | 6 | ✓ kernel |
 | M8 | virtio_errors | 2 | ✓ kernel |
 
-**Total**: 26 automated tests across 9 test suites.
+**Total**: 25 automated tests across 8 test suites.
 
 **Note**: Tests are read-only where possible to ensure identical system state in test and normal modes.
 

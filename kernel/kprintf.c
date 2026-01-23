@@ -1,4 +1,5 @@
 #include "kprintf.h"
+#include "cpu.h"
 #include "uart.h"
 
 typedef __builtin_va_list va_list;
@@ -203,6 +204,6 @@ __attribute__((noreturn)) void kpanic(const char *fmt, ...) {
 	uart_puts(buf);
 	uart_puts("System halted.\n");
 	for (;;) {
-		__asm__ volatile("wfe");
+		wfe();
 	}
 }

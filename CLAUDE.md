@@ -17,7 +17,7 @@ make run  - always times out (no exit), kill background shell after
 - Use // style (except linker scripts which only support /* */)
 - Use named constants instead of magic numbers
 - Comments are for things that can't be expressed in code: external references, specs, non-obvious "why"
-- Don't reference implementation phases, plans, or future work - comments describe the code as it is, not what it will become
+- Don't reference implementation phases, milestones, or plan labels (e.g., "M4", "Phase 2") - these become meaningless over time
 
 ## After Modifying Code
 

@@ -21,6 +21,8 @@
 #define VIRTIO_MMIO_QUEUE_ALIGN		0x03c
 #define VIRTIO_MMIO_QUEUE_PFN		0x040
 #define VIRTIO_MMIO_QUEUE_NOTIFY	0x050
+#define VIRTIO_MMIO_INTERRUPT_STATUS	0x060
+#define VIRTIO_MMIO_INTERRUPT_ACK	0x064
 #define VIRTIO_MMIO_STATUS		0x070
 #define VIRTIO_MMIO_CONFIG		0x100
 
@@ -50,6 +52,9 @@
 #define VIRTIO_BLK_S_OK	    0
 #define VIRTIO_BLK_S_IOERR  1
 #define VIRTIO_BLK_S_UNSUPP 2
+
+// VIRTIO0 interrupt (SPI 16 = INTID 48)
+#define VIRTIO_IRQ 48
 
 // Block request header
 struct virtio_blk_outhdr {
@@ -84,6 +89,8 @@ struct virtq_used {
 
 // API
 void virtio_init(void);
+void virtio_init_irq(void);
+void virtio_intr(void);
 int virtio_probe(void);
 void virtio_reset(void);
 int virtio_disk_read(unsigned long sector, void *buf);

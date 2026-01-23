@@ -21,6 +21,7 @@ DECLARE_SUITE(virtio_features);
 DECLARE_SUITE(virtio_queue);
 DECLARE_SUITE(virtio_read);
 DECLARE_SUITE(virtio_write);
+DECLARE_SUITE(virtio_intr);
 
 void kernel_main(void) {
 	uart_init();
@@ -43,8 +44,10 @@ void kernel_main(void) {
 	gic_init();
 	timer_init();
 	uart_init_irq();
+	virtio_init_irq();
 	enable_irq();
 	RUN_SUITE(timer);
+	RUN_SUITE(virtio_intr);
 
 	TEST_REPORT();
 

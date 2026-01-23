@@ -41,16 +41,14 @@ TEST(identity_va_accessible) {
 }
 
 TEST(kernel_runs_from_high_address) {
-	unsigned long pc;
-	__asm__ volatile("adr %0, ." : "=r"(pc));
+	unsigned long pc = read_pc();
 	ASSERT((pc >> 48) == 0xFFFF, "Kernel must run at high VA");
 	return 0;
 }
 
 TEST(ttbr0_and_ttbr1_are_different) {
-	unsigned long ttbr0, ttbr1;
-	__asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr0));
-	__asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
+	unsigned long ttbr0 = read_ttbr0_el1();
+	unsigned long ttbr1 = read_ttbr1_el1();
 	// Use PTE_ADDR_MASK to extract base address (bits [47:12])
 	ASSERT_NE(ttbr0 & PTE_ADDR_MASK, ttbr1 & PTE_ADDR_MASK, "Separate tables");
 	return 0;

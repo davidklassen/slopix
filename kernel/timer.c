@@ -9,14 +9,6 @@
 static unsigned long timer_period;
 static volatile unsigned long ticks;
 
-static inline void write_cntp_tval_el0(unsigned long v) {
-	__asm__ volatile("msr cntp_tval_el0, %0" : : "r"(v));
-}
-
-static inline void write_cntp_ctl_el0(unsigned long v) {
-	__asm__ volatile("msr cntp_ctl_el0, %0" : : "r"(v));
-}
-
 void timer_init(void) {
 	unsigned long freq = read_cntfrq_el0();
 

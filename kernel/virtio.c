@@ -1,11 +1,16 @@
 #include "virtio.h"
+#include "cpu.h"
 #include "kprintf.h"
 #include "pmm.h"
+#include "gic.h"
+#include "proc.h"
 
 static struct virtq_desc *desc;
 static struct virtq_avail *avail;
 static struct virtq_used *used;
 static unsigned short free_head;
+static unsigned short last_used_idx;
+static char virtio_disk_chan;
 
 static struct virtio_blk_outhdr blk_hdr;
 static unsigned char blk_status;
@@ -122,12 +127,29 @@ void virtio_init(void) {
 		return;
 	}
 
-	__asm__ volatile("dsb sy");
+	last_used_idx = 0;
+
+	dsb();
 
 	VIRTIO_REG(VIRTIO_MMIO_STATUS) =
 	    VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_DRIVER_OK;
 
 	kprintf("virtio-blk: capacity = %lu sectors (vendor %x)\n", capacity, vendor);
+}
+
+void virtio_init_irq(void) {
+	gic_enable_irq(VIRTIO_IRQ);
+}
+
+void virtio_intr(void) {
+	unsigned int status = VIRTIO_REG(VIRTIO_MMIO_INTERRUPT_STATUS);
+	VIRTIO_REG(VIRTIO_MMIO_INTERRUPT_ACK) = status;
+
+	while (last_used_idx != used->idx) {
+		last_used_idx++;
+	}
+
+	wakeup(&virtio_disk_chan);
 }
 
 static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
@@ -167,15 +189,19 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 	blk_status = 0xFF;
 
 	avail->ring[avail->idx % VIRTIO_QUEUE_SIZE] = idx[0];
-	__asm__ volatile("dsb sy");
+	dsb();
 	avail->idx++;
-	__asm__ volatile("dsb sy");
+	dsb();
 
 	unsigned short last_used = used->idx;
 	VIRTIO_REG(VIRTIO_MMIO_QUEUE_NOTIFY) = 0;
 
 	while (used->idx == last_used) {
-		__asm__ volatile("nop");
+		if (current) {
+			sleep(&virtio_disk_chan);
+		} else {
+			nop();
+		}
 	}
 
 	for (int i = 0; i < 3; i++) {

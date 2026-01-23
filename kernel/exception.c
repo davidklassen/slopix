@@ -3,6 +3,7 @@
 #include "gic.h"
 #include "timer.h"
 #include "uart.h"
+#include "virtio.h"
 #include "kprintf.h"
 #include "syscall.h"
 
@@ -139,6 +140,8 @@ void irq_handler(struct trap_frame *tf) {
 		timer_handler();
 	} else if (intid == UART_IRQ) {
 		uart_irq_handler();
+	} else if (intid == VIRTIO_IRQ) {
+		virtio_intr();
 	} else if (intid != GIC_SPURIOUS_INTID) {
 		kprintf("Unhandled IRQ: %u\n", intid);
 	}

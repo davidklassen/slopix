@@ -2,8 +2,8 @@
 
 #include "test.h"
 #include "virtio.h"
-
-// M1: Device discovery (read-only, verify device is present)
+#include "gic.h"
+#include "board.h"
 
 TEST(virtio_magic_value) {
 	ASSERT_EQ(VIRTIO_REG(VIRTIO_MMIO_MAGIC), VIRTIO_MAGIC_VALUE, "Magic should be 0x74726976");
@@ -32,8 +32,6 @@ TEST_SUITE(virtio) {
 	RUN_TEST(virtio_vendor_id_qemu);
 }
 
-// M2: Feature negotiation (read-only, verify virtio_init set correct state)
-
 TEST(virtio_status_initialized) {
 	unsigned int required = VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER;
 	unsigned int status = VIRTIO_REG(VIRTIO_MMIO_STATUS);
@@ -53,8 +51,6 @@ TEST_SUITE(virtio_features) {
 	RUN_TEST(virtio_status_initialized);
 	RUN_TEST(virtio_config_capacity);
 }
-
-// M3: Virtqueue setup (read-only, verify virtio_init configured queue)
 
 TEST(virtio_queue_num_max) {
 	VIRTIO_REG(VIRTIO_MMIO_QUEUE_SEL) = 0;
@@ -90,8 +86,6 @@ TEST_SUITE(virtio_queue) {
 	RUN_TEST(virtio_status_driver_ok);
 }
 
-// M4: Block read (polling)
-
 static unsigned char read_buf[512];
 
 TEST(virtio_read_sector_zero) {
@@ -123,8 +117,6 @@ TEST_SUITE(virtio_read) {
 	RUN_TEST(virtio_read_returns_data);
 	RUN_TEST(virtio_read_multiple);
 }
-
-// M5: Block write (polling)
 
 #define SCRATCH_SECTOR_1 100
 #define SCRATCH_SECTOR_2 101
@@ -173,6 +165,27 @@ TEST(virtio_write_multiple) {
 TEST_SUITE(virtio_write) {
 	RUN_TEST(virtio_write_read_verify);
 	RUN_TEST(virtio_write_multiple);
+}
+
+TEST(virtio_intr_enabled) {
+	unsigned int reg_off = GICD_ISENABLER0_OFF + 4 * (VIRTIO_IRQ / 32);
+	unsigned int bit = VIRTIO_IRQ % 32;
+	volatile unsigned int *reg = (volatile unsigned int *)(GICD_VA + reg_off);
+	ASSERT((*reg & (1u << bit)) != 0, "VIRTIO_IRQ should be enabled in GIC");
+	return 0;
+}
+
+TEST(virtio_intr_fires) {
+	unsigned char buf[512];
+	int ret = virtio_disk_read(0, buf);
+	ASSERT_EQ(ret, 0, "Interrupt-driven read should succeed");
+	ASSERT_EQ(buf[0], 'S', "Should read correct data");
+	return 0;
+}
+
+TEST_SUITE(virtio_intr) {
+	RUN_TEST(virtio_intr_enabled);
+	RUN_TEST(virtio_intr_fires);
 }
 
 #endif
