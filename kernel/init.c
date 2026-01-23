@@ -5,6 +5,7 @@
 #include "vmm.h"
 #include "pmm.h"
 #include "proc.h"
+#include "fs.h"
 
 void init(const char *program) {
 	struct initramfs_entry entry;
@@ -33,7 +34,18 @@ void init(const char *program) {
 		kpanic("init: failed to map stack");
 	}
 
-	if (proc_create_user(pt, entry_addr, USER_STACK, brk) < 0) {
+	int pid = proc_create_user(pt, entry_addr, USER_STACK, brk);
+	if (pid < 0) {
 		kpanic("init: failed to create process");
+	}
+
+	for (int i = 0; i < NPROC; i++) {
+		if (procs[i].pid == pid) {
+			struct inode *root = iget(0, ROOTINO);
+			ilock(root);
+			iunlock(root);
+			procs[i].cwd = root;
+			break;
+		}
 	}
 }

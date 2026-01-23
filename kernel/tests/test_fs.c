@@ -2,6 +2,7 @@
 
 #include "test.h"
 #include "fs.h"
+#include "proc.h"
 
 static struct superblock test_sb;
 
@@ -84,6 +85,100 @@ TEST_SUITE(fs) {
 	RUN_TEST(fs_ilock_root_type);
 	RUN_TEST(fs_ilock_root_entries);
 	RUN_TEST(fs_bmap_root_direct);
+}
+
+TEST(fs_dir_dot) {
+	struct inode *root = iget(0, ROOTINO);
+	ilock(root);
+	struct inode *dot = dirlookup(root, ".", 0);
+	ASSERT_NOT_NULL(dot, "dirlookup should find '.'");
+	ASSERT_EQ(dot->inum, ROOTINO, "'.' should be root inode");
+	iput(dot);
+	iunlock(root);
+	iput(root);
+	return 0;
+}
+
+TEST(fs_dir_dotdot) {
+	struct inode *root = iget(0, ROOTINO);
+	ilock(root);
+	struct inode *dotdot = dirlookup(root, "..", 0);
+	ASSERT_NOT_NULL(dotdot, "dirlookup should find '..'");
+	ASSERT_EQ(dotdot->inum, ROOTINO, "'..' should be root inode");
+	iput(dotdot);
+	iunlock(root);
+	iput(root);
+	return 0;
+}
+
+TEST(fs_namei_root) {
+	struct inode *ip = namei("/");
+	ASSERT_NOT_NULL(ip, "namei('/') should return non-null");
+	ASSERT_EQ(ip->inum, ROOTINO, "namei('/') should return root inode");
+	ilock(ip);
+	ASSERT_EQ(ip->type, T_DIR, "root should be T_DIR");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_namei_file) {
+	struct inode *ip = namei("/hello");
+	ASSERT_NOT_NULL(ip, "namei('/hello') should return non-null");
+	ilock(ip);
+	ASSERT_EQ(ip->type, T_FILE, "hello should be T_FILE");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_namei_relative) {
+	struct proc fake_proc;
+	fake_proc.cwd = iget(0, ROOTINO);
+	ilock(fake_proc.cwd);
+	iunlock(fake_proc.cwd);
+
+	struct proc *saved_current = current;
+	current = &fake_proc;
+
+	struct inode *ip = namei("hello");
+	ASSERT_NOT_NULL(ip, "namei('hello') should return non-null");
+	ilock(ip);
+	ASSERT_EQ(ip->type, T_FILE, "hello should be T_FILE");
+	iunlock(ip);
+	iput(ip);
+
+	current = saved_current;
+	iput(fake_proc.cwd);
+	return 0;
+}
+
+TEST(fs_namei_relative_dot) {
+	struct proc fake_proc;
+	fake_proc.cwd = iget(0, ROOTINO);
+	ilock(fake_proc.cwd);
+	iunlock(fake_proc.cwd);
+
+	struct proc *saved_current = current;
+	current = &fake_proc;
+
+	struct inode *ip = namei(".");
+	ASSERT_NOT_NULL(ip, "namei('.') should return non-null");
+	ASSERT_EQ(ip->inum, ROOTINO, "namei('.') should return root");
+
+	iput(ip);
+	current = saved_current;
+	iput(fake_proc.cwd);
+	return 0;
+}
+
+TEST_SUITE(fs_dir) {
+	RUN_TEST(fs_dir_dot);
+	RUN_TEST(fs_dir_dotdot);
+	RUN_TEST(fs_namei_root);
+	RUN_TEST(fs_namei_file);
+	RUN_TEST(fs_namei_relative);
+	RUN_TEST(fs_namei_relative_dot);
 }
 
 #endif

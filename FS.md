@@ -172,20 +172,27 @@ Read filesystem metadata from disk.
 
 Navigate the directory tree.
 
-- [ ] Implement `dirlookup(dp, name, poff)`: find name in directory
-- [ ] Implement `skipelem(path, name)`: parse next path component
-- [ ] Implement `namex(path, nameiparent, name)`: resolve path to inode
-- [ ] Implement `namei(path)`: resolve path, return inode
-- [ ] Implement `nameiparent(path, name)`: resolve parent, copy final name
-- [ ] Add `fs_dir` test suite
+- [x] Implement `readi(ip, dst, off, n)`: read n bytes from inode at offset
+- [x] Implement `idup(ip)`: increment inode reference count
+- [x] Implement `iunlockput(ip)`: combined unlock and put
+- [x] Implement `dirlookup(dp, name, poff)`: find name in directory
+- [x] Implement `skipelem(path, name)`: parse next path component
+- [x] Implement `namex(path, nameiparent, name)`: resolve path to inode
+- [x] Implement `namei(path)`: resolve path, return inode
+- [x] Implement `nameiparent(path, name)`: resolve parent, copy final name
+- [x] Add `cwd` (current working directory) to struct proc
+- [x] Initialize first process with cwd = root inode
+- [x] Copy cwd in fork(), release in exit()
+- [x] Add string utilities (`strncmp`, `memmove`) in `kstring.c`
+- [x] Add `fs_dir` test suite
 
-**Exit criteria**: Can resolve "/", "/file", "/dir/file" paths.
+**Exit criteria**: Can resolve "/", "/file", "/dir/file" paths (absolute and relative).
 
 ### F4: File Reading
 
 Read file contents.
 
-- [ ] Implement `readi(ip, dst, off, n)`: read n bytes from inode at offset
+- [x] Implement `readi(ip, dst, off, n)`: read n bytes from inode at offset (done in F3)
 - [ ] Implement `stati(ip, st)`: fill stat structure from inode
 - [ ] Add `fs_read` test suite
 
@@ -202,11 +209,11 @@ Manage open files per process.
 - [ ] Implement `filestat(f, st)`: get file stats
 - [ ] Implement `fileread(f, addr, n)`: read from file
 - [ ] Add `ofile[NOFILE]` array to struct proc
-- [ ] Add `cwd` (current working directory) to struct proc
+- [x] Add `cwd` (current working directory) to struct proc (done in F3)
 - [ ] Implement `fdalloc(f)`: allocate file descriptor slot
-- [ ] Initialize process 0 with cwd = root inode
-- [ ] Copy file descriptors and cwd in fork()
-- [ ] Close file descriptors in exit()
+- [x] Initialize first process with cwd = root inode (done in F3)
+- [ ] Copy file descriptors in fork() (cwd done in F3)
+- [ ] Close file descriptors in exit() (cwd done in F3)
 
 **Exit criteria**: Process can hold open file references.
 
@@ -321,6 +328,8 @@ TEST_SUITE(fs_dir) {
     RUN_TEST(fs_dir_dotdot);            // ".." in root
     RUN_TEST(fs_namei_root);            // namei("/") returns root
     RUN_TEST(fs_namei_file);            // namei("/file") works
+    RUN_TEST(fs_namei_relative);        // namei("file") with cwd
+    RUN_TEST(fs_namei_relative_dot);    // namei(".") with cwd
 }
 
 TEST_SUITE(fs_read) {
@@ -343,13 +352,15 @@ void test_pipe(void);                   // pipe communication
 
 ### Test Filesystem
 
-The mkfs tool should support adding files during image creation:
+The mkfs tool supports adding files during image creation:
 
 ```bash
 ./mkfs disk.img testfile.txt:/test.txt
 ```
 
 This adds `testfile.txt` from the host as `/test.txt` in the image.
+
+The test disk image includes `/hello` (from `testdata/hello.txt`) for testing path resolution.
 
 ## Implementation Notes
 

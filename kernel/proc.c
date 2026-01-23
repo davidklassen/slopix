@@ -28,6 +28,7 @@ struct proc *proc_alloc(void) {
 			p->tf = 0;
 			p->chan = 0;
 			p->wakeup_tick = 0;
+			p->cwd = 0;
 			return p;
 		}
 	}

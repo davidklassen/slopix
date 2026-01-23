@@ -27,6 +27,7 @@ DECLARE_SUITE(virtio_intr);
 DECLARE_SUITE(virtio_errors);
 DECLARE_SUITE(bio);
 DECLARE_SUITE(fs);
+DECLARE_SUITE(fs_dir);
 
 void kernel_main(void) {
 	uart_init();
@@ -60,6 +61,7 @@ void kernel_main(void) {
 
 	fsinit(0);
 	RUN_SUITE(fs);
+	RUN_SUITE(fs_dir);
 
 	TEST_REPORT();
 

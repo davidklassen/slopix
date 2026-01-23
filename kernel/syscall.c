@@ -9,6 +9,7 @@
 #include "cpu.h"
 #include "vmm.h"
 #include "psci.h"
+#include "fs.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd != 1) {
@@ -26,6 +27,10 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
+	if (current->cwd) {
+		iput(current->cwd);
+		current->cwd = 0;
+	}
 	current->exit_status = status;
 	if (current->parent) {
 		current->state = ZOMBIE;
@@ -219,6 +224,11 @@ static long sys_fork(void) {
 	child->ctx.x30 = (unsigned long)usertrap_first;
 	child->ctx.sp = (unsigned long)child_tf;
 	child->ctx.x29 = 0;
+
+	// Copy cwd
+	if (current->cwd) {
+		child->cwd = idup(current->cwd);
+	}
 
 	// Parent returns child's pid
 	return child->pid;

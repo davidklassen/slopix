@@ -4,6 +4,8 @@
 #include "vmm.h"
 #include "exception.h"
 
+struct inode;
+
 struct context {
 	unsigned long x19, x20, x21, x22, x23;
 	unsigned long x24, x25, x26, x27, x28;
@@ -35,6 +37,9 @@ struct proc {
 	unsigned long wakeup_tick;
 
 	int exit_status;
+
+	// Filesystem support
+	struct inode *cwd;
 };
 
 #define NPROC 8
