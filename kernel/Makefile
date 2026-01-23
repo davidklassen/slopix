@@ -26,6 +26,7 @@ OBJ = \
 	elf.o \
 	init.o \
 	initramfs.o \
+	virtio.o \
 	initramfs_data.o
 
 TEST_OBJ = \
@@ -39,11 +40,14 @@ TEST_OBJ = \
 	tests/test_proc.o \
 	tests/test_vmm_user.o \
 	tests/test_elf.o \
-	tests/test_initramfs.o
+	tests/test_initramfs.o \
+	tests/test_virtio.o
 
 KERNEL = kernel.elf
 
-QEMU = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
+QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
+QEMU = $(QEMU_BASE)
+QEMU_DISK = $(QEMU_BASE) -drive file=test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
 
 .PHONY: all clean run debug test
 
@@ -74,16 +78,19 @@ initramfs_data_test.o: ../cmd/initramfs-test.bin
 		--rename-section .data=.initramfs \
 		$< $@
 
-run: clean $(KERNEL)
-	$(QEMU) -kernel $(KERNEL)
+run: clean $(KERNEL) test.img
+	$(QEMU_DISK) -kernel $(KERNEL)
 
 debug: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL) -s -S
 
+test.img:
+	dd if=/dev/zero of=$@ bs=1M count=1
+
 test: CFLAGS += -DRUN_TESTS
-test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ)
+test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ) test.img
 	$(LD) $(LDFLAGS) -o $(KERNEL) $(filter-out initramfs_data.o,$(OBJ)) initramfs_data_test.o $(TEST_OBJ)
-	$(QEMU) -kernel $(KERNEL)
+	$(QEMU_DISK) -kernel $(KERNEL)
 
 clean:
 	rm -f *.o *.elf tests/*.o tests/*.elf

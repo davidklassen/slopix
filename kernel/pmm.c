@@ -1,4 +1,5 @@
 #include "pmm.h"
+#include "kprintf.h"
 
 extern char __stack_top[];
 
@@ -17,7 +18,6 @@ static void zero_page(paddr_t pa) {
 }
 
 void pmm_init(void) {
-	// __stack_top is now a high VA, convert to PA
 	paddr_t start = PAGE_ALIGN(VA_TO_PA((paddr_t)__stack_top));
 	paddr_t end = RAM_BASE + RAM_SIZE;
 
@@ -27,6 +27,8 @@ void pmm_init(void) {
 	for (paddr_t pa = start; pa + PAGE_SIZE <= end; pa += PAGE_SIZE) {
 		pmm_free(pa);
 	}
+
+	kprintf("pmm: %lu pages available\n", free_count);
 }
 
 paddr_t pmm_alloc(void) {

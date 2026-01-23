@@ -6,6 +6,7 @@
 #include "pmm.h"
 #include "proc.h"
 #include "init.h"
+#include "virtio.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -18,6 +19,7 @@ DECLARE_SUITE(proc);
 DECLARE_SUITE(vmm_user);
 DECLARE_SUITE(elf);
 DECLARE_SUITE(initramfs);
+DECLARE_SUITE(virtio);
 
 void kernel_main(void) {
 	uart_init();
@@ -33,6 +35,9 @@ void kernel_main(void) {
 	RUN_SUITE(elf);
 	RUN_SUITE(initramfs);
 
+	virtio_init();
+	RUN_SUITE(virtio);
+
 	gic_init();
 	timer_init();
 	uart_init_irq();
@@ -44,7 +49,7 @@ void kernel_main(void) {
 #ifdef RUN_TESTS
 	init("tests");
 #else
-	uart_puts("Welcome to Slopix!\n");
+	uart_puts("\nWelcome to Slopix!\n");
 	uart_puts("To exit QEMU press Ctrl-a x\n\n");
 	init("shell");
 #endif

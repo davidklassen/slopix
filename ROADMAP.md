@@ -215,23 +215,38 @@ Before starting:
 
 ## Milestone 10: Block Device
 
-**Goal**: Read/write disk sectors via Virtio
+**Goal**: Read/write disk sectors via Virtio with block cache
+
+**Detailed plan**: See [VIRTIO.md](VIRTIO.md) for step-by-step implementation guide.
 
 ### What You'll Build
-- Virtio MMIO transport
-- Virtqueue implementation
-- Block device driver
-- Sector read/write API
+- Virtio MMIO transport (legacy v1 interface)
+- Virtqueue setup and management
+- Block device driver with interrupt-driven I/O
+- Block cache layer (bread/bwrite/brelse)
+
+### Sub-milestones (see VIRTIO.md)
+| Phase | Description |
+|-------|-------------|
+| M1-M3 | Device discovery, feature negotiation, virtqueue setup |
+| M4-M5 | Synchronous read/write with polling |
+| M6 | Interrupt-driven I/O |
+| M7 | Block cache integration |
+| M8 | Error handling |
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
-| [Virtio Spec v1.2](https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html) Ch 2, 5.2 | Virtqueues, block device |
-| [OSDev: Virtio](https://wiki.osdev.org/Virtio) | MMIO transport |
+| [Virtio Spec v1.2](https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html) Ch 2, 4.2, 5.2 | Virtqueues, MMIO transport, block device |
+| [Linux virtio_mmio.c](https://github.com/torvalds/linux/blob/master/drivers/virtio/virtio_mmio.c) | Reference implementation |
+| [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 8.1-8.3 | Buffer cache design |
 
 ### Deliverables
+- Virtio block device initialized at boot
 - Read sector 0 from disk image
 - Write and read back data
+- Interrupt-driven I/O (processes sleep during disk access)
+- Block cache with bread()/bwrite() interface for filesystem
 
 ---
 

@@ -1,5 +1,6 @@
 #include "gic.h"
 #include "cpu.h"
+#include "kprintf.h"
 
 #define GICD_REG(off) (*(volatile unsigned int *)(GICD_VA + (off)))
 #define GICC_REG(off) (*(volatile unsigned int *)(GICC_VA + (off)))
@@ -9,6 +10,7 @@ void gic_init(void) {
 	GICC_REG(GICC_PMR_OFF) = 0xFF;
 	GICC_REG(GICC_CTLR_OFF) = 1;
 	isb();
+	kprintf("gic: initialized\n");
 }
 
 void gic_enable_irq(unsigned int intid) {

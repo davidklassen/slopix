@@ -1,4 +1,5 @@
 #include "uart.h"
+#include "kprintf.h"
 #include "proc.h"
 #include "gic.h"
 
@@ -18,6 +19,7 @@ void uart_init(void) {
 
 	UART_REG(UART_LCR_H_OFFSET) = UART_LCR_H_WLEN8 | UART_LCR_H_FEN;
 	UART_REG(UART_CR_OFFSET) = UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE;
+	kprintf("uart: initialized\n");
 }
 
 void uart_putc(char c) {

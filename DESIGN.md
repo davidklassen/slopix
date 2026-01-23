@@ -10,7 +10,7 @@ QEMU virt machine with:
 - UART: PL011 at 0x0900_0000
 - Interrupt controller: GICv2
 - Timer: ARM Generic Timer
-- Block device: Virtio-blk at 0x0a00_0000
+- Block device: Virtio-blk (virtio-mmio region at 0x0a00_0000)
 
 ## Boot Sequence
 
@@ -27,6 +27,8 @@ QEMU virt machine with:
    - Initialize UART
    - Initialize physical memory allocator
    - Initialize interrupts (GIC + timer)
+   - Initialize virtio block device
+   - Initialize block cache
    - Start first user process
 
 Page tables are statically defined in tables.S:
@@ -49,6 +51,8 @@ Page tables are statically defined in tables.S:
 | Syscall | syscall.c | sys_ | System call implementations |
 | ELF | elf.c/h | elf_ | ELF binary loader |
 | InitRAMFS | initramfs.c/h | initramfs_ | Initial RAM filesystem |
+| Virtio | virtio.c/h | virtio_ | Virtio block device driver |
+| Bio | bio.c/h, buf.h | b | Block cache and buffer management |
 | Utilities | kprintf.c/h | kprintf, kpanic, ksleep | Kernel utilities (k-prefix) |
 
 ### API Conventions
@@ -409,72 +413,182 @@ Planned syscalls (for filesystem):
 
 ## Virtio Block Device
 
-MMIO transport at 0x0a00_0000, using legacy (v1) interface (QEMU default).
+MMIO transport using legacy (v1) interface. QEMU virt provides 32 virtio-mmio slots
+at 0x0a00_0000 - 0x0a00_3e00 (0x200 bytes each). Devices are assigned to slots in
+reverse order (first device on command line gets slot 31 at 0x0a00_3e00).
+
+Sources:
+- [OASIS VIRTIO Spec v1.2](https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html)
+- [Linux virtio_mmio.h](https://github.com/torvalds/linux/blob/master/include/uapi/linux/virtio_mmio.h)
+- [Linux virtio_mmio.c](https://github.com/torvalds/linux/blob/master/drivers/virtio/virtio_mmio.c)
 
 ### Registers (offsets from base)
 
-| Offset | Name | R/W |
-|--------|------|-----|
-| 0x000 | MagicValue | R |
-| 0x004 | Version | R |
-| 0x008 | DeviceID | R |
-| 0x00c | VendorID | R |
-| 0x010 | HostFeatures | R |
-| 0x014 | HostFeaturesSel | W |
-| 0x020 | GuestFeatures | W |
-| 0x024 | GuestFeaturesSel | W |
-| 0x028 | GuestPageSize | W |
-| 0x030 | QueueSel | W |
-| 0x034 | QueueNumMax | R |
-| 0x038 | QueueNum | W |
-| 0x03c | QueueAlign | W |
-| 0x040 | QueuePFN | RW |
-| 0x050 | QueueNotify | W |
-| 0x060 | InterruptStatus | R |
-| 0x064 | InterruptACK | W |
-| 0x070 | Status | RW |
+| Offset | Name | R/W | Description |
+|--------|------|-----|-------------|
+| 0x000 | MagicValue | R | 0x74726976 ("virt") |
+| 0x004 | Version | R | 1 for legacy, 2 for modern |
+| 0x008 | DeviceID | R | 2 = block device |
+| 0x00c | VendorID | R | 0x554d4551 ("QEMU") |
+| 0x010 | DeviceFeatures | R | Features supported by device |
+| 0x014 | DeviceFeaturesSel | W | Feature page (0 or 1) |
+| 0x020 | DriverFeatures | W | Features activated by driver |
+| 0x024 | DriverFeaturesSel | W | Feature page (0 or 1) |
+| 0x028 | GuestPageSize | W | Page size in bytes (legacy only) |
+| 0x030 | QueueSel | W | Queue index (0 for virtio-blk) |
+| 0x034 | QueueNumMax | R | Max queue size supported |
+| 0x038 | QueueNum | W | Queue size to use |
+| 0x03c | QueueAlign | W | Used ring alignment (legacy only) |
+| 0x040 | QueuePFN | RW | Queue page frame number (legacy only) |
+| 0x050 | QueueNotify | W | Queue notification (write queue index) |
+| 0x060 | InterruptStatus | R | Bit 0: used buffer, Bit 1: config change |
+| 0x064 | InterruptACK | W | Write bits to acknowledge |
+| 0x070 | Status | RW | Device status register |
+| 0x100+ | Config | RW | Device-specific config (8 bytes for blk) |
+
+### Status Register Bits
+
+| Bit | Name | Value |
+|-----|------|-------|
+| 0 | ACKNOWLEDGE | 1 |
+| 1 | DRIVER | 2 |
+| 2 | DRIVER_OK | 4 |
+| 3 | FEATURES_OK | 8 (modern only) |
+| 6 | DEVICE_NEEDS_RESET | 64 |
+
+### Block Device Config (at offset 0x100)
+
+```
+struct virtio_blk_config {
+    uint64_t capacity;    // Number of 512-byte sectors
+};
+```
 
 ### Initialization
 
-1. Write 0 to Status (reset)
-2. Write 1 to Status (ACKNOWLEDGE)
-3. Write 3 to Status (ACKNOWLEDGE | DRIVER)
-4. Read HostFeatures, write supported subset to GuestFeatures
-5. Write page size to GuestPageSize (4096)
-6. Select queue with QueueSel, read QueueNumMax
-7. Write queue size to QueueNum, alignment to QueueAlign
-8. Write queue PFN to QueuePFN (phys_addr >> 12)
-9. Write 7 to Status (ACKNOWLEDGE | DRIVER | DRIVER_OK)
+1. Read MagicValue, verify 0x74726976
+2. Read Version, verify 1 (legacy)
+3. Read DeviceID, verify 2 (block device)
+4. Write 0 to Status (reset device)
+5. Write 1 to Status (ACKNOWLEDGE)
+6. Write 3 to Status (ACKNOWLEDGE | DRIVER)
+7. Read DeviceFeatures, write supported subset to DriverFeatures
+8. Write page size to GuestPageSize (4096)
+9. Write 0 to QueueSel (select queue 0)
+10. Read QueueNumMax, verify > 0
+11. Read QueuePFN, verify 0 (queue not in use)
+12. Allocate and zero virtqueue memory (see layout below)
+13. Write queue size to QueueNum
+14. Write alignment to QueueAlign (4096)
+15. Write (phys_addr >> 12) to QueuePFN
+16. Write 7 to Status (ACKNOWLEDGE | DRIVER | DRIVER_OK)
 
-### Virtqueue Layout (legacy)
+Note: Legacy interface does NOT use FEATURES_OK step.
 
-Legacy interface requires contiguous memory for all three virtqueue areas:
+### Virtqueue Structures
 
 ```
-+-------------------+
-| Descriptor Table  |  16 bytes × queue_num
-+-------------------+
-| Available Ring    |  6 + 2 × queue_num bytes
-+-------------------+
-| Padding           |  to QueueAlign boundary
-+-------------------+
-| Used Ring         |  6 + 8 × queue_num bytes
-+-------------------+
+struct virtq_desc {
+    uint64_t addr;        // Physical address of buffer
+    uint32_t len;         // Buffer length
+    uint16_t flags;       // NEXT=1, WRITE=2 (device writes)
+    uint16_t next;        // Next descriptor if NEXT flag set
+};
+
+struct virtq_avail {
+    uint16_t flags;       // 1 = no interrupt on used
+    uint16_t idx;         // Next slot to write (mod queue_size)
+    uint16_t ring[];      // Descriptor head indices
+};
+
+struct virtq_used_elem {
+    uint32_t id;          // Descriptor chain head
+    uint32_t len;         // Bytes written by device
+};
+
+struct virtq_used {
+    uint16_t flags;       // 1 = no notify on avail
+    uint16_t idx;         // Next slot device writes (mod queue_size)
+    struct virtq_used_elem ring[];
+};
 ```
 
-QueuePFN = physical_address >> 12 (page frame number).
+### Virtqueue Memory Layout (legacy)
+
+Legacy interface requires contiguous memory:
+
+```
++---------------------+ <-- QueuePFN × 4096
+| Descriptor Table    |  16 bytes × queue_size
++---------------------+
+| Available Ring      |  6 + 2 × queue_size bytes
+|   flags (2)         |
+|   idx (2)           |
+|   ring[queue_size]  |
++---------------------+
+| Padding             |  to QueueAlign (4096) boundary
++---------------------+
+| Used Ring           |  6 + 8 × queue_size bytes
+|   flags (2)         |
+|   idx (2)           |
+|   ring[queue_size]  |
++---------------------+
+```
+
+Size calculation:
+```
+#define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
+size = ALIGN(16 * qsz + 6 + 2 * qsz, 4096)
+     + ALIGN(6 + 8 * qsz, 4096);
+```
+
+For queue_size=8: ALIGN(16×8 + 6 + 2×8, 4096) + ALIGN(6 + 8×8, 4096) = 4096 + 4096 = 8192 bytes (2 pages).
 
 ### Block Request
 
+Three-descriptor chain per request:
+
 ```
-struct virtio_blk_req {
-    uint32_t type;        // 0=read, 1=write
+Descriptor 0 (header):        Descriptor 1 (data):         Descriptor 2 (status):
++------------------+          +------------------+          +------------------+
+| addr -> header   |   next   | addr -> buffer   |   next   | addr -> status   |
+| len = 16         | -------> | len = 512*n      | -------> | len = 1          |
+| flags = NEXT     |          | flags = NEXT |   |          | flags = WRITE    |
+|                  |          |        [WRITE]   |          |                  |
++------------------+          +------------------+          +------------------+
+
+Header structure:
+struct virtio_blk_outhdr {
+    uint32_t type;        // VIRTIO_BLK_T_IN=0 (read), VIRTIO_BLK_T_OUT=1 (write)
     uint32_t reserved;
-    uint64_t sector;
-    // data follows (512 bytes per sector)
-    // status byte at end (0=ok, 1=ioerr, 2=unsupported)
+    uint64_t sector;      // Starting sector (512 bytes each)
 };
+
+Status byte: 0=OK, 1=IOERR, 2=UNSUPP
 ```
+
+For reads: data descriptor has WRITE flag (device writes to buffer).
+For writes: data descriptor has no WRITE flag (device reads from buffer).
+
+### Request Submission
+
+1. Allocate 3 free descriptors, chain them with NEXT flags
+2. Fill header with type and sector
+3. Point data descriptor to buffer
+4. Point status descriptor to status byte
+5. Write head descriptor index to avail.ring[avail.idx % queue_size]
+6. Increment avail.idx
+7. Memory barrier
+8. Write queue index (0) to QueueNotify
+
+### Completion Handling (interrupt)
+
+1. Read InterruptStatus, write same value to InterruptACK
+2. While (last_seen_used != used.idx):
+   - elem = used.ring[last_seen_used % queue_size]
+   - Check status byte at end of chain
+   - Free descriptors in chain
+   - last_seen_used++
 
 ## References
 

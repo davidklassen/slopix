@@ -29,12 +29,14 @@
 // Physical addresses
 .equ GICD_BASE,     0x08000000
 .equ UART_BASE,     0x09000000
+.equ VIRTIO_BASE,   0x0a000000
 .equ RAM_BASE,      0x40000000
 
 // L2 index calculations (2MB per entry):
-// GIC:  0x08000000 / 0x200000 = 64
-// UART: 0x09000000 / 0x200000 = 72
-// RAM:  starts at entry 0 in L2_ram (L1[1] covers 0x40000000+)
+// GIC:    0x08000000 / 0x200000 = 64
+// UART:   0x09000000 / 0x200000 = 72
+// VIRTIO: 0x0a000000 / 0x200000 = 80
+// RAM:    starts at entry 0 in L2_ram (L1[1] covers 0x40000000+)
 
 // Macro: Generate N consecutive 2MB block entries
 .macro ram_blocks base, flags, count
@@ -68,7 +70,9 @@ identity_l2_dev:
     .quad GICD_BASE + DEV_FLAGS         // Entry 64: GIC (0x08000000)
     .fill 7, 8, 0                       // Entries 65-71: empty
     .quad UART_BASE + DEV_FLAGS         // Entry 72: UART (0x09000000)
-    .fill 439, 8, 0                     // Entries 73-511: empty
+    .fill 7, 8, 0                       // Entries 73-79: empty
+    .quad VIRTIO_BASE + DEV_FLAGS       // Entry 80: VIRTIO (0x0a000000)
+    .fill 431, 8, 0                     // Entries 81-511: empty
 
 .balign 4096
 identity_l2_ram:
@@ -96,7 +100,9 @@ kernel_l2_dev:
     .quad GICD_BASE + DEV_FLAGS         // Entry 64: GIC
     .fill 7, 8, 0                       // Entries 65-71: empty
     .quad UART_BASE + DEV_FLAGS         // Entry 72: UART
-    .fill 439, 8, 0                     // Entries 73-511: empty
+    .fill 7, 8, 0                       // Entries 73-79: empty
+    .quad VIRTIO_BASE + DEV_FLAGS       // Entry 80: VIRTIO
+    .fill 431, 8, 0                     // Entries 81-511: empty
 
 .balign 4096
 kernel_l2_ram:
