@@ -32,7 +32,7 @@ OBJ = \
 	file.o \
 	pipe.o \
 	console.o \
-	kstring.o \
+	string.o \
 	initramfs_data.o
 
 TEST_OBJ = \
@@ -49,7 +49,8 @@ TEST_OBJ = \
 	tests/test_fs.o \
 	tests/test_file.o \
 	tests/test_console.o \
-	tests/test_pipe.o
+	tests/test_pipe.o \
+	tests/test_string.o
 
 KERNEL = kernel.elf
 

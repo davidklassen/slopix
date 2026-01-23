@@ -7,6 +7,8 @@
 struct inode;
 struct file;
 
+#define NOFILE 16
+
 struct context {
 	unsigned long x19, x20, x21, x22, x23;
 	unsigned long x24, x25, x26, x27, x28;
@@ -41,7 +43,7 @@ struct proc {
 
 	// Filesystem support
 	struct inode *cwd;
-	struct file *ofile[16];
+	struct file *ofile[NOFILE];
 };
 
 #define NPROC 8

@@ -332,8 +332,7 @@ Block size: 1024 bytes
 ```
 Block 0:    Boot block (unused)
 Block 1:    Superblock
-Block 2-L:  Log blocks
-Block L+1:  Inode blocks start
+Block 2-I:  Inode blocks
 Block I+1:  Bitmap block
 Block B+1:  Data blocks start
 ```
@@ -346,8 +345,6 @@ struct superblock {
     uint32_t size;        // Total blocks
     uint32_t nblocks;     // Data blocks
     uint32_t ninodes;     // Inode count
-    uint32_t nlog;        // Log blocks
-    uint32_t logstart;    // First log block
     uint32_t inodestart;  // First inode block
     uint32_t bmapstart;   // Bitmap block
 };
@@ -402,14 +399,14 @@ Planned syscalls (for filesystem):
 |----|------|----|----|-----|--------|
 | 11 | open | path | flags | - | fd or -1 |
 | 12 | close | fd | - | - | 0 or -1 |
-| 13 | pipe | fds[2] | - | - | 0 or -1 |
+| 13 | fstat | fd | &stat | - | 0 or -1 |
 | 14 | dup | fd | - | - | new fd |
-| 15 | fstat | fd | &stat | - | 0 or -1 |
-| 16 | mkdir | path | - | - | 0 or -1 |
-| 17 | chdir | path | - | - | 0 or -1 |
-| 18 | mknod | path | major | minor | 0 or -1 |
-| 19 | link | old | new | - | 0 or -1 |
-| 20 | unlink | path | - | - | 0 or -1 |
+| 15 | mkdir | path | - | - | 0 or -1 |
+| 16 | mknod | path | major | minor | 0 or -1 |
+| 17 | link | old | new | - | 0 or -1 |
+| 18 | unlink | path | - | - | 0 or -1 |
+| 19 | chdir | path | - | - | 0 or -1 |
+| 20 | pipe | fds[2] | - | - | 0 or -1 |
 | 21 | kill | pid | - | - | 0 or -1 |
 | 22 | uptime | - | - | - | ticks |
 

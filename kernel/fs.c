@@ -2,7 +2,7 @@
 #include "bio.h"
 #include "cpu.h"
 #include "proc.h"
-#include "kstring.h"
+#include "string.h"
 
 static struct {
 	struct inode inode[NINODE];

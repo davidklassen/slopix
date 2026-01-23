@@ -1,4 +1,20 @@
-#include "kstring.h"
+#include "string.h"
+
+unsigned int strlen(const char *s) {
+	unsigned int n = 0;
+	while (s[n]) {
+		n++;
+	}
+	return n;
+}
+
+int strcmp(const char *s1, const char *s2) {
+	while (*s1 && *s1 == *s2) {
+		s1++;
+		s2++;
+	}
+	return (unsigned char)*s1 - (unsigned char)*s2;
+}
 
 int strncmp(const char *s1, const char *s2, unsigned int n) {
 	while (n > 0 && *s1 && *s1 == *s2) {
@@ -49,4 +65,23 @@ void *memset(void *s, int c, unsigned int n) {
 		*p++ = (unsigned char)c;
 	}
 	return s;
+}
+
+void *memcpy(void *dst, const void *src, unsigned int n) {
+	char *d = dst;
+	const char *s = src;
+	while (n-- > 0) {
+		*d++ = *s++;
+	}
+	return dst;
+}
+
+char *strchr(const char *s, int c) {
+	while (*s != (char)c) {
+		if (*s == '\0') {
+			return 0;
+		}
+		s++;
+	}
+	return (char *)s;
 }

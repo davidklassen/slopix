@@ -13,6 +13,7 @@
 #include "console.h"
 #include "tests/test.h"
 
+DECLARE_SUITE(string);
 DECLARE_SUITE(uart);
 DECLARE_SUITE(kprintf);
 DECLARE_SUITE(exception);
@@ -38,6 +39,7 @@ DECLARE_SUITE(pipe);
 void kernel_main(void) {
 	uart_init();
 	consoleinit();
+	RUN_SUITE(string);
 	RUN_SUITE(uart);
 	RUN_SUITE(kprintf);
 	RUN_SUITE(exception);

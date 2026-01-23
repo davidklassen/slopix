@@ -1,21 +1,7 @@
 #include "elf.h"
 #include "pmm.h"
 #include "board.h"
-
-static void memcpy(void *dst, const void *src, unsigned long n) {
-	char *d = dst;
-	const char *s = src;
-	while (n--) {
-		*d++ = *s++;
-	}
-}
-
-static void memset(void *dst, int c, unsigned long n) {
-	char *d = dst;
-	while (n--) {
-		*d++ = c;
-	}
-}
+#include "string.h"
 
 int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry, unsigned long *brk) {
 	Elf64_Ehdr *ehdr = (Elf64_Ehdr *)data;

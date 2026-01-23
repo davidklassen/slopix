@@ -12,7 +12,7 @@
 #include "fs.h"
 #include "file.h"
 #include "pipe.h"
-#include "kstring.h"
+#include "string.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
@@ -32,7 +32,7 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
-	for (int fd = 0; fd < 16; fd++) {
+	for (int fd = 0; fd < NOFILE; fd++) {
 		if (current->ofile[fd]) {
 			fileclose(current->ofile[fd]);
 			current->ofile[fd] = 0;
@@ -248,7 +248,7 @@ static long sys_fork(void) {
 	}
 
 	// Copy file descriptors
-	for (int fd = 0; fd < 16; fd++) {
+	for (int fd = 0; fd < NOFILE; fd++) {
 		if (current->ofile[fd]) {
 			child->ofile[fd] = filedup(current->ofile[fd]);
 		}

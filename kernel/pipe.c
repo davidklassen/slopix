@@ -3,15 +3,18 @@
 #include "pmm.h"
 #include "board.h"
 #include "proc.h"
+#include "cpu.h"
 
 static inline unsigned long irq_save(void) {
-	unsigned long daif;
-	asm volatile("mrs %0, daif; msr daifset, #2" : "=r"(daif));
+	unsigned long daif = read_daif();
+	disable_irq();
 	return daif;
 }
 
 static inline void irq_restore(unsigned long daif) {
-	asm volatile("msr daif, %0" : : "r"(daif));
+	if (!(daif & DAIF_IRQ_BIT)) {
+		enable_irq();
+	}
 }
 
 int pipealloc(struct file **f0, struct file **f1) {
