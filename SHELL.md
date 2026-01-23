@@ -378,15 +378,15 @@ Nice-to-have commands.
 
 Enhanced line editing.
 
-- [ ] **Arrow key detection**:
+- [x] **Arrow key detection**:
   - Detect escape sequences (ESC [ A/B/C/D)
   - Use poll() with timeout to detect escape sequences
   - Left/right arrows: move cursor position
   - Up/down: history (optional, may skip)
-- [ ] **Ctrl+D handling**:
+- [x] **Ctrl+D handling**:
   - At start of empty line: exit shell (EOF)
   - Mid-line: ignore or delete character
-- [ ] **Ctrl+C handling** (limited without signals):
+- [x] **Ctrl+C handling** (limited without signals):
   - Detect 0x03 character
   - Print ^C and newline
   - Clear current input, show new prompt

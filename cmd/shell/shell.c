@@ -11,6 +11,15 @@
 #define CMD_REDIR 2
 #define CMD_PIPE  3
 
+#define KEY_UP	      256
+#define KEY_DOWN      257
+#define KEY_RIGHT     258
+#define KEY_LEFT      259
+#define KEY_CTRL_C    260
+#define KEY_CTRL_D    261
+#define KEY_ENTER     262
+#define KEY_BACKSPACE 263
+
 struct cmd {
 	int type;
 };
@@ -331,27 +340,127 @@ static void runcmd(struct cmd *cmd) {
 	}
 }
 
+static int read_key(void) {
+	char c;
+	if (read(0, &c, 1) <= 0) {
+		return -1;
+	}
+
+	if (c == '\r' || c == '\n') {
+		return KEY_ENTER;
+	}
+	if (c == 127 || c == '\b') {
+		return KEY_BACKSPACE;
+	}
+	if (c == 0x03) {
+		return KEY_CTRL_C;
+	}
+	if (c == 0x04) {
+		return KEY_CTRL_D;
+	}
+
+	if (c == 0x1b) {
+		if (poll(0, 50) == 0) {
+			return c;
+		}
+		if (read(0, &c, 1) <= 0 || c != '[') {
+			return 0x1b;
+		}
+		if (poll(0, 50) == 0) {
+			return 0x1b;
+		}
+		if (read(0, &c, 1) <= 0) {
+			return 0x1b;
+		}
+		switch (c) {
+		case 'A':
+			return KEY_UP;
+		case 'B':
+			return KEY_DOWN;
+		case 'C':
+			return KEY_RIGHT;
+		case 'D':
+			return KEY_LEFT;
+		}
+		return 0x1b;
+	}
+
+	if (c >= ' ') {
+		return c;
+	}
+	return -1;
+}
+
 static int readline(char *buf, int max) {
-	int n = 0;
-	while (n < max - 1) {
-		char c;
-		if (read(0, &c, 1) > 0) {
-			if (c == '\r' || c == '\n') {
-				write(1, "\n", 1);
-				break;
-			} else if (c == 127 || c == '\b') {
-				if (n > 0) {
-					n--;
-					write(1, "\b \b", 3);
+	int len = 0;
+	int pos = 0;
+
+	while (len < max - 1) {
+		int key = read_key();
+
+		switch (key) {
+		case KEY_ENTER:
+			write(1, "\n", 1);
+			buf[len] = '\0';
+			return len;
+
+		case KEY_BACKSPACE:
+			if (pos > 0) {
+				memmove(buf + pos - 1, buf + pos, len - pos);
+				len--;
+				pos--;
+				write(1, "\b", 1);
+				write(1, buf + pos, len - pos);
+				write(1, " \b", 2);
+				for (int i = 0; i < len - pos; i++) {
+					write(1, "\b", 1);
 				}
-			} else if (c >= ' ') {
-				buf[n++] = c;
-				write(1, &c, 1);
+			}
+			break;
+
+		case KEY_LEFT:
+			if (pos > 0) {
+				pos--;
+				write(1, "\b", 1);
+			}
+			break;
+
+		case KEY_RIGHT:
+			if (pos < len) {
+				write(1, &buf[pos], 1);
+				pos++;
+			}
+			break;
+
+		case KEY_CTRL_C:
+			write(1, "^C\n", 3);
+			return 0;
+
+		case KEY_CTRL_D:
+			if (len == 0) {
+				return -1;
+			}
+			break;
+
+		case KEY_UP:
+		case KEY_DOWN:
+			break;
+
+		default:
+			if (key >= ' ' && key < 256) {
+				memmove(buf + pos + 1, buf + pos, len - pos);
+				buf[pos] = key;
+				len++;
+				write(1, buf + pos, len - pos);
+				pos++;
+				for (int i = 0; i < len - pos; i++) {
+					write(1, "\b", 1);
+				}
 			}
 		}
 	}
-	buf[n] = '\0';
-	return n;
+	buf[len] = '\0';
+	return len;
 }
 
 static int builtin_cd(int argc, char **argv) {
@@ -422,6 +531,10 @@ int main(void) {
 
 	for (;;) {
 		int n = readline(buf, sizeof(buf));
+		if (n < 0) {
+			printf("\n");
+			exit(0);
+		}
 		if (n > 0) {
 			struct cmd *cmd = parsecmd(buf);
 			if (cmd == 0) {
