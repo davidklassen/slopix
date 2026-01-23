@@ -266,27 +266,35 @@ Before starting:
 
 ---
 
-## Milestone 12: Shell
+## Milestone 12: Shell ✓
 
-**Goal**: Interactive command interpreter
+**Goal**: Interactive command interpreter with Unix utilities
 
 ### What You'll Build
-- Command line parsing
+- Recursive descent parser (xv6-style command tree)
 - Program execution (fork + exec)
-- Basic built-ins (cd, exit)
-- I/O redirection
-- Pipes
+- Built-ins: cd, pwd, exit
+- I/O redirection (<, >, >>)
+- Pipes (|)
+- Line editing with arrow keys, Ctrl+C, Ctrl+D
+- Core utilities: ls, cat, echo
+- File utilities: mkdir, rm, cp, mv, touch
+- Text utilities: wc, head, grep
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
 | [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 1 | Shell concepts |
+| [xv6-public sh.c](https://github.com/mit-pdos/xv6-public/blob/master/sh.c) | Parser reference |
 
 ### Deliverables
-- `ls` lists files
+- `ls` lists files with type and size
 - `cat file` prints contents
 - `prog1 | prog2` works
 - `echo hello > file` redirects output
+- `cat file | grep pattern | wc` multi-stage pipelines
+- Arrow keys move cursor within line
+- Ctrl+D exits shell on empty line
 
 ---
 

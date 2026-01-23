@@ -421,8 +421,6 @@ struct file {
 
 ## System Call Table
 
-Implemented syscalls:
-
 | x8 | Name | x0 | x1 | x2 | Return |
 |----|------|----|----|-----|--------|
 | 0 | write | fd | buf | n | bytes written |
@@ -433,14 +431,9 @@ Implemented syscalls:
 | 5 | fork | - | - | - | child pid or 0 |
 | 6 | wait | - | - | - | child pid |
 | 7 | exec | cmdline | - | - | argc or -1 |
-| 8 | poll | fd | timeout_ms | - | 0 if data, -1 timeout |
+| 8 | poll | fd | timeout_ms | - | 1 if data, 0 timeout |
 | 9 | poweroff | - | - | - | - |
 | 10 | sbrk | n | - | - | old break |
-
-Planned syscalls (for filesystem):
-
-| x8 | Name | x0 | x1 | x2 | Return |
-|----|------|----|----|-----|--------|
 | 11 | open | path | flags | - | fd or -1 |
 | 12 | close | fd | - | - | 0 or -1 |
 | 13 | fstat | fd | &stat | - | 0 or -1 |
@@ -451,8 +444,61 @@ Planned syscalls (for filesystem):
 | 18 | unlink | path | - | - | 0 or -1 |
 | 19 | chdir | path | - | - | 0 or -1 |
 | 20 | pipe | fds[2] | - | - | 0 or -1 |
-| 21 | kill | pid | - | - | 0 or -1 |
-| 22 | uptime | - | - | - | ticks |
+| 21 | stat | path | &stat | - | 0 or -1 |
+| 22 | getcwd | buf | size | - | buf or NULL |
+| 23 | lseek | fd | offset | whence | new offset or -1 |
+| 24 | rename | old | new | - | 0 or -1 |
+
+## Device Infrastructure
+
+### Character Devices (devsw)
+
+Sequential byte stream devices accessed via read/write syscalls.
+
+| Major | Device | Description |
+|-------|--------|-------------|
+| 1 | console | UART terminal (stdin/stdout/stderr) |
+| 2 | null | Discard writes, EOF on read |
+
+```c
+struct devsw {
+    int (*read)(char *dst, int n);
+    int (*write)(const char *src, int n);
+};
+
+extern struct devsw devsw[NDEV];
+```
+
+### Block Devices (bdevsw)
+
+Random-access block devices for raw disk I/O.
+
+| Major | Device | Description |
+|-------|--------|-------------|
+| 1 | disk | Virtio block device |
+
+```c
+struct bdevsw {
+    int (*read)(uint32_t blockno, char *buf);
+    int (*write)(uint32_t blockno, const char *buf);
+};
+
+extern struct bdevsw bdevsw[NBDEV];
+```
+
+### /dev Directory
+
+Created by mkfs at filesystem image build time:
+
+```
+/dev/
+├── console    T_DEVICE  (major=1)
+├── null       T_DEVICE  (major=2)
+└── disk       T_BDEVICE (major=1)
+```
+
+Inode types: T_DEVICE (3) for character devices, T_BDEVICE (4) for block devices.
+File types: FD_DEVICE (3) for character devices, FD_BDEVICE (4) for block devices.
 
 ## Virtio Block Device
 
