@@ -135,7 +135,7 @@ struct file {
 
 ## Milestones
 
-### F1: mkfs Host Tool
+### F1: mkfs Host Tool ✓
 
 Create filesystem images on the development host.
 
@@ -150,7 +150,7 @@ Create filesystem images on the development host.
 
 **Exit criteria**: `make disk.img` creates a valid filesystem image.
 
-### F2: Superblock and Inode Layer
+### F2: Superblock and Inode Layer ✓
 
 Read filesystem metadata from disk.
 
@@ -168,7 +168,7 @@ Read filesystem metadata from disk.
 
 **Exit criteria**: Can read superblock and inode 1 (root directory) from disk.
 
-### F3: Directory Operations
+### F3: Directory Operations ✓
 
 Navigate the directory tree.
 
@@ -198,22 +198,22 @@ Read file contents.
 
 **Exit criteria**: Can read file contents from inode.
 
-### F5: File Descriptor Layer
+### F5: File Descriptor Layer ✓
 
 Manage open files per process.
 
-- [ ] Define `struct file` and global file table (NFILE entries)
-- [ ] Implement `filealloc()`: allocate file structure
-- [ ] Implement `filedup(f)`: increment reference count
-- [ ] Implement `fileclose(f)`: decrement ref, cleanup if zero
-- [ ] Implement `filestat(f, st)`: get file stats
-- [ ] Implement `fileread(f, addr, n)`: read from file
-- [ ] Add `ofile[NOFILE]` array to struct proc
+- [x] Define `struct file` and global file table (NFILE entries)
+- [x] Implement `filealloc()`: allocate file structure
+- [x] Implement `filedup(f)`: increment reference count
+- [x] Implement `fileclose(f)`: decrement ref, cleanup if zero
+- [x] Implement `filestat(f, st)`: get file stats
+- [x] Implement `fileread(f, addr, n)`: read from file
+- [x] Add `ofile[NOFILE]` array to struct proc
 - [x] Add `cwd` (current working directory) to struct proc (done in F3)
-- [ ] Implement `fdalloc(f)`: allocate file descriptor slot
+- [x] Implement `fdalloc(f)`: allocate file descriptor slot
 - [x] Initialize first process with cwd = root inode (done in F3)
-- [ ] Copy file descriptors in fork() (cwd done in F3)
-- [ ] Close file descriptors in exit() (cwd done in F3)
+- [x] Copy file descriptors in fork() (cwd done in F3)
+- [x] Close file descriptors in exit() (cwd done in F3)
 
 **Exit criteria**: Process can hold open file references.
 
@@ -338,6 +338,17 @@ TEST_SUITE(fs_read) {
     RUN_TEST(fs_readi_eof);             // read clamped to EOF
     RUN_TEST(fs_stati);                 // stat structure from inode
     RUN_TEST(fs_readi_large);           // read multi-block file
+}
+
+TEST_SUITE(fs_file) {
+    RUN_TEST(file_alloc_basic);         // filealloc returns ref=1
+    RUN_TEST(file_dup_increments_ref);  // filedup increases ref
+    RUN_TEST(file_close_decrements_ref);// fileclose decreases ref
+    RUN_TEST(file_close_releases_inode);// ref=0 releases inode
+    RUN_TEST(file_stat_from_inode);     // filestat copies inode stats
+    RUN_TEST(file_read_advances_offset);// fileread updates offset
+    RUN_TEST(file_read_not_readable);   // fileread fails if !readable
+    RUN_TEST(file_fdalloc_lowest);      // fdalloc returns lowest fd
 }
 ```
 

@@ -10,6 +10,7 @@
 #include "vmm.h"
 #include "psci.h"
 #include "fs.h"
+#include "file.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd != 1) {
@@ -27,6 +28,13 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
+	for (int fd = 0; fd < 16; fd++) {
+		if (current->ofile[fd]) {
+			fileclose(current->ofile[fd]);
+			current->ofile[fd] = 0;
+		}
+	}
+
 	if (current->cwd) {
 		iput(current->cwd);
 		current->cwd = 0;
@@ -228,6 +236,13 @@ static long sys_fork(void) {
 	// Copy cwd
 	if (current->cwd) {
 		child->cwd = idup(current->cwd);
+	}
+
+	// Copy file descriptors
+	for (int fd = 0; fd < 16; fd++) {
+		if (current->ofile[fd]) {
+			child->ofile[fd] = filedup(current->ofile[fd]);
+		}
 	}
 
 	// Parent returns child's pid

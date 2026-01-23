@@ -5,6 +5,7 @@
 #include "exception.h"
 
 struct inode;
+struct file;
 
 struct context {
 	unsigned long x19, x20, x21, x22, x23;
@@ -40,6 +41,7 @@ struct proc {
 
 	// Filesystem support
 	struct inode *cwd;
+	struct file *ofile[16];
 };
 
 #define NPROC 8
