@@ -11,6 +11,8 @@
 #include "fs.h"
 #include "file.h"
 #include "console.h"
+#include "dtb.h"
+#include "cmdline.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(string);
@@ -40,6 +42,10 @@ DECLARE_SUITE(pipe);
 void kernel_main(void) {
 	uart_init();
 	consoleinit();
+
+	extern unsigned long _dtb_address;
+	dtb_init((void *)_dtb_address);
+	cmdline_init(dtb_get_bootargs());
 	RUN_SUITE(string);
 	RUN_SUITE(sync);
 	RUN_SUITE(uart);
@@ -80,13 +86,14 @@ void kernel_main(void) {
 
 	TEST_REPORT();
 
-#ifdef RUN_TESTS
-	init("tests");
-#else
+	const char *init_prog = cmdline_get("init");
+	if (!init_prog) {
+		kpanic("init= not specified in kernel command line");
+	}
+
 	uart_puts("\nWelcome to Slopix!\n");
 	uart_puts("To exit QEMU press Ctrl-a x\n\n");
-	init("shell");
-#endif
+	init(init_prog);
 
 	scheduler();
 }

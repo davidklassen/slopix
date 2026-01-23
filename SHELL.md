@@ -206,15 +206,15 @@ Implement missing syscalls for shell functionality.
 
 Modify exec to load programs from disk instead of initramfs.
 
-- [ ] Modify sys_exec() in kernel/syscall.c:
+- [x] Modify sys_exec() in kernel/syscall.c:
   - Use namei() to find program file
   - Read ELF header from inode via readi()
   - Load segments from disk
   - Keep initramfs as fallback (for testing)
-- [ ] Extend mkfs to add program binaries:
+- [x] Extend mkfs to add program binaries:
   - Add ELF files to root directory during image creation
-- [ ] Update Makefile to build user programs into disk.img
-- [ ] Test: shell can exec programs from disk
+- [x] Update Makefile to build user programs into disk.img
+- [x] Test: shell can exec programs from disk
 
 **Exit criteria**: Programs load from disk filesystem.
 

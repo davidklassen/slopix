@@ -1,19 +1,20 @@
 ENTRY(_start)
 
 /*
- * Boot code runs at physical 0x40000000 before MMU enable.
- * Kernel code/data runs at high virtual 0xFFFF000040000000 via TTBR1.
+ * Boot code runs at physical 0x40080000 before MMU enable.
+ * QEMU virt machine loads raw binaries at RAM_BASE + 0x80000.
+ * Kernel code/data runs at high virtual 0xFFFF000040080000 via TTBR1.
  */
-__phys_base = 0x40000000;
-__virt_base = 0xFFFF000040000000;
+__phys_base = 0x40080000;
+__virt_base = 0xFFFF000040080000;
 
 MEMORY
 {
     /* Boot code at physical address (before MMU) */
-    BOOT (rx) : ORIGIN = 0x40000000, LENGTH = 64K
+    BOOT (rx) : ORIGIN = 0x40080000, LENGTH = 64K
 
     /* Kernel at high virtual address (after MMU) */
-    KERNEL (rwx) : ORIGIN = 0xFFFF000040010000, LENGTH = 128M - 64K
+    KERNEL (rwx) : ORIGIN = 0xFFFF000040090000, LENGTH = 128M - 64K
 }
 
 SECTIONS
@@ -33,7 +34,7 @@ SECTIONS
     /* Rest of kernel at high VA, loaded after boot section */
     . = ORIGIN(KERNEL);
 
-    .text : AT(0x40010000) {
+    .text : AT(0x40090000) {
         *(.text*)
     } > KERNEL
 

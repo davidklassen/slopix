@@ -7,13 +7,9 @@
 #include "proc.h"
 #include "fs.h"
 #include "file.h"
+#include "string.h"
 
 void init(const char *program) {
-	struct initramfs_entry entry;
-	if (initramfs_find(program, &entry) < 0) {
-		kpanic("init: program not found");
-	}
-
 	pte_t *pt = vmm_create();
 	if (!pt) {
 		kpanic("init: failed to create page table");
@@ -21,8 +17,40 @@ void init(const char *program) {
 
 	unsigned long entry_addr;
 	unsigned long brk;
-	if (elf_load(entry.data, entry.size, pt, &entry_addr, &brk) < 0) {
-		kpanic("init: failed to load ELF");
+
+	if (strncmp(program, "initramfs:", 10) == 0) {
+		struct initramfs_entry entry;
+		if (initramfs_find(program + 10, &entry) < 0) {
+			kpanic("init: program not found in initramfs");
+		}
+		if (elf_load(entry.data, entry.size, pt, &entry_addr, &brk) < 0) {
+			vmm_free(pt);
+			kpanic("init: failed to load ELF from initramfs");
+		}
+	} else if (program[0] == '/') {
+		char path[128];
+		strncpy(path, program, 127);
+		path[127] = '\0';
+		struct inode *ip = namei(path);
+		if (ip == 0) {
+			vmm_free(pt);
+			kpanic("init: program not found on disk");
+		}
+		ilock(ip);
+		if (ip->type != T_FILE) {
+			iunlockput(ip);
+			vmm_free(pt);
+			kpanic("init: not a file");
+		}
+		if (elf_load_from_inode(ip, pt, &entry_addr, &brk) < 0) {
+			iunlockput(ip);
+			vmm_free(pt);
+			kpanic("init: failed to load ELF from disk");
+		}
+		iunlockput(ip);
+	} else {
+		vmm_free(pt);
+		kpanic("init: invalid program path");
 	}
 
 	paddr_t stack_pa = pmm_alloc();

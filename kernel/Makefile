@@ -34,6 +34,8 @@ OBJ = \
 	console.o \
 	string.o \
 	sync.o \
+	dtb.o \
+	cmdline.o \
 	initramfs_data.o
 
 TEST_OBJ = \
@@ -55,6 +57,7 @@ TEST_OBJ = \
 	tests/test_sync.o
 
 KERNEL = kernel.elf
+KERNEL_BIN = kernel.bin
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU = $(QEMU_BASE)
@@ -68,6 +71,9 @@ all: $(KERNEL)
 $(KERNEL): $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ $(OBJ)
 
+$(KERNEL_BIN): $(KERNEL)
+	$(OBJCOPY) -O binary $< $@
+
 %.o: %.S
 	$(CC) $(ASFLAGS) -c $< -o $@
 
@@ -77,24 +83,29 @@ $(KERNEL): $(OBJ)
 ../cmd/initramfs.bin:
 	$(MAKE) -C ../cmd initramfs.bin
 
-../cmd/initramfs-test.bin:
-	$(MAKE) -C ../cmd initramfs-test.bin
-
 initramfs_data.o: ../cmd/initramfs.bin
 	$(OBJCOPY) -I binary -O elf64-littleaarch64 -B aarch64 \
 		--rename-section .data=.initramfs \
 		$< $@
 
-initramfs_data_test.o: ../cmd/initramfs-test.bin
-	$(OBJCOPY) -I binary -O elf64-littleaarch64 -B aarch64 \
-		--rename-section .data=.initramfs \
-		$< $@
+USER_PROGS = ../cmd/echo.elf ../cmd/shell.elf ../cmd/shutdown.elf \
+	../cmd/true.elf ../cmd/false.elf ../cmd/ticker.elf ../cmd/cursor_blink.elf
 
-disk.img: ../tools/mkfs
-	../tools/mkfs $@ -s 1024
+$(USER_PROGS):
+	$(MAKE) -C ../cmd
 
-run: clean $(KERNEL) disk.img
-	$(QEMU_DISK) -kernel $(KERNEL)
+disk.img: ../tools/mkfs $(USER_PROGS)
+	../tools/mkfs $@ -s 1024 \
+		../cmd/echo.elf:/echo \
+		../cmd/shell.elf:/shell \
+		../cmd/shutdown.elf:/shutdown \
+		../cmd/true.elf:/true \
+		../cmd/false.elf:/false \
+		../cmd/ticker.elf:/ticker \
+		../cmd/cursor_blink.elf:/cursor_blink
+
+run: clean $(KERNEL_BIN) disk.img
+	$(QEMU_DISK) -kernel $(KERNEL_BIN) -append "init=/shell"
 
 debug: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL) -s -S
@@ -102,13 +113,18 @@ debug: clean $(KERNEL)
 ../tools/mkfs:
 	$(MAKE) -C ../tools mkfs
 
-test.img: ../tools/mkfs ../testdata/hello.txt ../testdata/large.txt
-	../tools/mkfs $@ -s 1024 ../testdata/hello.txt:/hello ../testdata/large.txt:/large
+test.img: ../tools/mkfs ../testdata/hello.txt ../testdata/large.txt $(USER_PROGS)
+	../tools/mkfs $@ -s 1024 \
+		../testdata/hello.txt:/hello \
+		../testdata/large.txt:/large \
+		../cmd/true.elf:/true \
+		../cmd/false.elf:/false
 
 test: CFLAGS += -DRUN_TESTS
-test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ) test.img
-	$(LD) $(LDFLAGS) -o $(KERNEL) $(filter-out initramfs_data.o,$(OBJ)) initramfs_data_test.o $(TEST_OBJ)
-	$(QEMU_TEST) -kernel $(KERNEL)
+test: clean $(OBJ) $(TEST_OBJ) test.img
+	$(LD) $(LDFLAGS) -o $(KERNEL) $(OBJ) $(TEST_OBJ)
+	$(OBJCOPY) -O binary $(KERNEL) $(KERNEL_BIN)
+	$(QEMU_TEST) -kernel $(KERNEL_BIN) -append "init=initramfs:tests"
 
 clean:
-	rm -f *.o *.elf tests/*.o tests/*.elf disk.img test.img
+	rm -f *.o *.elf *.bin tests/*.o tests/*.elf disk.img test.img

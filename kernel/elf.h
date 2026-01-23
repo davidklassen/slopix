@@ -45,4 +45,7 @@ typedef struct {
 
 int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry, unsigned long *brk);
 
+struct inode;
+int elf_load_from_inode(struct inode *ip, pte_t *pagetable, unsigned long *entry, unsigned long *brk);
+
 #endif

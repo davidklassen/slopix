@@ -14,7 +14,8 @@ QEMU virt machine with:
 
 ## Boot Sequence
 
-1. QEMU loads kernel.elf at 0x4000_0000, jumps to _start
+1. QEMU loads kernel.bin at 0x4008_0000 (RAM_BASE + 0x80000), jumps to _start
+   - Raw binary format enables DTB address in x0 and -append for kernel cmdline
 2. _start (boot.S) - runs at physical address:
    - Configure MMU registers (MAIR, TCR, TTBR0, TTBR1)
    - Enable MMU with data and instruction caches
@@ -95,7 +96,7 @@ User (TTBR0, per-process):
 
 Kernel (TTBR1, shared):
 0xFFFF_0000_0000_0000   Direct map of all physical RAM
-0xFFFF_0000_4000_0000   Kernel code (mapped from phys 0x4000_0000)
+0xFFFF_0000_4008_0000   Kernel code (mapped from phys 0x4008_0000)
 0xFFFF_0000_0900_0000   Device MMIO
 ```
 

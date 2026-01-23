@@ -117,22 +117,44 @@ static long sys_exec(const char *cmdline) {
 		return -1;
 	}
 
-	// First arg is program name
-	struct initramfs_entry entry;
-	if (initramfs_find(argv[0], &entry) < 0) {
-		return -1;
-	}
+	unsigned long entry_addr = 0;
+	unsigned long brk = 0;
+	pte_t *new_pt = 0;
 
-	pte_t *new_pt = vmm_create();
-	if (!new_pt) {
-		return -1;
-	}
-
-	unsigned long entry_addr;
-	unsigned long brk;
-	if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
-		vmm_free(new_pt);
-		return -1;
+	if (argv[0][0] == '/') {
+		struct inode *ip = namei(argv[0]);
+		if (ip == 0) {
+			return -1;
+		}
+		ilock(ip);
+		if (ip->type != T_FILE) {
+			iunlockput(ip);
+			return -1;
+		}
+		new_pt = vmm_create();
+		if (!new_pt) {
+			iunlockput(ip);
+			return -1;
+		}
+		if (elf_load_from_inode(ip, new_pt, &entry_addr, &brk) < 0) {
+			iunlockput(ip);
+			vmm_free(new_pt);
+			return -1;
+		}
+		iunlockput(ip);
+	} else {
+		struct initramfs_entry entry;
+		if (initramfs_find(argv[0], &entry) < 0) {
+			return -1;
+		}
+		new_pt = vmm_create();
+		if (!new_pt) {
+			return -1;
+		}
+		if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
+			vmm_free(new_pt);
+			return -1;
+		}
 	}
 
 	paddr_t stack_pa = pmm_alloc();

@@ -10,6 +10,9 @@
 .global _start
 
 _start:
+    // Save DTB address passed by QEMU in x0
+    mov     x19, x0
+
     // Stage 1: Configure MMU (no stack needed)
     ldr     x0, =0xFF00             // MAIR: idx0=device, idx1=normal
     msr     mair_el1, x0
@@ -53,6 +56,12 @@ _start:
     b       1b
 2:
 
+    // Store DTB virtual address (PA + kernel base offset)
+    ldr     x0, =_dtb_address
+    ldr     x1, =0xFFFF000000000000
+    add     x1, x19, x1
+    str     x1, [x0]
+
     // Stage 4: Jump to kernel at high VA
     ldr     x0, =kernel_main
     br      x0
@@ -61,3 +70,8 @@ _start:
 halt:
     wfe
     b       halt
+
+.section .data
+.global _dtb_address
+_dtb_address:
+    .quad 0

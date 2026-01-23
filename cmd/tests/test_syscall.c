@@ -148,6 +148,17 @@ TEST(open_append) {
 	return 0;
 }
 
+TEST(exec_from_disk) {
+	int pid = fork();
+	if (pid == 0) {
+		exec("/true");
+		exit(1);
+	}
+	int status = wait();
+	ASSERT_EQ(status, 0, "exec /true from disk");
+	return 0;
+}
+
 TEST_SUITE(syscalls) {
 	RUN_TEST(write_returns_count);
 	RUN_TEST(read_poll);
@@ -163,4 +174,5 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(rename_dir_dotdot);
 	RUN_TEST(rename_dir_cycle);
 	RUN_TEST(open_append);
+	RUN_TEST(exec_from_disk);
 }

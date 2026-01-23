@@ -8,11 +8,9 @@ LDFLAGS = -nostdlib -T link.ld
 
 LIBC = ../libc/libc.a
 
-APPS = shell cursor_blink echo ticker shutdown true false
-TEST_APPS = tests true false
+ALL_APPS = shell cursor_blink echo ticker shutdown true false tests
 
-PROGS = $(addsuffix .elf,$(APPS))
-TEST_PROGS = $(addsuffix .elf,$(TEST_APPS))
+PROGS = $(addsuffix .elf,$(ALL_APPS))
 
 all: initramfs.bin
 
@@ -62,10 +60,7 @@ tests.elf: $(TEST_OBJ) $(LIBC)
 initramfs.bin: mkramfs $(PROGS)
 	./mkramfs $@ $(PROGS)
 
-initramfs-test.bin: mkramfs $(TEST_PROGS)
-	./mkramfs $@ $(TEST_PROGS)
-
 clean:
-	rm -f */*.o *.elf mkramfs initramfs.bin initramfs-test.bin
+	rm -f */*.o *.elf mkramfs initramfs.bin
 
 .PHONY: all clean

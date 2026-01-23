@@ -8,3 +8,4 @@ cmd/initramfs.bin
 cmd/initramfs-test.bin
 kernel/test.img
 kernel/disk.img
+kernel/kernel.bin
