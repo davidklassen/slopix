@@ -1,12 +1,12 @@
 # Filesystem Implementation Plan
 
-Implementation plan for the Slopix filesystem layer.
+Implementation plan for the Slopix filesystem.
 
 **Parent**: [ROADMAP.md](ROADMAP.md) Milestone 11: Filesystem
 
 ## Overview
 
-The filesystem provides file-based access to persistent storage. It sits above the block cache layer (VIRTIO.md M7) and exposes file syscalls to userspace.
+The filesystem provides file-based access to persistent storage. It builds on the block cache layer and exposes Unix-style file operations to userspace.
 
 ```
 +------------------+
@@ -18,226 +18,356 @@ The filesystem provides file-based access to persistent storage. It sits above t
 +------------------+
         |
 +------------------+
-|   VFS Layer      |  inode operations, path lookup
+|   File Layer     |  struct file, file descriptor table
 +------------------+
         |
 +------------------+
-|   Block Cache    |  bread(), bwrite(), brelse()  [VIRTIO.md M7]
+|   Inode Layer    |  struct inode, path lookup
 +------------------+
         |
 +------------------+
-|   Virtio Driver  |  virtio_disk_read/write()    [VIRTIO.md M1-M6]
+|   Block Cache    |  bread(), bwrite(), brelse()
++------------------+
+        |
++------------------+
+|   Virtio Driver  |  virtio_disk_read/write()
 +------------------+
 ```
-
-## Critical Dependencies
-
-### Virtio Driver Concurrency Limitation
-
-**IMPORTANT**: The current virtio driver (as of M6) does NOT support concurrent disk requests.
-
-The driver uses global variables for request state:
-```c
-static struct virtio_blk_outhdr blk_hdr;  // single shared header
-static unsigned char blk_status;           // single shared status
-```
-
-If process A calls `virtio_disk_read()` and sleeps, then process B calls `virtio_disk_read()` before A completes, B will overwrite `blk_hdr`, corrupting A's in-flight request.
-
-**Resolution options** (must choose one before filesystem implementation):
-
-1. **Serialize at block cache layer**: Add a global lock in bread()/bwrite() so only one disk request is in flight at a time. Simple but limits I/O parallelism.
-
-2. **Fix virtio driver**: Allocate `blk_hdr` and `blk_status` per-request (on stack or dynamically). Requires tracking which buffer corresponds to which descriptor. More complex but enables concurrent I/O.
-
-3. **Serialize at virtio layer**: Add a lock inside `virtio_disk_rw()`. Same effect as option 1 but at a lower level.
-
-**Resolution**: Option 1 implemented - the block cache serializes disk access via `disk_wait()`/`disk_done()` with IRQ protection.
-
-### Block Cache (VIRTIO.md M7) ✓
-
-The block cache layer is implemented:
-- `bread(dev, blockno)` - read block, return buffer with valid data
-- `bwrite(buf)` - write buffer to disk
-- `brelse(buf)` - release buffer to cache
-
-**Status**: Complete. Serialization prevents concurrent virtio requests.
 
 ## On-Disk Format
 
-See [DESIGN.md](DESIGN.md) "Filesystem Layout" section for complete specification.
+The filesystem uses xv6-style layout. See [DESIGN.md](DESIGN.md) "Filesystem Layout" for complete specification.
 
-Summary:
-- Block size: 1024 bytes
-- xv6-style layout: superblock, log, inodes, bitmap, data blocks
-- Inode: 12 direct blocks + 1 indirect block (max 268KB per file)
-- Directory entries: 14-char name + 2-byte inode number
+### Disk Layout
 
-## Implementation Milestones
+Block size: 1024 bytes (2 sectors)
 
-### F1: Block Cache (VIRTIO.md M7) ✓
+```
+Block 0:      Boot block (unused)
+Block 1:      Superblock
+Block 2-L:    Inode blocks
+Block L+1:    Bitmap block (data block allocation)
+Block B+1:    Data blocks
+```
 
-Prerequisite milestone - implemented in VIRTIO.md M7.
+### Superblock
 
-- [x] `bread()`, `bwrite()`, `brelse()` implemented
-- [x] LRU eviction policy
-- [x] Disk access serialization with IRQ protection
+```c
+struct superblock {
+    uint32_t magic;       // 0x10203040
+    uint32_t size;        // Total blocks in filesystem
+    uint32_t nblocks;     // Number of data blocks
+    uint32_t ninodes;     // Number of inodes
+    uint32_t inodestart;  // First inode block
+    uint32_t bmapstart;   // Bitmap block
+};
+```
 
-### F2: Superblock and Inode Reading
+### On-Disk Inode
 
-Read-only access to filesystem metadata.
+64 bytes, 16 inodes per block.
 
+```c
+#define NDIRECT 12
+
+struct dinode {
+    uint16_t type;        // 0=free, 1=file, 2=dir, 3=device
+    uint16_t major;       // Device major number (if type=device)
+    uint16_t minor;       // Device minor number
+    uint16_t nlink;       // Number of directory links
+    uint32_t size;        // File size in bytes
+    uint32_t addrs[NDIRECT+1];  // Data block addresses (last is indirect)
+};
+```
+
+Max file size: 12 direct + 256 indirect = 268 blocks = 268KB
+
+### Directory Entry
+
+16 bytes, 64 entries per block.
+
+```c
+#define DIRSIZ 14
+
+struct dirent {
+    uint16_t inum;        // Inode number (0 = free entry)
+    char name[DIRSIZ];    // File name (null-padded)
+};
+```
+
+### In-Memory Inode
+
+```c
+struct inode {
+    uint32_t dev;         // Device number
+    uint32_t inum;        // Inode number
+    int ref;              // Reference count
+    int valid;            // Has been read from disk?
+
+    // Copy of on-disk inode
+    uint16_t type;
+    uint16_t major;
+    uint16_t minor;
+    uint16_t nlink;
+    uint32_t size;
+    uint32_t addrs[NDIRECT+1];
+};
+```
+
+### Open File
+
+```c
+#define FD_NONE   0
+#define FD_PIPE   1
+#define FD_INODE  2
+#define FD_DEVICE 3
+
+struct file {
+    int type;             // FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE
+    int ref;              // Reference count
+    int readable;
+    int writable;
+    struct inode *ip;     // FD_INODE, FD_DEVICE
+    uint32_t off;         // FD_INODE
+};
+```
+
+## Milestones
+
+### F1: mkfs Host Tool
+
+Create filesystem images on the development host.
+
+- [ ] Create `tools/mkfs.c`:
+  - Parse command-line arguments (image file, size)
+  - Write superblock with correct offsets
+  - Initialize inode blocks (all type=0)
+  - Initialize bitmap (mark metadata blocks as used)
+  - Create root directory (inode 1) with "." and ".." entries
+- [ ] Add to Makefile: `make mkfs`, `make disk.img`
+- [ ] Update test.img generation to use mkfs
+
+**Exit criteria**: `make disk.img` creates a valid filesystem image.
+
+### F2: Superblock and Inode Layer
+
+Read filesystem metadata from disk.
+
+- [ ] Define filesystem constants in `fs.h`:
+  - BSIZE, NDIRECT, NINDIRECT, DIRSIZ
+  - ROOTINO (1), T_DIR, T_FILE, T_DEVICE
 - [ ] Implement `readsb()`: read and cache superblock
-- [ ] Implement `iget(inum)`: get inode reference
-- [ ] Implement `ilock(ip)`: lock inode and read from disk if needed
+- [ ] Implement inode cache (fixed array of NINODE entries)
+- [ ] Implement `iget(dev, inum)`: get inode reference (no disk read)
+- [ ] Implement `ilock(ip)`: lock inode, read from disk if !valid
 - [ ] Implement `iunlock(ip)`: unlock inode
 - [ ] Implement `iput(ip)`: release inode reference
-- [ ] Implement `bmap(ip, bn)`: map logical block to physical block
-- [ ] Add `fs_super` test suite (2 tests)
+- [ ] Implement `bmap(ip, bn)`: map logical block number to physical
+- [ ] Add `fs` test suite
 
-**Exit criteria**: Can read superblock and inode structures from disk.
+**Exit criteria**: Can read superblock and inode 1 (root directory) from disk.
 
-### F3: File Reading
-
-Read file contents.
-
-- [ ] Implement `readi(ip, dst, off, n)`: read data from inode
-- [ ] Implement `stati(ip, st)`: get file stat info
-- [ ] Add `fs_read` test suite (3 tests)
-
-**Exit criteria**: Can read file contents given an inode.
-
-### F4: Directory Operations
+### F3: Directory Operations
 
 Navigate the directory tree.
 
-- [ ] Implement `dirlookup(dp, name)`: find entry in directory
-- [ ] Implement `namei(path)`: resolve path to inode
-- [ ] Implement `nameiparent(path, name)`: resolve parent directory
-- [ ] Add `fs_dir` test suite (3 tests)
+- [ ] Implement `dirlookup(dp, name, poff)`: find name in directory
+- [ ] Implement `skipelem(path, name)`: parse next path component
+- [ ] Implement `namex(path, nameiparent, name)`: resolve path to inode
+- [ ] Implement `namei(path)`: resolve path, return inode
+- [ ] Implement `nameiparent(path, name)`: resolve parent, copy final name
+- [ ] Add `fs_dir` test suite
 
-**Exit criteria**: Can resolve "/path/to/file" to an inode.
+**Exit criteria**: Can resolve "/", "/file", "/dir/file" paths.
 
-### F5: File Syscalls (Read-Only)
+### F4: File Reading
+
+Read file contents.
+
+- [ ] Implement `readi(ip, dst, off, n)`: read n bytes from inode at offset
+- [ ] Implement `stati(ip, st)`: fill stat structure from inode
+- [ ] Add `fs_read` test suite
+
+**Exit criteria**: Can read file contents from inode.
+
+### F5: File Descriptor Layer
+
+Manage open files per process.
+
+- [ ] Define `struct file` and global file table (NFILE entries)
+- [ ] Implement `filealloc()`: allocate file structure
+- [ ] Implement `filedup(f)`: increment reference count
+- [ ] Implement `fileclose(f)`: decrement ref, cleanup if zero
+- [ ] Implement `filestat(f, st)`: get file stats
+- [ ] Implement `fileread(f, addr, n)`: read from file
+- [ ] Add `ofile[NOFILE]` array to struct proc
+- [ ] Add `cwd` (current working directory) to struct proc
+- [ ] Implement `fdalloc(f)`: allocate file descriptor slot
+- [ ] Initialize process 0 with cwd = root inode
+- [ ] Copy file descriptors and cwd in fork()
+- [ ] Close file descriptors in exit()
+
+**Exit criteria**: Process can hold open file references.
+
+### F6: Console Device
+
+Implement console as a device file.
+
+- [ ] Define device switch table: `struct devsw { read, write }`
+- [ ] Implement `consoleread()`: read from UART
+- [ ] Implement `consolewrite()`: write to UART
+- [ ] Register console as device (major=1)
+- [ ] Modify sys_read/sys_write to use file descriptor layer
+- [ ] Special case fd 0,1,2 as console device (before /dev/console exists)
+
+**Exit criteria**: sys_read(0) and sys_write(1) work through file layer.
+
+### F7: File Syscalls (Read-Only)
 
 Expose read-only file operations to userspace.
 
-- [ ] Implement file descriptor table (per-process)
-- [ ] Implement `sys_open(path, flags)`: open file, return fd
+- [ ] Implement `sys_open(path, flags)`:
+  - Resolve path with namei()
+  - Allocate file structure
+  - Set readable/writable based on O_RDONLY, O_WRONLY, O_RDWR
+  - Allocate file descriptor
+  - Return fd
 - [ ] Implement `sys_close(fd)`: close file descriptor
-- [ ] Implement `sys_read(fd, buf, n)`: read from file
+- [ ] Implement `sys_read(fd, buf, n)`: read through file layer
+- [ ] Implement `sys_write(fd, buf, n)`: write through file layer (device only for now)
 - [ ] Implement `sys_fstat(fd, stat)`: get file info
-- [ ] Add `syscall_file` test suite (4 tests)
+- [ ] Implement `sys_dup(fd)`: duplicate file descriptor
+- [ ] Add userspace `open()`, `close()`, `fstat()`, `dup()` wrappers
+- [ ] Add `syscall_file` test suite
 
 **Exit criteria**: User program can open and read files.
 
-### F6: File Writing
+### F8: File Writing
 
 Extend to support writes.
 
-- [ ] Implement `writei(ip, src, off, n)`: write data to inode
-- [ ] Implement `itrunc(ip)`: truncate file to zero length
-- [ ] Implement `sys_write(fd, buf, n)`: write to file (for regular files)
-- [ ] Add `fs_write` test suite (3 tests)
+- [ ] Implement `writei(ip, src, off, n)`: write n bytes to inode
+- [ ] Implement `balloc(dev)`: allocate data block from bitmap
+- [ ] Implement `bfree(dev, b)`: free data block
+- [ ] Extend bmap() to allocate blocks on write
+- [ ] Implement `filewrite(f, addr, n)`: write to file
+- [ ] Implement `itrunc(ip)`: truncate file to zero (free all blocks)
+- [ ] Handle O_TRUNC in sys_open
+- [ ] Add `fs_write` test suite
 
 **Exit criteria**: User program can write to files.
 
-### F7: File Creation and Deletion
+### F9: File Creation and Deletion
 
-Create and remove files.
+Create and remove files and directories.
 
-- [ ] Implement `ialloc(type)`: allocate new inode
+- [ ] Implement `ialloc(dev, type)`: allocate new inode
+- [ ] Implement `iupdate(ip)`: write inode to disk
 - [ ] Implement `dirlink(dp, name, inum)`: add directory entry
-- [ ] Implement `sys_open` with O_CREAT flag
-- [ ] Implement `sys_unlink(path)`: remove file
+- [ ] Implement `create(path, type, major, minor)`: create file/dir/device
+- [ ] Handle O_CREAT in sys_open
 - [ ] Implement `sys_mkdir(path)`: create directory
-- [ ] Add `fs_create` test suite (4 tests)
+- [ ] Implement `sys_mknod(path, major, minor)`: create device node
+- [ ] Implement `sys_link(old, new)`: create hard link
+- [ ] Implement `sys_unlink(path)`: remove file or empty directory
+- [ ] Implement `sys_chdir(path)`: change current directory
+- [ ] Add userspace wrappers
+- [ ] Add `fs_create` test suite
 
-**Exit criteria**: User program can create and delete files.
+**Exit criteria**: User program can create, link, and delete files.
 
-### F8: Logging (Optional)
+### F10: Pipes
 
-Crash recovery via write-ahead logging.
+Inter-process communication via pipes.
 
-**Prerequisites**:
-- [ ] Implement `bflush()`: write all dirty buffers to disk (needed for log commit)
+- [ ] Define `struct pipe` with buffer and read/write offsets
+- [ ] Implement `pipealloc(fd0, fd1)`: create pipe pair
+- [ ] Implement `piperead(pi, addr, n)`: read from pipe
+- [ ] Implement `pipewrite(pi, addr, n)`: write to pipe
+- [ ] Implement `pipeclose(pi, writable)`: close pipe end
+- [ ] Implement `sys_pipe(fdarray)`: create pipe, return fds
+- [ ] Add pipe support to fileread/filewrite
+- [ ] Add `pipe` test suite
 
-**Implementation**:
-- [ ] Implement `begin_op()`: start filesystem operation
-- [ ] Implement `end_op()`: commit filesystem operation
-- [ ] Implement `log_write(buf)`: mark buffer for logging
-- [ ] Wrap all modifying operations in begin_op/end_op
-- [ ] Add `fs_log` test suite (2 tests)
+**Exit criteria**: Two processes can communicate via pipe.
 
-**Exit criteria**: Filesystem recovers consistently after simulated crash.
+## Device Nodes
 
-## Testing Strategy
+The filesystem supports device files through the mknod syscall.
 
-### Test Disk Image
+| Major | Minor | Device |
+|-------|-------|--------|
+| 1     | 0     | Console (/dev/console) |
 
-Create a test disk image with known filesystem contents:
-```bash
-# Create empty disk
-dd if=/dev/zero of=test.img bs=1M count=1
+Future devices can be added by registering in the devsw table.
 
-# Format with mkfs tool (to be written)
-./mkfs test.img
-```
+## Test Strategy
 
 ### Kernel Tests
 
-Tests run before scheduler starts, so they test synchronous single-threaded access.
+Tests run before scheduler starts (single-threaded).
 
 ```c
-TEST_SUITE(fs_super) {
+TEST_SUITE(fs) {
     RUN_TEST(fs_superblock_valid);      // magic number correct
     RUN_TEST(fs_superblock_sizes);      // sizes non-zero
-}
-
-TEST_SUITE(fs_read) {
-    RUN_TEST(fs_read_root_inode);       // can read inode 1
-    RUN_TEST(fs_read_file_contents);    // can read known file
-    RUN_TEST(fs_read_large_file);       // can read multi-block file
+    RUN_TEST(fs_iget_root);             // can get root inode
+    RUN_TEST(fs_ilock_root);            // can lock and read root
 }
 
 TEST_SUITE(fs_dir) {
-    RUN_TEST(fs_dir_lookup);            // find entry in directory
-    RUN_TEST(fs_namei_simple);          // resolve "/file"
-    RUN_TEST(fs_namei_nested);          // resolve "/dir/file"
+    RUN_TEST(fs_dir_dot);               // "." in root
+    RUN_TEST(fs_dir_dotdot);            // ".." in root
+    RUN_TEST(fs_namei_root);            // namei("/") returns root
+    RUN_TEST(fs_namei_file);            // namei("/file") works
+}
+
+TEST_SUITE(fs_read) {
+    RUN_TEST(fs_readi_small);           // read small file
+    RUN_TEST(fs_readi_large);           // read multi-block file
 }
 ```
 
 ### Userspace Tests
 
-Tests run as user processes after scheduler starts. These can test concurrent file access.
+Tests run as user processes (multi-threaded).
 
 ```c
-TEST_SUITE(file_concurrent) {
-    RUN_TEST(file_two_readers);         // two processes read same file
-    RUN_TEST(file_reader_writer);       // one reads, one writes different file
-}
+// In cmd/tests/
+void test_open_read(void);              // open file, read contents
+void test_write_read(void);             // write then read back
+void test_mkdir_ls(void);               // create and list directory
+void test_pipe(void);                   // pipe communication
 ```
 
-## Future Improvements
+### Test Filesystem
 
-### Virtio Driver Enhancements (Post-Filesystem)
+The mkfs tool should support adding files during image creation:
 
-The current virtio driver prioritizes simplicity. After the filesystem is working, consider:
+```bash
+./mkfs disk.img testfile.txt:/test.txt
+```
 
-1. **Concurrent I/O**: Allocate `blk_hdr` and `blk_status` per-request instead of using global variables. Track descriptor chains to match completions with requests. Enables multiple in-flight disk operations.
+This adds `testfile.txt` from the host as `/test.txt` in the image.
 
-2. **Timeout error recovery**: When a request times out, the driver frees descriptors but the avail ring entry still references them. If the device later processes the request, it could access stale descriptors. A robust implementation would:
-   - Mark timed-out descriptors as "in-flight abandoned"
-   - Skip them when processing completions
-   - Only reuse after device confirms completion or reset
+## Implementation Notes
 
-3. **Read-ahead**: Prefetch sequential blocks to reduce latency for file reads.
+### Concurrency
 
-These optimizations are not needed for a functional filesystem but improve performance under load.
+The block cache serializes disk access via `disk_wait()`/`disk_done()`. The inode cache uses reference counting for safe concurrent access. Inode locking (via `ilock`/`iunlock`) protects inode contents during read/write.
+
+### Error Handling
+
+Functions return -1 on error. Syscalls that fail leave errno-style error codes (future enhancement). Disk errors from the virtio driver propagate up through the layers.
+
+### Memory Layout
+
+- Inode cache: NINODE (50) entries, statically allocated
+- File table: NFILE (100) entries, statically allocated
+- Per-process: NOFILE (16) file descriptor slots
 
 ## References
 
-- [DESIGN.md](DESIGN.md): On-disk format specification
-- [VIRTIO.md](VIRTIO.md): Block device driver and cache
-- [xv6 Book Chapter 8](docs/xv6-book-riscv/xv6-book-riscv.md): File system design
-- [OSDev FAT](https://wiki.osdev.org/FAT): Alternative simple filesystem
+- [DESIGN.md](DESIGN.md): On-disk format, virtio driver details
+- [xv6 Book Chapter 8](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf): File system design
+- [xv6-riscv fs.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/fs.c): Reference implementation

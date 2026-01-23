@@ -213,26 +213,15 @@ Before starting:
 
 ---
 
-## Milestone 10: Block Device
+## Milestone 10: Block Device ✓
 
 **Goal**: Read/write disk sectors via Virtio with block cache
-
-**Detailed plan**: See [VIRTIO.md](VIRTIO.md) for step-by-step implementation guide.
 
 ### What You'll Build
 - Virtio MMIO transport (legacy v1 interface)
 - Virtqueue setup and management
 - Block device driver with interrupt-driven I/O
 - Block cache layer (bread/bwrite/brelse)
-
-### Sub-milestones (see VIRTIO.md)
-| Phase | Description |
-|-------|-------------|
-| M1-M3 | Device discovery, feature negotiation, virtqueue setup |
-| M4-M5 | Synchronous read/write with polling |
-| M6 | Interrupt-driven I/O |
-| M7 | Block cache integration |
-| M8 | Error handling |
 
 ### Essential Reading
 | Resource | Focus |
@@ -254,22 +243,26 @@ Before starting:
 
 **Goal**: Mount filesystem and access files
 
+**Detailed plan**: See [FS.md](FS.md) for step-by-step implementation guide.
+
 ### What You'll Build
-- Simple filesystem (or FAT)
-- Inode abstraction
-- Directory listing
-- open/close/read/write syscalls
+- xv6-style filesystem with inodes and directories
+- File descriptor layer (struct file, per-process fd table)
+- Console device (/dev/console)
+- Full file syscalls (open, close, read, write, mkdir, unlink, etc.)
+- Pipes for inter-process communication
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
 | [xv6 Book](docs/xv6-book-riscv/xv6-book-riscv.md) Ch 8 | File system design |
-| [OSDev: FAT](https://wiki.osdev.org/FAT) | Simple filesystem |
+| [xv6-riscv fs.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/fs.c) | Reference implementation |
 
 ### Deliverables
-- List files in root directory
-- Read file contents to console
-- Create and write new file
+- mkfs tool creates filesystem images
+- User program can open, read, write files
+- Directories can be created and navigated
+- Pipes work for shell pipelines
 
 ---
 
