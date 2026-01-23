@@ -52,16 +52,16 @@ If process A calls `virtio_disk_read()` and sleeps, then process B calls `virtio
 
 3. **Serialize at virtio layer**: Add a lock inside `virtio_disk_rw()`. Same effect as option 1 but at a lower level.
 
-**Recommendation**: Start with option 1 (serialize at block cache) for simplicity. This is what xv6 does. Concurrent I/O optimization can come later.
+**Resolution**: Option 1 implemented - the block cache serializes disk access via `disk_wait()`/`disk_done()` with IRQ protection.
 
-### Block Cache (VIRTIO.md M7)
+### Block Cache (VIRTIO.md M7) ✓
 
-The filesystem depends on the block cache layer defined in VIRTIO.md M7:
-- `bread(dev, blockno)` - read block, return locked buffer
+The block cache layer is implemented:
+- `bread(dev, blockno)` - read block, return buffer with valid data
 - `bwrite(buf)` - write buffer to disk
-- `brelse(buf)` - release buffer
+- `brelse(buf)` - release buffer to cache
 
-The block cache must be implemented before the filesystem.
+**Status**: Complete. Serialization prevents concurrent virtio requests.
 
 ## On-Disk Format
 
@@ -75,11 +75,13 @@ Summary:
 
 ## Implementation Milestones
 
-### F1: Block Cache (VIRTIO.md M7)
+### F1: Block Cache (VIRTIO.md M7) ✓
 
-Prerequisite milestone - implement bread/bwrite/brelse with concurrency protection.
+Prerequisite milestone - implemented in VIRTIO.md M7.
 
-See VIRTIO.md M7 for details.
+- [x] `bread()`, `bwrite()`, `brelse()` implemented
+- [x] LRU eviction policy
+- [x] Disk access serialization with IRQ protection
 
 ### F2: Superblock and Inode Reading
 
@@ -157,6 +159,10 @@ Create and remove files.
 
 Crash recovery via write-ahead logging.
 
+**Prerequisites**:
+- [ ] Implement `bflush()`: write all dirty buffers to disk (needed for log commit)
+
+**Implementation**:
 - [ ] Implement `begin_op()`: start filesystem operation
 - [ ] Implement `end_op()`: commit filesystem operation
 - [ ] Implement `log_write(buf)`: mark buffer for logging
@@ -211,6 +217,23 @@ TEST_SUITE(file_concurrent) {
     RUN_TEST(file_reader_writer);       // one reads, one writes different file
 }
 ```
+
+## Future Improvements
+
+### Virtio Driver Enhancements (Post-Filesystem)
+
+The current virtio driver prioritizes simplicity. After the filesystem is working, consider:
+
+1. **Concurrent I/O**: Allocate `blk_hdr` and `blk_status` per-request instead of using global variables. Track descriptor chains to match completions with requests. Enables multiple in-flight disk operations.
+
+2. **Timeout error recovery**: When a request times out, the driver frees descriptors but the avail ring entry still references them. If the device later processes the request, it could access stale descriptors. A robust implementation would:
+   - Mark timed-out descriptors as "in-flight abandoned"
+   - Skip them when processing completions
+   - Only reuse after device confirms completion or reset
+
+3. **Read-ahead**: Prefetch sequential blocks to reduce latency for file reads.
+
+These optimizations are not needed for a functional filesystem but improve performance under load.
 
 ## References
 

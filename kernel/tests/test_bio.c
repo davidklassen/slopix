@@ -50,9 +50,12 @@ TEST(bwrite_persists_data) {
 		b->data[i] = (unsigned char)(i & 0xFF);
 	}
 	bwrite(b);
+
+	// Invalidate before release to force re-read from disk on next bread().
+	// This tests that bwrite() actually persists data to disk.
+	b->valid = 0;
 	brelse(b);
 
-	b->valid = 0;
 	b = bread(0, SCRATCH_BLOCK_3);
 	for (int i = 0; i < BSIZE; i++) {
 		if (b->data[i] != (unsigned char)(i & 0xFF)) {

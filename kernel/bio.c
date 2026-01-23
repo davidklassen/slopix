@@ -22,15 +22,21 @@ static inline void irq_restore(unsigned long daif) {
 }
 
 static void disk_wait(void) {
+	unsigned long flags = irq_save();
 	while (bcache.disk_busy) {
+		irq_restore(flags);
 		sleep(&bcache.disk_busy);
+		flags = irq_save();
 	}
 	bcache.disk_busy = 1;
+	irq_restore(flags);
 }
 
 static void disk_done(void) {
+	unsigned long flags = irq_save();
 	bcache.disk_busy = 0;
 	wakeup(&bcache.disk_busy);
+	irq_restore(flags);
 }
 
 void binit(void) {

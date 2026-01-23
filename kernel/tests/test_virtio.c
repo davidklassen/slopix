@@ -190,6 +190,7 @@ TEST_SUITE(virtio_intr) {
 
 static unsigned char error_test_buf[512];
 
+// Sector 3000 is beyond disk capacity (2048 sectors = 1MB test image)
 TEST(virtio_read_bad_sector) {
 	int ret = virtio_disk_read(3000, error_test_buf);
 	ASSERT(ret < 0, "Reading invalid sector should fail");
