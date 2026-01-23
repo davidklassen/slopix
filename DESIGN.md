@@ -392,24 +392,26 @@ Implemented syscalls:
 | 5 | fork | - | - | - | child pid or 0 |
 | 6 | wait | - | - | - | child pid |
 | 7 | exec | cmdline | - | - | argc or -1 |
+| 8 | poll | fd | timeout_ms | - | 0 if data, -1 timeout |
+| 9 | poweroff | - | - | - | - |
+| 10 | sbrk | n | - | - | old break |
 
 Planned syscalls (for filesystem):
 
 | x8 | Name | x0 | x1 | x2 | Return |
 |----|------|----|----|-----|--------|
-| 8 | open | path | flags | - | fd or -1 |
-| 9 | close | fd | - | - | 0 or -1 |
-| 10 | pipe | fds[2] | - | - | 0 or -1 |
-| 11 | dup | fd | - | - | new fd |
-| 12 | fstat | fd | &stat | - | 0 or -1 |
-| 13 | mkdir | path | - | - | 0 or -1 |
-| 14 | chdir | path | - | - | 0 or -1 |
-| 15 | mknod | path | major | minor | 0 or -1 |
-| 16 | link | old | new | - | 0 or -1 |
-| 17 | unlink | path | - | - | 0 or -1 |
-| 18 | sbrk | n | - | - | old break |
-| 19 | kill | pid | - | - | 0 or -1 |
-| 20 | uptime | - | - | - | ticks |
+| 11 | open | path | flags | - | fd or -1 |
+| 12 | close | fd | - | - | 0 or -1 |
+| 13 | pipe | fds[2] | - | - | 0 or -1 |
+| 14 | dup | fd | - | - | new fd |
+| 15 | fstat | fd | &stat | - | 0 or -1 |
+| 16 | mkdir | path | - | - | 0 or -1 |
+| 17 | chdir | path | - | - | 0 or -1 |
+| 18 | mknod | path | major | minor | 0 or -1 |
+| 19 | link | old | new | - | 0 or -1 |
+| 20 | unlink | path | - | - | 0 or -1 |
+| 21 | kill | pid | - | - | 0 or -1 |
+| 22 | uptime | - | - | - | ticks |
 
 ## Virtio Block Device
 

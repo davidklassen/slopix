@@ -15,9 +15,6 @@ DECLARE_SUITE(exception);
 DECLARE_SUITE(timer);
 DECLARE_SUITE(vmm);
 DECLARE_SUITE(pmm);
-DECLARE_SUITE(proc);
-DECLARE_SUITE(vmm_user);
-DECLARE_SUITE(elf);
 DECLARE_SUITE(initramfs);
 DECLARE_SUITE(virtio);
 DECLARE_SUITE(virtio_features);
@@ -31,9 +28,6 @@ void kernel_main(void) {
 
 	pmm_init();
 	RUN_SUITE(pmm);
-	RUN_SUITE(proc);
-	RUN_SUITE(vmm_user);
-	RUN_SUITE(elf);
 	RUN_SUITE(initramfs);
 
 	virtio_init();

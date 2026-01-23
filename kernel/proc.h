@@ -47,7 +47,7 @@ typedef void (*proc_func)(void);
 
 struct proc *proc_alloc(void);
 void proc_create(proc_func func);
-int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack);
+int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack, unsigned long sz);
 void context_switch(struct context *prev, struct context *next);
 void scheduler(void);
 void sched(void);

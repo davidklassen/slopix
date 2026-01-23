@@ -18,7 +18,8 @@ void init(const char *program) {
 	}
 
 	unsigned long entry_addr;
-	if (elf_load(entry.data, entry.size, pt, &entry_addr) < 0) {
+	unsigned long brk;
+	if (elf_load(entry.data, entry.size, pt, &entry_addr, &brk) < 0) {
 		kpanic("init: failed to load ELF");
 	}
 
@@ -32,7 +33,7 @@ void init(const char *program) {
 		kpanic("init: failed to map stack");
 	}
 
-	if (proc_create_user(pt, entry_addr, USER_STACK) < 0) {
+	if (proc_create_user(pt, entry_addr, USER_STACK, brk) < 0) {
 		kpanic("init: failed to create process");
 	}
 }

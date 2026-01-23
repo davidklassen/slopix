@@ -43,6 +43,18 @@ The test macros in `tests/test.h` are designed to work without `#ifdef` guards i
 
 This means `kernel_main()` can use test macros directly without conditionals - in normal builds they simply do nothing and code continues to the next statement.
 
+## Test Design
+
+Kernel tests verify the boot sequence by observing state, not modifying it:
+
+- Tests are **read-only** - they check that init functions set correct state
+- Tests run **after** the init function they verify (e.g., `RUN_SUITE(virtio)` after `virtio_init()`)
+- Tests must **not** write to registers, allocate memory, or change CPU/device state
+- This ensures **identical state** in test and normal modes before userspace transition
+
+Good: `ASSERT_EQ(VIRTIO_REG(STATUS), 3, "status")` - reads and verifies
+Bad: `VIRTIO_REG(STATUS) = 1; ... ASSERT_EQ(...)` - modifies then verifies
+
 ## Planning
 
 When planning implementation tasks:

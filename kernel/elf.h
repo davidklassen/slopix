@@ -43,6 +43,6 @@ typedef struct {
 	unsigned long p_align;
 } Elf64_Phdr;
 
-int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry);
+int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry, unsigned long *brk);
 
 #endif

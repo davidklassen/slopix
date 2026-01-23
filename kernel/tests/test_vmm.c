@@ -56,20 +56,6 @@ TEST(ttbr0_and_ttbr1_are_different) {
 	return 0;
 }
 
-TEST(ttbr0_switch_preserves_kernel) {
-	unsigned long original;
-	__asm__ volatile("mrs %0, ttbr0_el1" : "=r"(original));
-	__asm__ volatile("msr ttbr0_el1, %0; dsb sy; tlbi vmalle1; dsb sy; isb"
-			 :
-			 : "r"(0UL));
-	volatile unsigned long test = 42;
-	__asm__ volatile("msr ttbr0_el1, %0; dsb sy; tlbi vmalle1; dsb sy; isb"
-			 :
-			 : "r"(original));
-	ASSERT_EQ(test, 42, "Kernel survives TTBR0 switch");
-	return 0;
-}
-
 TEST(va_pa_roundtrip) {
 	paddr_t pa = RAM_BASE + 0x1000;
 	void *va = PA_TO_VA(pa);
@@ -86,7 +72,6 @@ TEST_SUITE(vmm) {
 	RUN_TEST(identity_va_accessible);
 	RUN_TEST(kernel_runs_from_high_address);
 	RUN_TEST(ttbr0_and_ttbr1_are_different);
-	RUN_TEST(ttbr0_switch_preserves_kernel);
 	RUN_TEST(va_pa_roundtrip);
 }
 

@@ -17,7 +17,7 @@ static void memset(void *dst, int c, unsigned long n) {
 	}
 }
 
-int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry) {
+int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned long *entry, unsigned long *brk) {
 	Elf64_Ehdr *ehdr = (Elf64_Ehdr *)data;
 
 	if (size < sizeof(Elf64_Ehdr)) {
@@ -38,6 +38,7 @@ int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned lo
 	}
 
 	Elf64_Phdr *phdr = (Elf64_Phdr *)(data + ehdr->e_phoff);
+	unsigned long max_addr = 0;
 
 	for (int i = 0; i < ehdr->e_phnum; i++) {
 		if (phdr[i].p_type != PT_LOAD) {
@@ -84,8 +85,13 @@ int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned lo
 				return -1;
 			}
 		}
+
+		if (va_end > max_addr) {
+			max_addr = va_end;
+		}
 	}
 
 	*entry = ehdr->e_entry;
+	*brk = max_addr;
 	return 0;
 }

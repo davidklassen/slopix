@@ -13,5 +13,6 @@ int wait(void);
 int exec(const char *name);
 int poll(int fd, long timeout_ms);
 void poweroff(void);
+void *sbrk(long n);
 
 #endif

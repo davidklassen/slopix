@@ -37,9 +37,6 @@ TEST_OBJ = \
 	tests/test_timer.o \
 	tests/test_vmm.o \
 	tests/test_pmm.o \
-	tests/test_proc.o \
-	tests/test_vmm_user.o \
-	tests/test_elf.o \
 	tests/test_initramfs.o \
 	tests/test_virtio.o
 

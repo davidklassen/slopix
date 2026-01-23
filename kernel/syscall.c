@@ -106,7 +106,8 @@ static long sys_exec(const char *cmdline) {
 	}
 
 	unsigned long entry_addr;
-	if (elf_load(entry.data, entry.size, new_pt, &entry_addr) < 0) {
+	unsigned long brk;
+	if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
 		vmm_free(new_pt);
 		return -1;
 	}
@@ -164,6 +165,7 @@ static long sys_exec(const char *cmdline) {
 	// Switch to new address space
 	pte_t *old_pt = current->pagetable;
 	current->pagetable = new_pt;
+	current->sz = brk;
 	write_ttbr0_el1(VA_TO_PA(new_pt));
 	tlbi_vmalle1();
 	if (old_pt) {
@@ -261,6 +263,34 @@ static long sys_poweroff(void) {
 	return 0;
 }
 
+static long sys_sbrk(long n) {
+	unsigned long old_sz = current->sz;
+	unsigned long new_sz = old_sz + n;
+
+	if (n < 0 && new_sz > old_sz) {
+		return -1;
+	}
+
+	if (n > 0) {
+		unsigned long old_end = (old_sz + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+		unsigned long new_end = (new_sz + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+
+		for (unsigned long va = old_end; va < new_end; va += PAGE_SIZE) {
+			paddr_t pa = pmm_alloc();
+			if (pa == 0) {
+				return -1;
+			}
+			if (vmm_map_page(current->pagetable, va, pa, 1, 0) < 0) {
+				pmm_free(pa);
+				return -1;
+			}
+		}
+	}
+
+	current->sz = new_sz;
+	return old_sz;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -295,6 +325,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_poweroff:
 		ret = sys_poweroff();
+		break;
+	case SYS_sbrk:
+		ret = sys_sbrk(tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

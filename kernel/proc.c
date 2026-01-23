@@ -67,13 +67,14 @@ void usertrap_first(void) {
 	usertrap_return(VA_TO_PA(current->pagetable));
 }
 
-int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack) {
+int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack, unsigned long sz) {
 	struct proc *p = proc_alloc();
 	if (!p) {
 		return -1;
 	}
 
 	p->pagetable = pagetable;
+	p->sz = sz;
 
 	char *sp = p->kstack + PAGE_SIZE;
 	sp -= sizeof(struct trap_frame);

@@ -11,6 +11,7 @@
 #define SYS_exec     7
 #define SYS_poll     8
 #define SYS_poweroff 9
+#define SYS_sbrk     10
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);
