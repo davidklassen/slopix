@@ -25,15 +25,6 @@ make run  - always times out (no exit), kill background shell after
 2. `make test` - ensure all tests pass
 3. `make run` - verify kernel behaves as expected
 
-## VCS Guidelines
-
-Commit message format:
-- First line: one-liner, all lowercase description
-- Second line: empty
-- Remaining lines: commit body with details
-
-When asked to create a commit message, do not use git commands. Just output the message to chat.
-
 ## Test Framework
 
 The test macros in `tests/test.h` are designed to work without `#ifdef` guards in application code:
