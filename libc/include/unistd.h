@@ -17,5 +17,10 @@ void *sbrk(long n);
 int open(const char *path, int flags);
 int close(int fd);
 int dup(int fd);
+int mkdir(const char *path);
+int mknod(const char *path, int major, int minor);
+int link(const char *oldpath, const char *newpath);
+int unlink(const char *path);
+int chdir(const char *path);
 
 #endif

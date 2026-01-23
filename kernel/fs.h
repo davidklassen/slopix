@@ -25,6 +25,7 @@
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR	 0x002
+#define O_CREAT	 0x100
 #define O_TRUNC	 0x200
 
 struct superblock {
@@ -89,6 +90,10 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
 int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n);
 void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
+struct inode *ialloc(unsigned int dev, unsigned short type);
+int dirlink(struct inode *dp, char *name, unsigned int inum);
+int isdirempty(struct inode *dp);
+struct inode *create(char *path, unsigned short type, unsigned short major, unsigned short minor);
 struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff);
 struct inode *namei(char *path);
 struct inode *nameiparent(char *path, char *name);

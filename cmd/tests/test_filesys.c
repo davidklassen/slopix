@@ -124,6 +124,72 @@ TEST(write_extends_file) {
 	return 0;
 }
 
+TEST(create_file) {
+	int fd = open("/newfile", O_CREAT | O_RDWR);
+	ASSERT(fd >= 0, "open O_CREAT returns valid fd");
+	close(fd);
+	fd = open("/newfile", O_RDONLY);
+	ASSERT(fd >= 0, "can reopen created file");
+	close(fd);
+	unlink("/newfile");
+	return 0;
+}
+
+TEST(mkdir_basic) {
+	int r = mkdir("/testdir");
+	ASSERT_EQ(r, 0, "mkdir succeeds");
+	int fd = open("/testdir", O_RDONLY);
+	ASSERT(fd >= 0, "can open directory");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.type, 2, "type is T_DIR");
+	close(fd);
+	unlink("/testdir");
+	return 0;
+}
+
+TEST(link_unlink) {
+	int fd = open("/linktest", O_CREAT | O_RDWR);
+	write(fd, "data", 4);
+	close(fd);
+
+	ASSERT_EQ(link("/linktest", "/linktest2"), 0, "link succeeds");
+
+	unlink("/linktest");
+	fd = open("/linktest2", O_RDONLY);
+	ASSERT(fd >= 0, "linked file still accessible");
+	close(fd);
+
+	unlink("/linktest2");
+	return 0;
+}
+
+TEST(chdir_basic) {
+	mkdir("/chdirtest");
+	ASSERT_EQ(chdir("/chdirtest"), 0, "chdir succeeds");
+
+	int fd = open("localfile", O_CREAT | O_WRONLY);
+	ASSERT(fd >= 0, "can create file in new cwd");
+	close(fd);
+
+	chdir("/");
+	unlink("/chdirtest/localfile");
+	unlink("/chdirtest");
+	return 0;
+}
+
+TEST(unlink_nonexistent) {
+	ASSERT_EQ(unlink("/nonexistent"), -1, "unlink nonexistent fails");
+	return 0;
+}
+
+TEST(mkdir_duplicate) {
+	ASSERT_EQ(mkdir("/dupdir"), 0, "first mkdir succeeds");
+	ASSERT_EQ(mkdir("/dupdir"), -1, "duplicate mkdir fails");
+	unlink("/dupdir");
+	return 0;
+}
+
 TEST_SUITE(filesys) {
 	RUN_TEST(open_file);
 	RUN_TEST(open_nonexistent);
@@ -136,4 +202,10 @@ TEST_SUITE(filesys) {
 	RUN_TEST(write_read_back);
 	RUN_TEST(open_trunc);
 	RUN_TEST(write_extends_file);
+	RUN_TEST(create_file);
+	RUN_TEST(mkdir_basic);
+	RUN_TEST(link_unlink);
+	RUN_TEST(chdir_basic);
+	RUN_TEST(unlink_nonexistent);
+	RUN_TEST(mkdir_duplicate);
 }

@@ -184,7 +184,7 @@ Navigate the directory tree.
 - [x] Add `cwd` (current working directory) to struct proc
 - [x] Initialize first process with cwd = root inode
 - [x] Copy cwd in fork(), release in exit()
-- [x] Add string utilities (`strncmp`, `memmove`) in `kstring.c`
+- [x] Add string utilities (`strncmp`, `strncpy`, `memmove`, `memset`) in `kstring.c`
 - [x] Add `fs_dir` test suite
 
 **Exit criteria**: Can resolve "/", "/file", "/dir/file" paths (absolute and relative).
@@ -269,22 +269,24 @@ Extend to support writes.
 
 **Exit criteria**: User program can write to files.
 
-### F9: File Creation and Deletion
+### F9: File Creation and Deletion ✓
 
 Create and remove files and directories.
 
-- [ ] Implement `ialloc(dev, type)`: allocate new inode
+- [x] Implement `ialloc(dev, type)`: allocate new inode
 - [x] Implement `iupdate(ip)`: write inode to disk (done in F8)
-- [ ] Implement `dirlink(dp, name, inum)`: add directory entry
-- [ ] Implement `create(path, type, major, minor)`: create file/dir/device
-- [ ] Handle O_CREAT in sys_open
-- [ ] Implement `sys_mkdir(path)`: create directory
-- [ ] Implement `sys_mknod(path, major, minor)`: create device node
-- [ ] Implement `sys_link(old, new)`: create hard link
-- [ ] Implement `sys_unlink(path)`: remove file or empty directory
-- [ ] Implement `sys_chdir(path)`: change current directory
-- [ ] Add userspace wrappers
-- [ ] Add `fs_create` test suite
+- [x] Implement `dirlink(dp, name, inum)`: add directory entry
+- [x] Implement `isdirempty(dp)`: check if directory is empty
+- [x] Implement `create(path, type, major, minor)`: create file/dir/device
+- [x] Handle O_CREAT in sys_open
+- [x] Implement `sys_mkdir(path)`: create directory
+- [x] Implement `sys_mknod(path, major, minor)`: create device node
+- [x] Implement `sys_link(old, new)`: create hard link
+- [x] Implement `sys_unlink(path)`: remove file or empty directory
+- [x] Implement `sys_chdir(path)`: change current directory
+- [x] Modify `iput()` to free inode when nlink reaches 0
+- [x] Add userspace wrappers (`mkdir`, `mknod`, `link`, `unlink`, `chdir`)
+- [x] Add file creation/deletion tests to `filesys` test suite
 
 **Exit criteria**: User program can create, link, and delete files.
 
@@ -377,11 +379,19 @@ TEST_SUITE(filesys) {
     RUN_TEST(dup_file);                 // dup returns new fd
     RUN_TEST(close_invalid_fd);         // close invalid fd returns -1
     RUN_TEST(read_after_close);         // read closed fd returns -1
+    RUN_TEST(write_file);               // write to file
+    RUN_TEST(write_read_back);          // write then read back
+    RUN_TEST(open_trunc);               // O_TRUNC truncates file
+    RUN_TEST(write_extends_file);       // write extends file size
+    RUN_TEST(create_file);              // O_CREAT creates file
+    RUN_TEST(mkdir_basic);              // mkdir creates directory
+    RUN_TEST(link_unlink);              // link and unlink files
+    RUN_TEST(chdir_basic);              // chdir changes cwd
+    RUN_TEST(unlink_nonexistent);       // unlink nonexistent fails
+    RUN_TEST(mkdir_duplicate);          // mkdir duplicate fails
 }
 
 // Future test suites:
-// void test_write_read(void);          // write then read back
-// void test_mkdir_ls(void);            // create and list directory
 // void test_pipe(void);                // pipe communication
 ```
 

@@ -116,6 +116,16 @@ void iunlock(struct inode *ip) {
 
 void iput(struct inode *ip) {
 	unsigned long flags = irq_save();
+	if (ip->ref == 1 && ip->valid && ip->nlink == 0) {
+		irq_restore(flags);
+		ilock(ip);
+		itrunc(ip);
+		ip->type = 0;
+		iupdate(ip);
+		ip->valid = 0;
+		iunlock(ip);
+		flags = irq_save();
+	}
 	ip->ref--;
 	irq_restore(flags);
 }
@@ -344,6 +354,130 @@ void stati(struct inode *ip, struct stat *st) {
 	st->type = ip->type;
 	st->nlink = ip->nlink;
 	st->size = ip->size;
+}
+
+struct inode *ialloc(unsigned int dev, unsigned short type) {
+	for (unsigned int inum = 1; inum < sb.ninodes; inum++) {
+		struct buf *bp = bread(dev, IBLOCK(inum, sb));
+		if (!bp) {
+			continue;
+		}
+		struct dinode *dip = (struct dinode *)bp->data + inum % IPB;
+		if (dip->type == 0) {
+			memset(dip, 0, sizeof(*dip));
+			dip->type = type;
+			bwrite(bp);
+			brelse(bp);
+			return iget(dev, inum);
+		}
+		brelse(bp);
+	}
+	return 0;
+}
+
+int dirlink(struct inode *dp, char *name, unsigned int inum) {
+	if (dp->type != T_DIR) {
+		return -1;
+	}
+
+	struct inode *ip = dirlookup(dp, name, 0);
+	if (ip != 0) {
+		iput(ip);
+		return -1;
+	}
+
+	struct dirent de;
+	unsigned int off;
+	for (off = 0; off < dp->size; off += sizeof(de)) {
+		if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+			return -1;
+		}
+		if (de.inum == 0) {
+			break;
+		}
+	}
+
+	strncpy(de.name, name, DIRSIZ);
+	de.inum = inum;
+	if (writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		return -1;
+	}
+	return 0;
+}
+
+int isdirempty(struct inode *dp) {
+	struct dirent de;
+	for (unsigned int off = 2 * sizeof(de); off < dp->size; off += sizeof(de)) {
+		if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+			break;
+		}
+		if (de.inum != 0) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+struct inode *create(char *path, unsigned short type, unsigned short major, unsigned short minor) {
+	char name[DIRSIZ];
+	struct inode *dp = nameiparent(path, name);
+	if (dp == 0) {
+		return 0;
+	}
+
+	ilock(dp);
+
+	struct inode *ip = dirlookup(dp, name, 0);
+	if (ip != 0) {
+		iunlockput(dp);
+		ilock(ip);
+		if (type == T_FILE && ip->type == T_FILE) {
+			return ip;
+		}
+		iunlockput(ip);
+		return 0;
+	}
+
+	ip = ialloc(dp->dev, type);
+	if (ip == 0) {
+		iunlockput(dp);
+		return 0;
+	}
+
+	ilock(ip);
+	ip->major = major;
+	ip->minor = minor;
+	ip->nlink = 1;
+	iupdate(ip);
+
+	if (type == T_DIR) {
+		dp->nlink++;
+		iupdate(dp);
+		if (dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0) {
+			ip->nlink = 0;
+			iupdate(ip);
+			iunlockput(ip);
+			dp->nlink--;
+			iupdate(dp);
+			iunlockput(dp);
+			return 0;
+		}
+	}
+
+	if (dirlink(dp, name, ip->inum) < 0) {
+		if (type == T_DIR) {
+			dp->nlink--;
+			iupdate(dp);
+		}
+		ip->nlink = 0;
+		iupdate(ip);
+		iunlockput(ip);
+		iunlockput(dp);
+		return 0;
+	}
+
+	iunlockput(dp);
+	return ip;
 }
 
 struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff) {

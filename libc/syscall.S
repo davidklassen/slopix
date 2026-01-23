@@ -1,5 +1,5 @@
 .global write, exit, read, sleep, getpid, fork, wait, exec, poll, poweroff, sbrk
-.global open, close, fstat, dup
+.global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir
 
 write:
 	mov x8, #0
@@ -73,5 +73,30 @@ fstat:
 
 dup:
 	mov x8, #14
+	svc #0
+	ret
+
+mkdir:
+	mov x8, #15
+	svc #0
+	ret
+
+mknod:
+	mov x8, #16
+	svc #0
+	ret
+
+link:
+	mov x8, #17
+	svc #0
+	ret
+
+unlink:
+	mov x8, #18
+	svc #0
+	ret
+
+chdir:
+	mov x8, #19
 	svc #0
 	ret

@@ -11,6 +11,7 @@
 #include "psci.h"
 #include "fs.h"
 #include "file.h"
+#include "kstring.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
@@ -339,12 +340,19 @@ static long sys_open(const char *path, int flags) {
 		return -1;
 	}
 
-	struct inode *ip = namei(kpath);
-	if (ip == 0) {
-		return -1;
+	struct inode *ip;
+	if (flags & O_CREAT) {
+		ip = create(kpath, T_FILE, 0, 0);
+		if (ip == 0) {
+			return -1;
+		}
+	} else {
+		ip = namei(kpath);
+		if (ip == 0) {
+			return -1;
+		}
+		ilock(ip);
 	}
-
-	ilock(ip);
 
 	struct file *f = filealloc();
 	if (f == 0) {
@@ -421,6 +429,161 @@ static long sys_dup(int fd) {
 	return newfd;
 }
 
+static long sys_mkdir(const char *path) {
+	char kpath[128];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = create(kpath, T_DIR, 0, 0);
+	if (ip == 0) {
+		return -1;
+	}
+	iunlockput(ip);
+	return 0;
+}
+
+static long sys_mknod(const char *path, int major, int minor) {
+	char kpath[128];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = create(kpath, T_DEVICE, major, minor);
+	if (ip == 0) {
+		return -1;
+	}
+	iunlockput(ip);
+	return 0;
+}
+
+static long sys_link(const char *old, const char *new) {
+	char kold[128], knew[128], name[DIRSIZ];
+
+	if (vmm_copyinstr(current->pagetable, kold, (unsigned long)old, 128) < 0) {
+		return -1;
+	}
+	if (vmm_copyinstr(current->pagetable, knew, (unsigned long)new, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = namei(kold);
+	if (ip == 0) {
+		return -1;
+	}
+
+	ilock(ip);
+	if (ip->type == T_DIR) {
+		iunlockput(ip);
+		return -1;
+	}
+	ip->nlink++;
+	iupdate(ip);
+	iunlock(ip);
+
+	struct inode *dp = nameiparent(knew, name);
+	if (dp == 0) {
+		goto bad;
+	}
+
+	ilock(dp);
+	if (dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0) {
+		iunlockput(dp);
+		goto bad;
+	}
+	iunlockput(dp);
+	iput(ip);
+	return 0;
+
+bad:
+	ilock(ip);
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+	return -1;
+}
+
+static long sys_unlink(const char *path) {
+	char kpath[128], name[DIRSIZ];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *dp = nameiparent(kpath, name);
+	if (dp == 0) {
+		return -1;
+	}
+
+	ilock(dp);
+
+	if (name[0] == '.' && name[1] == '\0') {
+		iunlockput(dp);
+		return -1;
+	}
+	if (name[0] == '.' && name[1] == '.' && name[2] == '\0') {
+		iunlockput(dp);
+		return -1;
+	}
+
+	unsigned int off;
+	struct inode *ip = dirlookup(dp, name, &off);
+	if (ip == 0) {
+		iunlockput(dp);
+		return -1;
+	}
+
+	ilock(ip);
+
+	if (ip->type == T_DIR && !isdirempty(ip)) {
+		iunlockput(ip);
+		iunlockput(dp);
+		return -1;
+	}
+
+	struct dirent de;
+	memset(&de, 0, sizeof(de));
+	if (writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		iunlockput(ip);
+		iunlockput(dp);
+		return -1;
+	}
+
+	if (ip->type == T_DIR) {
+		dp->nlink--;
+		iupdate(dp);
+	}
+	iunlockput(dp);
+
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+
+	return 0;
+}
+
+static long sys_chdir(const char *path) {
+	char kpath[128];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = namei(kpath);
+	if (ip == 0) {
+		return -1;
+	}
+
+	ilock(ip);
+	if (ip->type != T_DIR) {
+		iunlockput(ip);
+		return -1;
+	}
+	iunlock(ip);
+
+	iput(current->cwd);
+	current->cwd = ip;
+	return 0;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -470,6 +633,21 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_dup:
 		ret = sys_dup((int)tf->regs[0]);
+		break;
+	case SYS_mkdir:
+		ret = sys_mkdir((const char *)tf->regs[0]);
+		break;
+	case SYS_mknod:
+		ret = sys_mknod((const char *)tf->regs[0], (int)tf->regs[1], (int)tf->regs[2]);
+		break;
+	case SYS_link:
+		ret = sys_link((const char *)tf->regs[0], (const char *)tf->regs[1]);
+		break;
+	case SYS_unlink:
+		ret = sys_unlink((const char *)tf->regs[0]);
+		break;
+	case SYS_chdir:
+		ret = sys_chdir((const char *)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
