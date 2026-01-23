@@ -39,7 +39,7 @@ static void disk_done(void) {
 	irq_restore(flags);
 }
 
-void binit(void) {
+void bio_init(void) {
 	bcache.head.prev = &bcache.head;
 	bcache.head.next = &bcache.head;
 

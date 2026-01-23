@@ -49,7 +49,8 @@ TEST_OBJ = \
 	tests/test_memory.o \
 	tests/test_filesys.o \
 	tests/test_pipe.o \
-	tests/test_libc.o
+	tests/test_libc.o \
+	tests/test_devices.o
 
 tests.elf: $(TEST_OBJ) $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $(TEST_OBJ) $(LIBC)

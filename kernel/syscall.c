@@ -387,6 +387,9 @@ static long sys_open(const char *path, int flags) {
 	if (ip->type == T_DEVICE) {
 		f->type = FD_DEVICE;
 		f->major = ip->major;
+	} else if (ip->type == T_BDEVICE) {
+		f->type = FD_BDEVICE;
+		f->major = ip->major;
 	} else {
 		f->type = FD_INODE;
 	}
@@ -725,7 +728,7 @@ static long sys_lseek(int fd, long offset, int whence) {
 		return -1;
 	}
 	struct file *f = current->ofile[fd];
-	if (f == 0 || f->type != FD_INODE) {
+	if (f == 0 || (f->type != FD_INODE && f->type != FD_BDEVICE)) {
 		return -1;
 	}
 

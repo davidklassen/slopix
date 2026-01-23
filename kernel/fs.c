@@ -37,7 +37,7 @@ void readsb(unsigned int dev, struct superblock *sbout) {
 	brelse(bp);
 }
 
-void fsinit(unsigned int dev) {
+void fs_init(unsigned int dev) {
 	readsb(dev, &sb);
 }
 

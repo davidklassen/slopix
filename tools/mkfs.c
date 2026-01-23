@@ -16,10 +16,11 @@
 #define DIRSIZ	14
 #define FSMAGIC 0x10203040
 
-#define T_FREE	 0
-#define T_FILE	 1
-#define T_DIR	 2
-#define T_DEVICE 3
+#define T_FREE	  0
+#define T_FILE	  1
+#define T_DIR	  2
+#define T_DEVICE  3
+#define T_BDEVICE 4
 
 struct superblock {
 	uint32_t magic;
@@ -168,10 +169,125 @@ static void iappend(uint32_t inum, void *data, uint32_t n) {
 	winode(inum, &din);
 }
 
+static uint32_t lookup_dir(const char *path) {
+	if (path[0] == '/') {
+		path++;
+	}
+	if (path[0] == '\0') {
+		return ROOTINO;
+	}
+
+	uint32_t parent = ROOTINO;
+	char component[DIRSIZ + 1];
+
+	while (*path) {
+		int i = 0;
+		while (*path && *path != '/' && i < DIRSIZ) {
+			component[i++] = *path++;
+		}
+		component[i] = '\0';
+		if (*path == '/') {
+			path++;
+		}
+
+		struct dinode din;
+		rinode(parent, &din);
+		if (din.type != T_DIR) {
+			return 0;
+		}
+
+		int found = 0;
+		struct dirent de;
+		for (uint32_t off = 0; off < din.size; off += sizeof(de)) {
+			char buf[BSIZE];
+			uint32_t bn = off / BSIZE;
+			uint32_t boff = off % BSIZE;
+			if (bn < NDIRECT) {
+				if (din.addrs[bn] == 0) {
+					break;
+				}
+				rsect(din.addrs[bn], buf);
+			} else {
+				uint32_t indirect[NINDIRECT];
+				if (din.addrs[NDIRECT] == 0) {
+					break;
+				}
+				rsect(din.addrs[NDIRECT], indirect);
+				if (indirect[bn - NDIRECT] == 0) {
+					break;
+				}
+				rsect(indirect[bn - NDIRECT], buf);
+			}
+			memcpy(&de, buf + boff, sizeof(de));
+			if (de.inum != 0 && strncmp(de.name, component, DIRSIZ) == 0) {
+				parent = de.inum;
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			return 0;
+		}
+	}
+	return parent;
+}
+
+static uint32_t create_dir(uint32_t parent_inum, const char *name) {
+	uint32_t inum = ialloc(T_DIR);
+
+	struct dirent de;
+	memset(&de, 0, sizeof(de));
+
+	de.inum = inum;
+	strncpy(de.name, ".", DIRSIZ);
+	iappend(inum, &de, sizeof(de));
+
+	de.inum = parent_inum;
+	strncpy(de.name, "..", DIRSIZ);
+	iappend(inum, &de, sizeof(de));
+
+	de.inum = inum;
+	strncpy(de.name, name, DIRSIZ);
+	iappend(parent_inum, &de, sizeof(de));
+
+	struct dinode pdin;
+	rinode(parent_inum, &pdin);
+	pdin.nlink++;
+	winode(parent_inum, &pdin);
+
+	return inum;
+}
+
+static uint32_t create_device(uint32_t parent_inum, const char *name, uint16_t type, uint16_t major, uint16_t minor) {
+	uint32_t inum = freeinode++;
+
+	struct dinode din;
+	memset(&din, 0, sizeof(din));
+	din.type = type;
+	din.major = major;
+	din.minor = minor;
+	din.nlink = 1;
+	din.size = 0;
+	winode(inum, &din);
+
+	struct dirent de;
+	memset(&de, 0, sizeof(de));
+	de.inum = inum;
+	strncpy(de.name, name, DIRSIZ);
+	iappend(parent_inum, &de, sizeof(de));
+
+	return inum;
+}
+
 static void usage(const char *prog) {
-	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [hostfile:/imgpath ...]\n", prog);
+	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...]\n", prog);
 	fprintf(stderr, "  -s blocks   Total filesystem size in blocks (default: 1024)\n");
 	fprintf(stderr, "  -i inodes   Number of inodes (default: 200)\n");
+	fprintf(stderr, "\nFile specifications:\n");
+	fprintf(stderr, "  hostfile:/imgpath        Copy host file to image path\n");
+	fprintf(stderr, "  :dir:/path               Create directory\n");
+	fprintf(stderr, "  :cdev:/path:major:minor  Create character device\n");
+	fprintf(stderr, "  :bdev:/path:major:minor  Create block device\n");
 	exit(1);
 }
 
@@ -259,9 +375,95 @@ int main(int argc, char **argv) {
 
 	for (int fi = file_start; fi < argc; fi++) {
 		char *arg = argv[fi];
+
+		if (strncmp(arg, ":dir:", 5) == 0) {
+			char *path = arg + 5;
+			if (path[0] == '/') {
+				path++;
+			}
+			char *slash = strrchr(path, '/');
+			char *name;
+			uint32_t parent;
+			if (slash) {
+				*slash = '\0';
+				name = slash + 1;
+				parent = lookup_dir(path);
+				if (parent == 0) {
+					fprintf(stderr, "mkfs: parent directory '%s' not found\n", path);
+					exit(1);
+				}
+			} else {
+				name = path;
+				parent = rootino;
+			}
+			if (strlen(name) == 0 || strlen(name) >= DIRSIZ) {
+				fprintf(stderr, "mkfs: invalid directory name '%s'\n", name);
+				exit(1);
+			}
+			uint32_t inum = create_dir(parent, name);
+			printf("mkfs: created directory '/%s%s%s' (inode %d)\n",
+			       slash ? arg + 5 : "",
+			       slash ? "/" : "",
+			       name,
+			       inum);
+			continue;
+		}
+
+		if (strncmp(arg, ":cdev:", 6) == 0 || strncmp(arg, ":bdev:", 6) == 0) {
+			int is_bdev = (arg[1] == 'b');
+			char *rest = arg + 6;
+			char *colon1 = strchr(rest, ':');
+			if (!colon1) {
+				fprintf(stderr, "mkfs: invalid device spec '%s'\n", arg);
+				exit(1);
+			}
+			*colon1 = '\0';
+			char *colon2 = strchr(colon1 + 1, ':');
+			if (!colon2) {
+				fprintf(stderr, "mkfs: invalid device spec '%s'\n", arg);
+				exit(1);
+			}
+			*colon2 = '\0';
+			char *path = rest;
+			int major = atoi(colon1 + 1);
+			int minor = atoi(colon2 + 1);
+
+			if (path[0] == '/') {
+				path++;
+			}
+			char *slash = strrchr(path, '/');
+			char *name;
+			uint32_t parent;
+			if (slash) {
+				*slash = '\0';
+				name = slash + 1;
+				parent = lookup_dir(path);
+				if (parent == 0) {
+					fprintf(stderr, "mkfs: parent directory '%s' not found\n", path);
+					exit(1);
+				}
+			} else {
+				name = path;
+				parent = rootino;
+			}
+			if (strlen(name) == 0 || strlen(name) >= DIRSIZ) {
+				fprintf(stderr, "mkfs: invalid device name '%s'\n", name);
+				exit(1);
+			}
+			uint16_t type = is_bdev ? T_BDEVICE : T_DEVICE;
+			uint32_t inum = create_device(parent, name, type, major, minor);
+			printf("mkfs: created %s device '%s' (%d,%d) (inode %d)\n",
+			       is_bdev ? "block" : "char",
+			       name,
+			       major,
+			       minor,
+			       inum);
+			continue;
+		}
+
 		char *colon = strchr(arg, ':');
 		if (colon == NULL) {
-			fprintf(stderr, "mkfs: invalid file spec '%s' (expected hostfile:/imgpath)\n", arg);
+			fprintf(stderr, "mkfs: invalid file spec '%s'\n", arg);
 			exit(1);
 		}
 
@@ -273,8 +475,24 @@ int main(int argc, char **argv) {
 			imgpath++;
 		}
 
-		if (strlen(imgpath) == 0 || strlen(imgpath) >= DIRSIZ) {
-			fprintf(stderr, "mkfs: invalid image path '%s'\n", imgpath);
+		char *slash = strrchr(imgpath, '/');
+		char *name;
+		uint32_t parent;
+		if (slash) {
+			*slash = '\0';
+			name = slash + 1;
+			parent = lookup_dir(imgpath);
+			if (parent == 0) {
+				fprintf(stderr, "mkfs: parent directory '%s' not found\n", imgpath);
+				exit(1);
+			}
+		} else {
+			name = imgpath;
+			parent = rootino;
+		}
+
+		if (strlen(name) == 0 || strlen(name) >= DIRSIZ) {
+			fprintf(stderr, "mkfs: invalid image path '%s'\n", name);
 			exit(1);
 		}
 
@@ -287,8 +505,8 @@ int main(int argc, char **argv) {
 		uint32_t inum = ialloc(T_FILE);
 
 		de.inum = inum;
-		strncpy(de.name, imgpath, DIRSIZ);
-		iappend(rootino, &de, sizeof(de));
+		strncpy(de.name, name, DIRSIZ);
+		iappend(parent, &de, sizeof(de));
 
 		char fbuf[BSIZE];
 		int n;
@@ -296,7 +514,7 @@ int main(int argc, char **argv) {
 			iappend(inum, fbuf, n);
 		}
 
-		printf("mkfs: added '%s' as '/%s' (inode %d)\n", hostpath, imgpath, inum);
+		printf("mkfs: added '%s' as '%s' (inode %d)\n", hostpath, name, inum);
 		close(fd);
 	}
 

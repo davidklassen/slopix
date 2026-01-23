@@ -17,10 +17,11 @@
 #define IBLOCK(i, sb) ((i) / IPB + (sb).inodestart)
 #define BBLOCK(b, sb) ((b) / BPB + (sb).bmapstart)
 
-#define T_FREE	 0
-#define T_FILE	 1
-#define T_DIR	 2
-#define T_DEVICE 3
+#define T_FREE	  0
+#define T_FILE	  1
+#define T_DIR	  2
+#define T_DEVICE  3
+#define T_BDEVICE 4
 
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
@@ -77,7 +78,7 @@ struct stat {
 	unsigned int size;
 };
 
-void fsinit(unsigned int dev);
+void fs_init(unsigned int dev);
 void readsb(unsigned int dev, struct superblock *sb);
 struct inode *iget(unsigned int dev, unsigned int inum);
 struct inode *idup(struct inode *ip);

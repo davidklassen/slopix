@@ -2,6 +2,7 @@
 #include "pipe.h"
 #include "cpu.h"
 #include "proc.h"
+#include "string.h"
 
 static struct {
 	struct file file[NFILE];
@@ -72,13 +73,13 @@ void fileclose(struct file *f) {
 
 	if (ff.type == FD_PIPE) {
 		pipeclose(ff.pipe, ff.writable);
-	} else if ((ff.type == FD_INODE || ff.type == FD_DEVICE) && ff.ip) {
+	} else if ((ff.type == FD_INODE || ff.type == FD_DEVICE || ff.type == FD_BDEVICE) && ff.ip) {
 		iput(ff.ip);
 	}
 }
 
 int filestat(struct file *f, struct stat *st) {
-	if ((f->type == FD_INODE || f->type == FD_DEVICE) && f->ip) {
+	if ((f->type == FD_INODE || f->type == FD_DEVICE || f->type == FD_BDEVICE) && f->ip) {
 		ilock(f->ip);
 		stati(f->ip, st);
 		iunlock(f->ip);
@@ -113,6 +114,31 @@ int fileread(struct file *f, char *addr, int n) {
 		return r;
 	}
 
+	if (f->type == FD_BDEVICE) {
+		if (f->major < 0 || f->major >= NBDEV || !bdevsw[f->major].read) {
+			return -1;
+		}
+		int total = 0;
+		char blkbuf[BSIZE];
+		while (n > 0) {
+			unsigned int blockno = f->off / BSIZE;
+			unsigned int boff = f->off % BSIZE;
+			if (bdevsw[f->major].read(blockno, blkbuf) < 0) {
+				return total > 0 ? total : -1;
+			}
+			unsigned int chunk = BSIZE - boff;
+			if (chunk > (unsigned int)n) {
+				chunk = n;
+			}
+			memmove(addr, blkbuf + boff, chunk);
+			addr += chunk;
+			f->off += chunk;
+			total += chunk;
+			n -= chunk;
+		}
+		return total;
+	}
+
 	return -1;
 }
 
@@ -143,6 +169,36 @@ int filewrite(struct file *f, const char *addr, int n) {
 		}
 		iunlock(f->ip);
 		return r;
+	}
+
+	if (f->type == FD_BDEVICE) {
+		if (f->major < 0 || f->major >= NBDEV || !bdevsw[f->major].write) {
+			return -1;
+		}
+		int total = 0;
+		char blkbuf[BSIZE];
+		while (n > 0) {
+			unsigned int blockno = f->off / BSIZE;
+			unsigned int boff = f->off % BSIZE;
+			unsigned int chunk = BSIZE - boff;
+			if (chunk > (unsigned int)n) {
+				chunk = n;
+			}
+			if (boff != 0 || chunk < BSIZE) {
+				if (bdevsw[f->major].read(blockno, blkbuf) < 0) {
+					return total > 0 ? total : -1;
+				}
+			}
+			memmove(blkbuf + boff, addr, chunk);
+			if (bdevsw[f->major].write(blockno, blkbuf) < 0) {
+				return total > 0 ? total : -1;
+			}
+			addr += chunk;
+			f->off += chunk;
+			total += chunk;
+			n -= chunk;
+		}
+		return total;
 	}
 
 	return -1;

@@ -32,6 +32,7 @@ OBJ = \
 	file.o \
 	pipe.o \
 	console.o \
+	disk.o \
 	string.o \
 	sync.o \
 	dtb.o \
@@ -96,6 +97,10 @@ $(USER_PROGS):
 
 disk.img: ../tools/mkfs $(USER_PROGS)
 	../tools/mkfs $@ -s 1024 \
+		:dir:/dev \
+		:cdev:/dev/console:1:0 \
+		:cdev:/dev/null:2:0 \
+		:bdev:/dev/disk:1:0 \
 		../cmd/echo.elf:/echo \
 		../cmd/shell.elf:/shell \
 		../cmd/shutdown.elf:/shutdown \
@@ -115,6 +120,10 @@ debug: clean $(KERNEL)
 
 test.img: ../tools/mkfs ../testdata/hello.txt ../testdata/large.txt $(USER_PROGS)
 	../tools/mkfs $@ -s 1024 \
+		:dir:/dev \
+		:cdev:/dev/console:1:0 \
+		:cdev:/dev/null:2:0 \
+		:bdev:/dev/disk:1:0 \
 		../testdata/hello.txt:/hello \
 		../testdata/large.txt:/large \
 		../cmd/true.elf:/true \

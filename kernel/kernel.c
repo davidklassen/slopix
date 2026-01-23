@@ -11,6 +11,7 @@
 #include "fs.h"
 #include "file.h"
 #include "console.h"
+#include "disk.h"
 #include "dtb.h"
 #include "cmdline.h"
 #include "tests/test.h"
@@ -41,7 +42,8 @@ DECLARE_SUITE(pipe);
 
 void kernel_main(void) {
 	uart_init();
-	consoleinit();
+	console_init();
+	disk_init();
 
 	extern unsigned long _dtb_address;
 	dtb_init((void *)_dtb_address);
@@ -64,7 +66,7 @@ void kernel_main(void) {
 	RUN_SUITE(virtio_read);
 	RUN_SUITE(virtio_write);
 
-	binit();
+	bio_init();
 
 	gic_init();
 	timer_init();
@@ -76,7 +78,7 @@ void kernel_main(void) {
 	RUN_SUITE(virtio_errors);
 	RUN_SUITE(bio);
 
-	fsinit(0);
+	fs_init(0);
 	RUN_SUITE(fs);
 	RUN_SUITE(fs_dir);
 	RUN_SUITE(fs_read);

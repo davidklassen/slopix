@@ -144,7 +144,7 @@ extern struct bdevsw bdevsw[NBDEV];
 
 ### /dev Directory
 
-Created at boot by init process:
+Created at filesystem image build time by mkfs:
 
 ```
 /dev/
@@ -222,27 +222,28 @@ Modify exec to load programs from disk instead of initramfs.
 
 Set up /dev with character and block devices.
 
-- [ ] **Null device driver**:
+- [x] **Null device driver**:
   - Add NULLDEV (2) constant to kernel/file.h
   - Implement nullread(): return 0 (EOF)
   - Implement nullwrite(): return n (discard)
   - Register in console_init()
-- [ ] **Block device infrastructure**:
+- [x] **Block device infrastructure**:
   - Define struct bdevsw in kernel/file.h
-  - Create bdevsw[] array
-  - Add T_BDEVICE inode type
-  - Add FD_BDEVICE file type
+  - Create bdevsw[] array in kernel/disk.c
+  - Add T_BDEVICE inode type to kernel/fs.h
+  - Add FD_BDEVICE file type to kernel/file.h
   - Implement fileread/filewrite for block devices (byte offset -> block)
-- [ ] **Disk block device**:
-  - Implement diskread(blockno, buf): call bread()
-  - Implement diskwrite(blockno, buf): call bwrite()
-  - Register as bdevsw[1]
-- [ ] **Extend mkfs for /dev**:
-  - Support creating subdirectories
-  - Support creating device nodes (T_DEVICE, T_BDEVICE)
-  - Create /dev/console, /dev/null, /dev/disk in image
-- [ ] Alternative: Create /dev at boot in init process
-- [ ] Add device tests to cmd/tests/test_devices.c
+  - Update sys_lseek to support block devices
+- [x] **Disk block device**:
+  - Create kernel/disk.c with disk_read/disk_write functions
+  - Register as bdevsw[DISK] in disk_init()
+  - Call disk_init() from kernel_main()
+- [x] **Extend mkfs for /dev**:
+  - Support `:dir:/path` for creating subdirectories
+  - Support `:cdev:/path:major:minor` for character device nodes
+  - Support `:bdev:/path:major:minor` for block device nodes
+  - Create /dev/console, /dev/null, /dev/disk in disk.img and test.img
+- [x] Add device tests to cmd/tests/test_devices.c
 
 **Exit criteria**: /dev/console, /dev/null, /dev/disk exist and tests pass.
 
@@ -586,9 +587,11 @@ S11 (readline improvements)
 | kernel/syscall.c | Add stat, getcwd, lseek, rename; modify exec |
 | kernel/syscall.h | Add syscall numbers 21-24 |
 | kernel/file.c | Block device support in fileread/filewrite |
-| kernel/file.h | Add NULLDEV, T_BDEVICE, FD_BDEVICE, bdevsw |
+| kernel/file.h | Add NULLDEV, FD_BDEVICE, NBDEV, DISK, struct bdevsw |
+| kernel/fs.h | Add T_BDEVICE |
 | kernel/console.c | Add null device driver |
-| kernel/disk.c | Block device driver (new file) |
+| kernel/disk.h | Block device driver header (new file) |
+| kernel/disk.c | Block device driver with bdevsw[] array (new file) |
 | libc/string.c | Add strncmp, strcpy, strncpy, strcat, strchr, strstr, memmove |
 | libc/ctype.c | Add isspace, isdigit, isalpha (new file) |
 | libc/include/*.h | Update headers |

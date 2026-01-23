@@ -3,7 +3,7 @@
 
 #include "buf.h"
 
-void binit(void);
+void bio_init(void);
 struct buf *bread(unsigned int dev, unsigned int blockno);
 int bwrite(struct buf *b);
 void brelse(struct buf *b);

@@ -15,7 +15,20 @@ int consolewrite(const char *src, int n) {
 	return n;
 }
 
-void consoleinit(void) {
+static int nullread(char *dst, int n) {
+	(void)dst;
+	(void)n;
+	return 0;
+}
+
+static int nullwrite(const char *src, int n) {
+	(void)src;
+	return n;
+}
+
+void console_init(void) {
 	devsw[CONSOLE].read = consoleread;
 	devsw[CONSOLE].write = consolewrite;
+	devsw[NULLDEV].read = nullread;
+	devsw[NULLDEV].write = nullwrite;
 }
