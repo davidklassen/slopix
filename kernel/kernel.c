@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "init.h"
 #include "virtio.h"
+#include "bio.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -22,6 +23,7 @@ DECLARE_SUITE(virtio_queue);
 DECLARE_SUITE(virtio_read);
 DECLARE_SUITE(virtio_write);
 DECLARE_SUITE(virtio_intr);
+DECLARE_SUITE(bio);
 
 void kernel_main(void) {
 	uart_init();
@@ -41,6 +43,8 @@ void kernel_main(void) {
 	RUN_SUITE(virtio_read);
 	RUN_SUITE(virtio_write);
 
+	binit();
+
 	gic_init();
 	timer_init();
 	uart_init_irq();
@@ -48,6 +52,7 @@ void kernel_main(void) {
 	enable_irq();
 	RUN_SUITE(timer);
 	RUN_SUITE(virtio_intr);
+	RUN_SUITE(bio);
 
 	TEST_REPORT();
 

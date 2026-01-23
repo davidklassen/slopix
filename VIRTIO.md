@@ -142,28 +142,27 @@ Replace polling with interrupt handling for efficiency.
 
 **Exit criteria**: Processes sleep during I/O, wake on completion. All interrupt tests pass.
 
-### M7: Block Cache Integration
+### M7: Block Cache Integration ✓
 
 Connect virtio driver to the buffer cache layer.
 
 **IMPORTANT**: The virtio driver (M6) does not support concurrent requests. The block cache must serialize disk access. See [FS.md](FS.md) "Virtio Driver Concurrency Limitation" for details.
 
-- [ ] Implement `buf.h` buffer structure
-- [ ] Add lock to serialize disk access (addresses M6 concurrency limitation)
-- [ ] Implement `bread(dev, blockno)`:
+- [x] Implement `buf.h` buffer structure
+- [x] Add lock to serialize disk access (addresses M6 concurrency limitation)
+- [x] Implement `bread(dev, blockno)`:
   - Acquire lock
   - Check cache for block
   - If miss, allocate buffer and call virtio_disk_read
   - Release lock
   - Return buffer (caller must release)
-- [ ] Implement `bwrite(buf)`:
+- [x] Implement `bwrite(buf)`:
   - Acquire lock
   - Call virtio_disk_write
   - Release lock
-  - Mark buffer clean
-- [ ] Implement `brelse(buf)`: release buffer to cache
-- [ ] LRU replacement policy
-- [ ] Add `test_bio.c` with `bio` suite (6 tests)
+- [x] Implement `brelse(buf)`: release buffer to cache
+- [x] LRU replacement policy
+- [x] Add `test_bio.c` with `bio` suite (6 tests)
 
 **Exit criteria**: Filesystem can use bread/bwrite interface. All bio tests pass.
 
@@ -335,11 +334,11 @@ TEST_SUITE(disk_concurrent) {
 
 ```c
 TEST_SUITE(bio) {
-    RUN_TEST(bread_returns_buffer);       // bread() != NULL
-    RUN_TEST(brelse_frees_buffer);        // buffer returned to pool
+    RUN_TEST(bread_returns_buffer);       // bread() != NULL, buffer valid
+    RUN_TEST(brelse_frees_buffer);        // refcnt decremented after release
     RUN_TEST(bread_cache_hit);            // second read same block is cached
-    RUN_TEST(bread_cache_miss);           // read new block fetches from disk
-    RUN_TEST(bwrite_marks_dirty);         // buffer marked dirty after write
+    RUN_TEST(bread_cache_miss);           // different blocks use different buffers
+    RUN_TEST(bwrite_persists_data);       // write-read roundtrip preserves data
     RUN_TEST(cache_lru_eviction);         // oldest buffer evicted when full
 }
 ```

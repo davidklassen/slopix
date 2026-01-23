@@ -27,6 +27,7 @@ OBJ = \
 	init.o \
 	initramfs.o \
 	virtio.o \
+	bio.o \
 	initramfs_data.o
 
 TEST_OBJ = \
@@ -38,7 +39,8 @@ TEST_OBJ = \
 	tests/test_vmm.o \
 	tests/test_pmm.o \
 	tests/test_initramfs.o \
-	tests/test_virtio.o
+	tests/test_virtio.o \
+	tests/test_bio.o
 
 KERNEL = kernel.elf
 
