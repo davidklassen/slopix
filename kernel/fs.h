@@ -22,6 +22,10 @@
 #define T_DIR	 2
 #define T_DEVICE 3
 
+#define O_RDONLY 0x000
+#define O_WRONLY 0x001
+#define O_RDWR	 0x002
+
 struct superblock {
 	unsigned int magic;
 	unsigned int size;

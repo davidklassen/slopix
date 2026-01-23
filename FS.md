@@ -233,23 +233,23 @@ Implement console as a device file.
 
 **Exit criteria**: sys_read(0) and sys_write(1) work through file layer.
 
-### F7: File Syscalls (Read-Only)
+### F7: File Syscalls (Read-Only) ✓
 
 Expose read-only file operations to userspace.
 
-- [ ] Implement `sys_open(path, flags)`:
+- [x] Implement `sys_open(path, flags)`:
   - Resolve path with namei()
   - Allocate file structure
   - Set readable/writable based on O_RDONLY, O_WRONLY, O_RDWR
   - Allocate file descriptor
   - Return fd
-- [ ] Implement `sys_close(fd)`: close file descriptor
-- [ ] Implement `sys_read(fd, buf, n)`: read through file layer
-- [ ] Implement `sys_write(fd, buf, n)`: write through file layer (device only for now)
-- [ ] Implement `sys_fstat(fd, stat)`: get file info
-- [ ] Implement `sys_dup(fd)`: duplicate file descriptor
-- [ ] Add userspace `open()`, `close()`, `fstat()`, `dup()` wrappers
-- [ ] Add `syscall_file` test suite
+- [x] Implement `sys_close(fd)`: close file descriptor
+- [x] Implement `sys_read(fd, buf, n)`: read through file layer (done in F6)
+- [x] Implement `sys_write(fd, buf, n)`: write through file layer (done in F6, device only)
+- [x] Implement `sys_fstat(fd, stat)`: get file info
+- [x] Implement `sys_dup(fd)`: duplicate file descriptor
+- [x] Add userspace `open()`, `close()`, `fstat()`, `dup()` wrappers
+- [x] Add `filesys` userspace test suite
 
 **Exit criteria**: User program can open and read files.
 
@@ -365,14 +365,23 @@ TEST_SUITE(console) {
 
 ### Userspace Tests
 
-Tests run as user processes (multi-threaded).
+Tests run as user processes (multi-threaded). Test suites are split into separate files in `cmd/tests/`.
 
 ```c
-// In cmd/tests/
-void test_open_read(void);              // open file, read contents
-void test_write_read(void);             // write then read back
-void test_mkdir_ls(void);               // create and list directory
-void test_pipe(void);                   // pipe communication
+TEST_SUITE(filesys) {
+    RUN_TEST(open_file);                // open and close file
+    RUN_TEST(open_nonexistent);         // open nonexistent returns -1
+    RUN_TEST(open_read_file);           // open and read contents
+    RUN_TEST(fstat_file);               // fstat returns file info
+    RUN_TEST(dup_file);                 // dup returns new fd
+    RUN_TEST(close_invalid_fd);         // close invalid fd returns -1
+    RUN_TEST(read_after_close);         // read closed fd returns -1
+}
+
+// Future test suites:
+// void test_write_read(void);          // write then read back
+// void test_mkdir_ls(void);            // create and list directory
+// void test_pipe(void);                // pipe communication
 ```
 
 ### Test Filesystem

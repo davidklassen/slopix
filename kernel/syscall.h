@@ -12,6 +12,10 @@
 #define SYS_poll     8
 #define SYS_poweroff 9
 #define SYS_sbrk     10
+#define SYS_open     11
+#define SYS_close    12
+#define SYS_fstat    13
+#define SYS_dup	     14
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);

@@ -333,6 +333,90 @@ static long sys_sbrk(long n) {
 	return old_sz;
 }
 
+static long sys_open(const char *path, int flags) {
+	char kpath[128];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = namei(kpath);
+	if (ip == 0) {
+		return -1;
+	}
+
+	ilock(ip);
+
+	struct file *f = filealloc();
+	if (f == 0) {
+		iunlockput(ip);
+		return -1;
+	}
+
+	if (ip->type == T_DEVICE) {
+		f->type = FD_DEVICE;
+		f->major = ip->major;
+	} else {
+		f->type = FD_INODE;
+	}
+	f->ip = ip;
+	f->off = 0;
+	f->readable = !(flags & O_WRONLY);
+	f->writable = (flags & O_WRONLY) || (flags & O_RDWR);
+
+	iunlock(ip);
+
+	int fd = fdalloc(f);
+	if (fd < 0) {
+		fileclose(f);
+		return -1;
+	}
+
+	return fd;
+}
+
+static long sys_close(int fd) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
+		return -1;
+	}
+	current->ofile[fd] = 0;
+	fileclose(f);
+	return 0;
+}
+
+static long sys_fstat(int fd, struct stat *st) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
+		return -1;
+	}
+	if (vmm_validate(current->pagetable, (unsigned long)st, sizeof(struct stat), 1) < 0) {
+		return -1;
+	}
+	return filestat(f, st);
+}
+
+static long sys_dup(int fd) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
+		return -1;
+	}
+	int newfd = fdalloc(f);
+	if (newfd < 0) {
+		return -1;
+	}
+	filedup(f);
+	return newfd;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -370,6 +454,18 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_sbrk:
 		ret = sys_sbrk(tf->regs[0]);
+		break;
+	case SYS_open:
+		ret = sys_open((const char *)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_close:
+		ret = sys_close((int)tf->regs[0]);
+		break;
+	case SYS_fstat:
+		ret = sys_fstat((int)tf->regs[0], (struct stat *)tf->regs[1]);
+		break;
+	case SYS_dup:
+		ret = sys_dup((int)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

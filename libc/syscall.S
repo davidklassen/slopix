@@ -1,4 +1,5 @@
 .global write, exit, read, sleep, getpid, fork, wait, exec, poll, poweroff, sbrk
+.global open, close, fstat, dup
 
 write:
 	mov x8, #0
@@ -52,5 +53,25 @@ poweroff:
 
 sbrk:
 	mov x8, #10
+	svc #0
+	ret
+
+open:
+	mov x8, #11
+	svc #0
+	ret
+
+close:
+	mov x8, #12
+	svc #0
+	ret
+
+fstat:
+	mov x8, #13
+	svc #0
+	ret
+
+dup:
+	mov x8, #14
 	svc #0
 	ret

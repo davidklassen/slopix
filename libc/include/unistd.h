@@ -14,5 +14,8 @@ int exec(const char *name);
 int poll(int fd, long timeout_ms);
 void poweroff(void);
 void *sbrk(long n);
+int open(const char *path, int flags);
+int close(int fd);
+int dup(int fd);
 
 #endif

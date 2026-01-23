@@ -44,8 +44,15 @@ true.elf: true/true.o $(LIBC)
 false.elf: false/false.o $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-tests.elf: tests/tests.o $(LIBC)
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+TEST_OBJ = \
+	tests/tests.o \
+	tests/test_syscall.o \
+	tests/test_sched.o \
+	tests/test_memory.o \
+	tests/test_filesys.o
+
+tests.elf: $(TEST_OBJ) $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $(TEST_OBJ) $(LIBC)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
