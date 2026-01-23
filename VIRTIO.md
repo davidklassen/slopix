@@ -91,12 +91,12 @@ Allocate and configure the request virtqueue.
 
 **Exit criteria**: Device status remains DRIVER_OK after setup. All queue tests pass.
 
-### M4: Synchronous Block Read (Polling)
+### M4: Synchronous Block Read (Polling) ✓
 
 Implement blocking read using polling (no interrupts).
 
-- [ ] Define block request header (`struct virtio_blk_outhdr`)
-- [ ] Implement `virtio_disk_rw(sector, buf, write)`:
+- [x] Define block request header (`struct virtio_blk_outhdr`)
+- [x] Implement `virtio_disk_rw(sector, buf, write)`:
   - Allocate 3 descriptors (header, data, status)
   - Fill header with type=IN, sector
   - Chain descriptors with NEXT flags
@@ -108,8 +108,8 @@ Implement blocking read using polling (no interrupts).
   - Poll used.idx until it advances
   - Check status byte
   - Free descriptors
-- [ ] Implement `virtio_disk_read(sector, buf)`
-- [ ] Add `virtio_read` suite (3 tests)
+- [x] Implement `virtio_disk_read(sector, buf)`
+- [x] Add `virtio_read` suite (3 tests)
 
 **Exit criteria**: Can read superblock from disk. All read tests pass.
 

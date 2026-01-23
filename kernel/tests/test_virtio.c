@@ -90,4 +90,38 @@ TEST_SUITE(virtio_queue) {
 	RUN_TEST(virtio_status_driver_ok);
 }
 
+// M4: Block read (polling)
+
+static unsigned char read_buf[512];
+
+TEST(virtio_read_sector_zero) {
+	int ret = virtio_disk_read(0, read_buf);
+	ASSERT_EQ(ret, 0, "Read should succeed");
+	return 0;
+}
+
+TEST(virtio_read_returns_data) {
+	int ret = virtio_disk_read(0, read_buf);
+	ASSERT_EQ(ret, 0, "Read should succeed");
+	ASSERT_EQ(read_buf[0], 'S', "First byte should be 'S'");
+	ASSERT_EQ(read_buf[1], 'L', "Second byte should be 'L'");
+	ASSERT_EQ(read_buf[2], 'P', "Third byte should be 'P'");
+	ASSERT_EQ(read_buf[3], 'X', "Fourth byte should be 'X'");
+	return 0;
+}
+
+TEST(virtio_read_multiple) {
+	for (unsigned long s = 0; s < 3; s++) {
+		int ret = virtio_disk_read(s, read_buf);
+		ASSERT_EQ(ret, 0, "Read should succeed");
+	}
+	return 0;
+}
+
+TEST_SUITE(virtio_read) {
+	RUN_TEST(virtio_read_sector_zero);
+	RUN_TEST(virtio_read_returns_data);
+	RUN_TEST(virtio_read_multiple);
+}
+
 #endif

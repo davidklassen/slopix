@@ -19,6 +19,7 @@ DECLARE_SUITE(initramfs);
 DECLARE_SUITE(virtio);
 DECLARE_SUITE(virtio_features);
 DECLARE_SUITE(virtio_queue);
+DECLARE_SUITE(virtio_read);
 
 void kernel_main(void) {
 	uart_init();
@@ -35,6 +36,7 @@ void kernel_main(void) {
 	RUN_SUITE(virtio);
 	RUN_SUITE(virtio_features);
 	RUN_SUITE(virtio_queue);
+	RUN_SUITE(virtio_read);
 
 	gic_init();
 	timer_init();

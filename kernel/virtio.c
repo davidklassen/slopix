@@ -7,6 +7,23 @@ static struct virtq_avail *avail;
 static struct virtq_used *used;
 static unsigned short free_head;
 
+static struct virtio_blk_outhdr blk_hdr;
+static unsigned char blk_status;
+
+static int alloc_desc(void) {
+	if (free_head == 0xFFFF) {
+		return -1;
+	}
+	int idx = free_head;
+	free_head = desc[idx].next;
+	return idx;
+}
+
+static void free_desc(int i) {
+	desc[i].next = free_head;
+	free_head = i;
+}
+
 static int virtio_queue_init(void) {
 	VIRTIO_REG(VIRTIO_MMIO_GUEST_PAGE_SIZE) = PAGE_SIZE;
 	VIRTIO_REG(VIRTIO_MMIO_QUEUE_SEL) = 0;
@@ -111,4 +128,63 @@ void virtio_init(void) {
 	    VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_DRIVER_OK;
 
 	kprintf("virtio-blk: capacity = %lu sectors (vendor %x)\n", capacity, vendor);
+}
+
+static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
+	int idx[3];
+	for (int i = 0; i < 3; i++) {
+		idx[i] = alloc_desc();
+		if (idx[i] < 0) {
+			for (int j = 0; j < i; j++) {
+				free_desc(idx[j]);
+			}
+			return -1;
+		}
+	}
+
+	blk_hdr.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
+	blk_hdr.reserved = 0;
+	blk_hdr.sector = sector;
+
+	desc[idx[0]].addr = VA_TO_PA((paddr_t)&blk_hdr);
+	desc[idx[0]].len = sizeof(blk_hdr);
+	desc[idx[0]].flags = VIRTQ_DESC_F_NEXT;
+	desc[idx[0]].next = idx[1];
+
+	desc[idx[1]].addr = VA_TO_PA((paddr_t)buf);
+	desc[idx[1]].len = 512;
+	desc[idx[1]].flags = VIRTQ_DESC_F_NEXT;
+	if (!write) {
+		desc[idx[1]].flags |= VIRTQ_DESC_F_WRITE;
+	}
+	desc[idx[1]].next = idx[2];
+
+	desc[idx[2]].addr = VA_TO_PA((paddr_t)&blk_status);
+	desc[idx[2]].len = 1;
+	desc[idx[2]].flags = VIRTQ_DESC_F_WRITE;
+	desc[idx[2]].next = 0;
+
+	blk_status = 0xFF;
+
+	avail->ring[avail->idx % VIRTIO_QUEUE_SIZE] = idx[0];
+	__asm__ volatile("dsb sy");
+	avail->idx++;
+	__asm__ volatile("dsb sy");
+
+	unsigned short last_used = used->idx;
+	VIRTIO_REG(VIRTIO_MMIO_QUEUE_NOTIFY) = 0;
+
+	while (used->idx == last_used) {
+		__asm__ volatile("nop");
+	}
+
+	for (int i = 0; i < 3; i++) {
+		free_desc(idx[i]);
+	}
+
+	return blk_status == VIRTIO_BLK_S_OK ? 0 : -1;
+}
+
+int virtio_disk_read(unsigned long sector, void *buf) {
+	return virtio_disk_rw(sector, buf, 0);
 }

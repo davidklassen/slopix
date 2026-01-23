@@ -20,6 +20,7 @@
 #define VIRTIO_MMIO_QUEUE_NUM		0x038
 #define VIRTIO_MMIO_QUEUE_ALIGN		0x03c
 #define VIRTIO_MMIO_QUEUE_PFN		0x040
+#define VIRTIO_MMIO_QUEUE_NOTIFY	0x050
 #define VIRTIO_MMIO_STATUS		0x070
 #define VIRTIO_MMIO_CONFIG		0x100
 
@@ -40,6 +41,22 @@
 // Descriptor flags
 #define VIRTQ_DESC_F_NEXT  1
 #define VIRTQ_DESC_F_WRITE 2
+
+// Block request types
+#define VIRTIO_BLK_T_IN	 0
+#define VIRTIO_BLK_T_OUT 1
+
+// Block status values
+#define VIRTIO_BLK_S_OK	    0
+#define VIRTIO_BLK_S_IOERR  1
+#define VIRTIO_BLK_S_UNSUPP 2
+
+// Block request header
+struct virtio_blk_outhdr {
+	unsigned int type;
+	unsigned int reserved;
+	unsigned long sector;
+};
 
 struct virtq_desc {
 	unsigned long addr;
@@ -69,5 +86,6 @@ struct virtq_used {
 void virtio_init(void);
 int virtio_probe(void);
 void virtio_reset(void);
+int virtio_disk_read(unsigned long sector, void *buf);
 
 #endif
