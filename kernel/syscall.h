@@ -22,6 +22,10 @@
 #define SYS_unlink   18
 #define SYS_chdir    19
 #define SYS_pipe     20
+#define SYS_stat     21
+#define SYS_getcwd   22
+#define SYS_lseek    23
+#define SYS_rename   24
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);

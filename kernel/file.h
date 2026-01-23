@@ -28,6 +28,7 @@ struct file {
 	int ref;
 	int readable;
 	int writable;
+	int append;
 	struct inode *ip;
 	unsigned int off;
 	short major;

@@ -28,6 +28,7 @@ struct file *filealloc(void) {
 			f->type = FD_NONE;
 			f->readable = 0;
 			f->writable = 0;
+			f->append = 0;
 			f->ip = 0;
 			f->off = 0;
 			f->major = 0;
@@ -133,6 +134,9 @@ int filewrite(struct file *f, const char *addr, int n) {
 
 	if (f->type == FD_INODE) {
 		ilock(f->ip);
+		if (f->append) {
+			f->off = f->ip->size;
+		}
 		int r = writei(f->ip, addr, f->off, n);
 		if (r > 0) {
 			f->off += r;

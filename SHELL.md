@@ -178,25 +178,27 @@ Add missing string and character functions.
 
 Implement missing syscalls for shell functionality.
 
-- [ ] **stat(path, buf)** - Get file info by path:
+- [x] **stat(path, buf)** - Get file info by path:
   - Add SYS_stat (21) to kernel/syscall.h
   - Implement sys_stat: namei() -> ilock() -> stati() -> copyout
   - Add wrapper to libc
-- [ ] **getcwd(buf, size)** - Get current working directory:
+- [x] **getcwd(buf, size)** - Get current working directory:
   - Add SYS_getcwd (22) to kernel/syscall.h
   - Implement sys_getcwd: walk parent chain, build path string
   - Add wrapper to libc
-- [ ] **lseek(fd, offset, whence)** - Reposition file offset:
+- [x] **lseek(fd, offset, whence)** - Reposition file offset:
   - Add SYS_lseek (23) to kernel/syscall.h
   - Implement sys_lseek: validate fd, update f->off based on whence
   - Support SEEK_SET, SEEK_CUR, SEEK_END
   - Add wrapper to libc
-- [ ] **rename(oldpath, newpath)** - Rename/move file:
+- [x] **rename(oldpath, newpath)** - Rename/move file or directory:
   - Add SYS_rename (24) to kernel/syscall.h
   - Implement sys_rename: link new name, unlink old name
+  - Supports directory rename with ".." update and cycle detection
+  - Uses global sleeplock for race-free operation
   - Add wrapper to libc
-- [ ] Add O_APPEND flag to fcntl.h (uses lseek internally)
-- [ ] Add syscall tests to cmd/tests/test_syscall.c
+- [x] Add O_APPEND flag support (seeks to end on each write)
+- [x] Add syscall tests to cmd/tests/test_syscall.c
 
 **Exit criteria**: stat, getcwd, lseek, rename syscalls work and tests pass.
 

@@ -23,5 +23,8 @@ int link(const char *oldpath, const char *newpath);
 int unlink(const char *path);
 int chdir(const char *path);
 int pipe(int fd[2]);
+long lseek(int fd, long offset, int whence);
+char *getcwd(char *buf, unsigned long size);
+int rename(const char *oldpath, const char *newpath);
 
 #endif

@@ -13,6 +13,7 @@
 #include "file.h"
 #include "pipe.h"
 #include "string.h"
+#include "sync.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
@@ -371,6 +372,7 @@ static long sys_open(const char *path, int flags) {
 	f->off = 0;
 	f->readable = !(flags & O_WRONLY);
 	f->writable = (flags & O_WRONLY) || (flags & O_RDWR);
+	f->append = !!(flags & O_APPEND);
 
 	if ((flags & O_TRUNC) && f->writable && ip->type == T_FILE) {
 		itrunc(ip);
@@ -615,6 +617,271 @@ static long sys_pipe(int *fdarray) {
 	return 0;
 }
 
+static long sys_stat(const char *path, struct stat *st) {
+	char kpath[128];
+	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
+		return -1;
+	}
+	if (vmm_validate(current->pagetable, (unsigned long)st, sizeof(struct stat), 1) < 0) {
+		return -1;
+	}
+
+	struct inode *ip = namei(kpath);
+	if (ip == 0) {
+		return -1;
+	}
+
+	ilock(ip);
+	stati(ip, st);
+	iunlockput(ip);
+	return 0;
+}
+
+static long sys_getcwd(char *buf, unsigned long size) {
+	if (size < 2 || vmm_validate(current->pagetable, (unsigned long)buf, size, 1) < 0) {
+		return -1;
+	}
+
+	char names[16][DIRSIZ];
+	int depth = 0;
+
+	struct inode *ip = idup(current->cwd);
+
+	while (ip->inum != ROOTINO && depth < 16) {
+		ilock(ip);
+		struct inode *parent = dirlookup(ip, "..", 0);
+		if (parent == 0) {
+			iunlockput(ip);
+			return -1;
+		}
+		iunlock(ip);
+
+		ilock(parent);
+		struct dirent de;
+		int found = 0;
+		for (unsigned int off = 0; off < parent->size; off += sizeof(de)) {
+			if (readi(parent, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+				break;
+			}
+			if (de.inum == ip->inum && strcmp(de.name, ".") != 0 && strcmp(de.name, "..") != 0) {
+				strncpy(names[depth], de.name, DIRSIZ);
+				found = 1;
+				break;
+			}
+		}
+		iunlock(parent);
+		iput(ip);
+		if (!found) {
+			iput(parent);
+			return -1;
+		}
+		ip = parent;
+		depth++;
+	}
+	iput(ip);
+
+	unsigned long pos = 0;
+	if (depth == 0) {
+		buf[pos++] = '/';
+	} else {
+		for (int i = depth - 1; i >= 0; i--) {
+			buf[pos++] = '/';
+			for (int j = 0; j < DIRSIZ && names[i][j]; j++) {
+				if (pos + 1 >= size) {
+					return -1;
+				}
+				buf[pos++] = names[i][j];
+			}
+		}
+	}
+	buf[pos] = '\0';
+	return pos;
+}
+
+static long sys_lseek(int fd, long offset, int whence) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0 || f->type != FD_INODE) {
+		return -1;
+	}
+
+	long newoff;
+	switch (whence) {
+	case 0:
+		newoff = offset;
+		break;
+	case 1:
+		newoff = (long)f->off + offset;
+		break;
+	case 2:
+		ilock(f->ip);
+		newoff = (long)f->ip->size + offset;
+		iunlock(f->ip);
+		break;
+	default:
+		return -1;
+	}
+
+	if (newoff < 0) {
+		return -1;
+	}
+	f->off = (unsigned int)newoff;
+	return newoff;
+}
+
+static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
+
+static long sys_rename(const char *oldpath, const char *newpath) {
+	char kold[128], knew[128], oldname[DIRSIZ], newname[DIRSIZ];
+	if (vmm_copyinstr(current->pagetable, kold, (unsigned long)oldpath, 128) <
+	    0) {
+		return -1;
+	}
+	if (vmm_copyinstr(current->pagetable, knew, (unsigned long)newpath, 128) <
+	    0) {
+		return -1;
+	}
+
+	sleep_lock(&rename_lock);
+
+	struct inode *ip = namei(kold);
+	if (ip == 0) {
+		sleep_unlock(&rename_lock);
+		return -1;
+	}
+
+	int is_dir = 0;
+	ilock(ip);
+	is_dir = (ip->type == T_DIR);
+	ip->nlink++;
+	iupdate(ip);
+	iunlock(ip);
+
+	struct inode *new_dp = nameiparent(knew, newname);
+	if (new_dp == 0) {
+		goto fail;
+	}
+
+	// Cycle detection for directories: walk from new_dp to root,
+	// ensure we don't hit ip (would create unreachable cycle)
+	if (is_dir) {
+		struct inode *check = idup(new_dp);
+		while (check->inum != ROOTINO) {
+			if (check->inum == ip->inum) {
+				iput(check);
+				iput(new_dp);
+				goto fail;
+			}
+			ilock(check);
+			struct inode *parent = dirlookup(check, "..", 0);
+			iunlockput(check);
+			if (parent == 0) {
+				iput(new_dp);
+				goto fail;
+			}
+			check = parent;
+		}
+		iput(check);
+	}
+
+	unsigned int new_parent_inum = new_dp->inum;
+	ilock(new_dp);
+
+	unsigned int off;
+	struct inode *existing = dirlookup(new_dp, newname, &off);
+	if (existing) {
+		ilock(existing);
+		if (existing->type == T_DIR) {
+			iunlockput(existing);
+			iunlockput(new_dp);
+			goto fail;
+		}
+		struct dirent de;
+		memset(&de, 0, sizeof(de));
+		writei(new_dp, (char *)&de, off, sizeof(de));
+		existing->nlink--;
+		iupdate(existing);
+		iunlockput(existing);
+	}
+
+	if (new_dp->dev != ip->dev || dirlink(new_dp, newname, ip->inum) < 0) {
+		iunlockput(new_dp);
+		goto fail;
+	}
+
+	// For directories: increment new parent's nlink (new ".." reference)
+	if (is_dir) {
+		new_dp->nlink++;
+		iupdate(new_dp);
+	}
+	iunlockput(new_dp);
+
+	// Unlink from old location
+	struct inode *old_dp = nameiparent(kold, oldname);
+	if (old_dp == 0) {
+		iput(ip);
+		sleep_unlock(&rename_lock);
+		return -1;
+	}
+	ilock(old_dp);
+	struct inode *check = dirlookup(old_dp, oldname, &off);
+	if (check == 0 || check->inum != ip->inum) {
+		if (check) {
+			iput(check);
+		}
+		iunlockput(old_dp);
+		iput(ip);
+		sleep_unlock(&rename_lock);
+		return -1;
+	}
+	iput(check);
+	struct dirent de;
+	memset(&de, 0, sizeof(de));
+	writei(old_dp, (char *)&de, off, sizeof(de));
+
+	// For directories: decrement old parent's nlink (removed ".." reference)
+	if (is_dir) {
+		old_dp->nlink--;
+		iupdate(old_dp);
+	}
+	iunlockput(old_dp);
+
+	// Update ".." inside moved directory to point to new parent
+	if (is_dir) {
+		ilock(ip);
+		struct dirent dotdot;
+		for (unsigned int o = 0; o < ip->size; o += sizeof(dotdot)) {
+			if (readi(ip, (char *)&dotdot, o, sizeof(dotdot)) !=
+			    sizeof(dotdot)) {
+				break;
+			}
+			if (strcmp(dotdot.name, "..") == 0) {
+				dotdot.inum = new_parent_inum;
+				writei(ip, (char *)&dotdot, o, sizeof(dotdot));
+				break;
+			}
+		}
+		iunlock(ip);
+	}
+
+	ilock(ip);
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+	sleep_unlock(&rename_lock);
+	return 0;
+
+fail:
+	ilock(ip);
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+	sleep_unlock(&rename_lock);
+	return -1;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -682,6 +949,18 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_pipe:
 		ret = sys_pipe((int *)tf->regs[0]);
+		break;
+	case SYS_stat:
+		ret = sys_stat((const char *)tf->regs[0], (struct stat *)tf->regs[1]);
+		break;
+	case SYS_getcwd:
+		ret = sys_getcwd((char *)tf->regs[0], tf->regs[1]);
+		break;
+	case SYS_lseek:
+		ret = sys_lseek((int)tf->regs[0], (long)tf->regs[1], (int)tf->regs[2]);
+		break;
+	case SYS_rename:
+		ret = sys_rename((const char *)tf->regs[0], (const char *)tf->regs[1]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
