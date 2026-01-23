@@ -138,14 +138,14 @@ struct file {
 
 Create filesystem images on the development host.
 
-- [ ] Create `tools/mkfs.c`:
+- [x] Create `tools/mkfs.c`:
   - Parse command-line arguments (image file, size)
   - Write superblock with correct offsets
   - Initialize inode blocks (all type=0)
   - Initialize bitmap (mark metadata blocks as used)
   - Create root directory (inode 1) with "." and ".." entries
-- [ ] Add to Makefile: `make mkfs`, `make disk.img`
-- [ ] Update test.img generation to use mkfs
+- [x] Add to Makefile: `make mkfs`, `make disk.img`
+- [x] Update test.img generation to use mkfs
 
 **Exit criteria**: `make disk.img` creates a valid filesystem image.
 

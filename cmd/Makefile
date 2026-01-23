@@ -19,8 +19,9 @@ all: initramfs.bin
 $(LIBC):
 	$(MAKE) -C ../libc
 
-mkramfs: ../tools/mkramfs.c
-	$(HOSTCC) -Wall -o $@ $<
+mkramfs:
+	$(MAKE) -C ../tools mkramfs
+	cp ../tools/mkramfs $@
 
 shell.elf: shell/shell.o $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)

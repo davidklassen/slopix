@@ -95,12 +95,12 @@ TEST(virtio_read_sector_zero) {
 }
 
 TEST(virtio_read_returns_data) {
-	int ret = virtio_disk_read(0, read_buf);
+	int ret = virtio_disk_read(2, read_buf);
 	ASSERT_EQ(ret, 0, "Read should succeed");
-	ASSERT_EQ(read_buf[0], 'S', "First byte should be 'S'");
-	ASSERT_EQ(read_buf[1], 'L', "Second byte should be 'L'");
-	ASSERT_EQ(read_buf[2], 'P', "Third byte should be 'P'");
-	ASSERT_EQ(read_buf[3], 'X', "Fourth byte should be 'X'");
+	ASSERT_EQ(read_buf[0], 0x40, "Superblock magic byte 0");
+	ASSERT_EQ(read_buf[1], 0x30, "Superblock magic byte 1");
+	ASSERT_EQ(read_buf[2], 0x20, "Superblock magic byte 2");
+	ASSERT_EQ(read_buf[3], 0x10, "Superblock magic byte 3");
 	return 0;
 }
 
@@ -177,9 +177,9 @@ TEST(virtio_intr_enabled) {
 
 TEST(virtio_intr_fires) {
 	unsigned char buf[512];
-	int ret = virtio_disk_read(0, buf);
+	int ret = virtio_disk_read(2, buf);
 	ASSERT_EQ(ret, 0, "Interrupt-driven read should succeed");
-	ASSERT_EQ(buf[0], 'S', "Should read correct data");
+	ASSERT_EQ(buf[0], 0x40, "Should read superblock magic");
 	return 0;
 }
 

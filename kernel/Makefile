@@ -83,9 +83,11 @@ run: clean $(KERNEL) test.img
 debug: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL) -s -S
 
-test.img:
-	dd if=/dev/zero of=$@ bs=1M count=1
-	printf 'SLPX' | dd of=$@ bs=1 conv=notrunc
+../tools/mkfs:
+	$(MAKE) -C ../tools mkfs
+
+test.img: ../tools/mkfs
+	../tools/mkfs $@ -s 1024
 
 test: CFLAGS += -DRUN_TESTS
 test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ) test.img
