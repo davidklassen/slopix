@@ -88,24 +88,31 @@ struct buf *bread(unsigned int dev, unsigned int blockno) {
 		disk_wait();
 
 		unsigned long sector = blockno * SECTORS_PER_BLOCK;
-		virtio_disk_read(sector, b->data);
-		virtio_disk_read(sector + 1, b->data + 512);
-		b->valid = 1;
+		int err1 = virtio_disk_read(sector, b->data);
+		int err2 = (err1 == 0) ? virtio_disk_read(sector + 1, b->data + 512) : err1;
 
 		disk_done();
+
+		if (err1 < 0 || err2 < 0) {
+			brelse(b);
+			return 0;
+		}
+		b->valid = 1;
 	}
 
 	return b;
 }
 
-void bwrite(struct buf *b) {
+int bwrite(struct buf *b) {
 	disk_wait();
 
 	unsigned long sector = b->blockno * SECTORS_PER_BLOCK;
-	virtio_disk_write(sector, b->data);
-	virtio_disk_write(sector + 1, b->data + 512);
+	int err1 = virtio_disk_write(sector, b->data);
+	int err2 = (err1 == 0) ? virtio_disk_write(sector + 1, b->data + 512) : err1;
 
 	disk_done();
+
+	return (err1 < 0 || err2 < 0) ? -1 : 0;
 }
 
 void brelse(struct buf *b) {

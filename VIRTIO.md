@@ -166,16 +166,16 @@ Connect virtio driver to the buffer cache layer.
 
 **Exit criteria**: Filesystem can use bread/bwrite interface. All bio tests pass.
 
-### M8: Error Handling
+### M8: Error Handling ✓
 
 Add robustness for device errors.
 
-- [ ] Check status byte after every operation
-- [ ] Handle IOERR: retry or return error
-- [ ] Handle UNSUPP: panic or return error
-- [ ] Detect device reset (status register clears)
-- [ ] Timeout detection for hung device
-- [ ] Add `virtio_errors` suite (2 tests)
+- [x] Check status byte after every operation
+- [x] Handle IOERR: retry or return error
+- [x] Handle UNSUPP: panic or return error
+- [x] Detect device reset (status register clears)
+- [x] Timeout detection for hung device
+- [x] Add `virtio_errors` suite (2 tests)
 
 **Exit criteria**: Driver recovers from or reports errors gracefully. All error tests pass.
 

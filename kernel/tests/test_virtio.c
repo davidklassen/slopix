@@ -188,4 +188,23 @@ TEST_SUITE(virtio_intr) {
 	RUN_TEST(virtio_intr_fires);
 }
 
+static unsigned char error_test_buf[512];
+
+TEST(virtio_read_bad_sector) {
+	int ret = virtio_disk_read(3000, error_test_buf);
+	ASSERT(ret < 0, "Reading invalid sector should fail");
+	return 0;
+}
+
+TEST(virtio_status_check) {
+	int ret = virtio_disk_read(3000, error_test_buf);
+	ASSERT_EQ(ret, VIRTIO_E_IOERR, "Invalid sector should return IOERR");
+	return 0;
+}
+
+TEST_SUITE(virtio_errors) {
+	RUN_TEST(virtio_read_bad_sector);
+	RUN_TEST(virtio_status_check);
+}
+
 #endif

@@ -4,6 +4,7 @@
 #include "pmm.h"
 #include "gic.h"
 #include "proc.h"
+#include "timer.h"
 
 static struct virtq_desc *desc;
 static struct virtq_avail *avail;
@@ -153,6 +154,10 @@ void virtio_intr(void) {
 }
 
 static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
+	if ((VIRTIO_REG(VIRTIO_MMIO_STATUS) & VIRTIO_STATUS_DRIVER_OK) == 0) {
+		return VIRTIO_E_RESET;
+	}
+
 	int idx[3];
 	for (int i = 0; i < 3; i++) {
 		idx[i] = alloc_desc();
@@ -160,7 +165,7 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 			for (int j = 0; j < i; j++) {
 				free_desc(idx[j]);
 			}
-			return -1;
+			return VIRTIO_E_IOERR;
 		}
 	}
 
@@ -196,10 +201,27 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 	unsigned short last_used = used->idx;
 	VIRTIO_REG(VIRTIO_MMIO_QUEUE_NOTIFY) = 0;
 
-	while (used->idx == last_used) {
-		if (current) {
-			sleep(&virtio_disk_chan);
-		} else {
+	if (current) {
+		unsigned long deadline = timer_get_ticks() + VIRTIO_TIMEOUT_TICKS;
+		while (used->idx == last_used) {
+			unsigned long now = timer_get_ticks();
+			if (now >= deadline) {
+				for (int i = 0; i < 3; i++) {
+					free_desc(idx[i]);
+				}
+				return VIRTIO_E_TIMEOUT;
+			}
+			sleep_timeout(&virtio_disk_chan, deadline - now);
+		}
+	} else {
+		unsigned long timeout = 100000000;
+		while (used->idx == last_used) {
+			if (--timeout == 0) {
+				for (int i = 0; i < 3; i++) {
+					free_desc(idx[i]);
+				}
+				return VIRTIO_E_TIMEOUT;
+			}
 			nop();
 		}
 	}
@@ -208,13 +230,30 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 		free_desc(idx[i]);
 	}
 
-	return blk_status == VIRTIO_BLK_S_OK ? 0 : -1;
+	if (blk_status == VIRTIO_BLK_S_OK) {
+		return VIRTIO_E_OK;
+	} else if (blk_status == VIRTIO_BLK_S_UNSUPP) {
+		return VIRTIO_E_UNSUPP;
+	}
+	return VIRTIO_E_IOERR;
 }
 
 int virtio_disk_read(unsigned long sector, void *buf) {
-	return virtio_disk_rw(sector, buf, 0);
+	for (int retry = 0; retry < VIRTIO_MAX_RETRIES; retry++) {
+		int ret = virtio_disk_rw(sector, buf, 0);
+		if (ret != VIRTIO_E_IOERR) {
+			return ret;
+		}
+	}
+	return VIRTIO_E_IOERR;
 }
 
 int virtio_disk_write(unsigned long sector, void *buf) {
-	return virtio_disk_rw(sector, buf, 1);
+	for (int retry = 0; retry < VIRTIO_MAX_RETRIES; retry++) {
+		int ret = virtio_disk_rw(sector, buf, 1);
+		if (ret != VIRTIO_E_IOERR) {
+			return ret;
+		}
+	}
+	return VIRTIO_E_IOERR;
 }

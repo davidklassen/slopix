@@ -23,6 +23,7 @@ DECLARE_SUITE(virtio_queue);
 DECLARE_SUITE(virtio_read);
 DECLARE_SUITE(virtio_write);
 DECLARE_SUITE(virtio_intr);
+DECLARE_SUITE(virtio_errors);
 DECLARE_SUITE(bio);
 
 void kernel_main(void) {
@@ -52,6 +53,7 @@ void kernel_main(void) {
 	enable_irq();
 	RUN_SUITE(timer);
 	RUN_SUITE(virtio_intr);
+	RUN_SUITE(virtio_errors);
 	RUN_SUITE(bio);
 
 	TEST_REPORT();

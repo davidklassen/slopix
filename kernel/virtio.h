@@ -53,6 +53,17 @@
 #define VIRTIO_BLK_S_IOERR  1
 #define VIRTIO_BLK_S_UNSUPP 2
 
+// Error codes returned by virtio_disk_read/write
+#define VIRTIO_E_OK	 0
+#define VIRTIO_E_IOERR	 -1
+#define VIRTIO_E_UNSUPP	 -2
+#define VIRTIO_E_TIMEOUT -3
+#define VIRTIO_E_RESET	 -4
+
+// Timeout and retry configuration
+#define VIRTIO_TIMEOUT_TICKS 100
+#define VIRTIO_MAX_RETRIES   3
+
 // VIRTIO0 interrupt (SPI 16 = INTID 48)
 #define VIRTIO_IRQ 48
 
