@@ -6,5 +6,10 @@
 #define O_RDWR	 0x002
 #define O_CREAT	 0x100
 #define O_TRUNC	 0x200
+#define O_APPEND 0x400
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 #endif

@@ -25,12 +25,102 @@ void *memcpy(void *dest, const void *src, size_t n) {
 	return dest;
 }
 
+void *memmove(void *dest, const void *src, size_t n) {
+	char *d = dest;
+	const char *s = src;
+
+	if (s < d && d < s + n) {
+		s += n;
+		d += n;
+		while (n-- > 0) {
+			*--d = *--s;
+		}
+	} else {
+		while (n-- > 0) {
+			*d++ = *s++;
+		}
+	}
+	return dest;
+}
+
 int strcmp(const char *s1, const char *s2) {
 	while (*s1 && *s1 == *s2) {
 		s1++;
 		s2++;
 	}
 	return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n) {
+	while (n > 0 && *s1 && *s1 == *s2) {
+		s1++;
+		s2++;
+		n--;
+	}
+	if (n == 0) {
+		return 0;
+	}
+	return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
+
+char *strcpy(char *dest, const char *src) {
+	char *d = dest;
+	while ((*d++ = *src++))
+		;
+	return dest;
+}
+
+char *strncpy(char *dest, const char *src, size_t n) {
+	char *d = dest;
+	while (n > 0 && *src) {
+		*d++ = *src++;
+		n--;
+	}
+	while (n > 0) {
+		*d++ = '\0';
+		n--;
+	}
+	return dest;
+}
+
+char *strcat(char *dest, const char *src) {
+	char *d = dest;
+	while (*d) {
+		d++;
+	}
+	while ((*d++ = *src++))
+		;
+	return dest;
+}
+
+char *strchr(const char *s, int c) {
+	while (*s != (char)c) {
+		if (*s == '\0') {
+			return 0;
+		}
+		s++;
+	}
+	return (char *)s;
+}
+
+char *strstr(const char *haystack, const char *needle) {
+	if (*needle == '\0') {
+		return (char *)haystack;
+	}
+	for (; *haystack; haystack++) {
+		if (*haystack == *needle) {
+			const char *h = haystack;
+			const char *n = needle;
+			while (*h && *n && *h == *n) {
+				h++;
+				n++;
+			}
+			if (*n == '\0') {
+				return (char *)haystack;
+			}
+		}
+	}
+	return 0;
 }
 
 int atoi(const char *s) {

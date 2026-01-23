@@ -159,18 +159,18 @@ Created at boot by init process:
 
 Add missing string and character functions.
 
-- [ ] Implement `strncmp(s1, s2, n)` in libc/string.c
-- [ ] Implement `strcpy(dst, src)` in libc/string.c
-- [ ] Implement `strncpy(dst, src, n)` in libc/string.c
-- [ ] Implement `strcat(dst, src)` in libc/string.c
-- [ ] Implement `strchr(s, c)` in libc/string.c
-- [ ] Implement `strstr(haystack, needle)` in libc/string.c
-- [ ] Implement `memmove(dst, src, n)` in libc/string.c
-- [ ] Update libc/include/string.h with declarations
-- [ ] Create libc/ctype.c with `isspace()`, `isdigit()`, `isalpha()`
-- [ ] Create libc/include/ctype.h
-- [ ] Create cmd/tests/test_libc.c with tests for all new functions
-- [ ] Add test_suite_libc to cmd/tests/tests.c
+- [x] Implement `strncmp(s1, s2, n)` in libc/string.c
+- [x] Implement `strcpy(dst, src)` in libc/string.c
+- [x] Implement `strncpy(dst, src, n)` in libc/string.c
+- [x] Implement `strcat(dst, src)` in libc/string.c
+- [x] Implement `strchr(s, c)` in libc/string.c
+- [x] Implement `strstr(haystack, needle)` in libc/string.c
+- [x] Implement `memmove(dst, src, n)` in libc/string.c
+- [x] Update libc/include/string.h with declarations
+- [x] Create libc/ctype.c with `isspace()`, `isdigit()`, `isalpha()`
+- [x] Create libc/include/ctype.h
+- [x] Create cmd/tests/test_libc.c with tests for all new functions
+- [x] Add test_suite_libc to cmd/tests/tests.c
 
 **Exit criteria**: All string/ctype functions available and tested.
 
