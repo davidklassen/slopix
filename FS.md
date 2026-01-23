@@ -103,6 +103,7 @@ struct inode {
     uint32_t inum;        // Inode number
     int ref;              // Reference count
     int valid;            // Has been read from disk?
+    int locked;           // Is inode locked?
 
     // Copy of on-disk inode
     uint16_t type;
@@ -153,17 +154,17 @@ Create filesystem images on the development host.
 
 Read filesystem metadata from disk.
 
-- [ ] Define filesystem constants in `fs.h`:
+- [x] Define filesystem constants in `fs.h`:
   - BSIZE, NDIRECT, NINDIRECT, DIRSIZ
   - ROOTINO (1), T_DIR, T_FILE, T_DEVICE
-- [ ] Implement `readsb()`: read and cache superblock
-- [ ] Implement inode cache (fixed array of NINODE entries)
-- [ ] Implement `iget(dev, inum)`: get inode reference (no disk read)
-- [ ] Implement `ilock(ip)`: lock inode, read from disk if !valid
-- [ ] Implement `iunlock(ip)`: unlock inode
-- [ ] Implement `iput(ip)`: release inode reference
-- [ ] Implement `bmap(ip, bn)`: map logical block number to physical
-- [ ] Add `fs` test suite
+- [x] Implement `readsb()`: read and cache superblock
+- [x] Implement inode cache (fixed array of NINODE entries)
+- [x] Implement `iget(dev, inum)`: get inode reference (no disk read)
+- [x] Implement `ilock(ip)`: lock inode, read from disk if !valid
+- [x] Implement `iunlock(ip)`: unlock inode
+- [x] Implement `iput(ip)`: release inode reference
+- [x] Implement `bmap(ip, bn)`: map logical block number to physical
+- [x] Add `fs` test suite
 
 **Exit criteria**: Can read superblock and inode 1 (root directory) from disk.
 

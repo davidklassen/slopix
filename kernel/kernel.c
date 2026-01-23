@@ -8,6 +8,7 @@
 #include "init.h"
 #include "virtio.h"
 #include "bio.h"
+#include "fs.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -25,6 +26,7 @@ DECLARE_SUITE(virtio_write);
 DECLARE_SUITE(virtio_intr);
 DECLARE_SUITE(virtio_errors);
 DECLARE_SUITE(bio);
+DECLARE_SUITE(fs);
 
 void kernel_main(void) {
 	uart_init();
@@ -55,6 +57,9 @@ void kernel_main(void) {
 	RUN_SUITE(virtio_intr);
 	RUN_SUITE(virtio_errors);
 	RUN_SUITE(bio);
+
+	fsinit(0);
+	RUN_SUITE(fs);
 
 	TEST_REPORT();
 

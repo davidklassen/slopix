@@ -45,4 +45,29 @@ struct dirent {
 	char name[DIRSIZ];
 };
 
+#define NINODE 50
+
+struct inode {
+	unsigned int dev;
+	unsigned int inum;
+	int ref;
+	int valid;
+	int locked;
+
+	unsigned short type;
+	unsigned short major;
+	unsigned short minor;
+	unsigned short nlink;
+	unsigned int size;
+	unsigned int addrs[NDIRECT + 1];
+};
+
+void fsinit(unsigned int dev);
+void readsb(unsigned int dev, struct superblock *sb);
+struct inode *iget(unsigned int dev, unsigned int inum);
+void ilock(struct inode *ip);
+void iunlock(struct inode *ip);
+void iput(struct inode *ip);
+unsigned int bmap(struct inode *ip, unsigned int bn);
+
 #endif
