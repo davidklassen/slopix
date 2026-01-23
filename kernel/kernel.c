@@ -20,6 +20,7 @@ DECLARE_SUITE(vmm_user);
 DECLARE_SUITE(elf);
 DECLARE_SUITE(initramfs);
 DECLARE_SUITE(virtio);
+DECLARE_SUITE(virtio_features);
 
 void kernel_main(void) {
 	uart_init();
@@ -37,6 +38,7 @@ void kernel_main(void) {
 
 	virtio_init();
 	RUN_SUITE(virtio);
+	RUN_SUITE(virtio_features);
 
 	gic_init();
 	timer_init();

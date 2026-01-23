@@ -47,23 +47,23 @@ Probe the virtio-mmio region and verify we have a block device.
   - Read VendorID for logging
 - [x] Implement `virtio_reset()`: write 0 to Status
 - [x] Add virtio_init() call from kernel_main()
-- [x] Add `test_virtio.c` with `virtio` suite (5 tests)
+- [x] Add `test_virtio.c` with `virtio` suite (4 read-only tests)
 
 **Exit criteria**: Boot prints "virtio-blk: found block device". All discovery tests pass.
 
-### M2: Feature Negotiation
+### M2: Feature Negotiation ✓
 
 Negotiate device features and transition through status bits.
 
-- [ ] Define feature bits (VIRTIO_BLK_F_*)
-- [ ] Define status bits (ACKNOWLEDGE, DRIVER, DRIVER_OK)
-- [ ] Implement feature negotiation:
+- [x] Define feature bits (VIRTIO_BLK_F_*) - deferred, accepting defaults
+- [x] Define status bits (ACKNOWLEDGE, DRIVER, DRIVER_OK)
+- [x] Implement feature negotiation:
   - Read DeviceFeatures
   - Mask to supported features (initially: none, accept defaults)
   - Write DriverFeatures
-- [ ] Set ACKNOWLEDGE and DRIVER status bits
-- [ ] Read block device config (capacity at offset 0x100)
-- [ ] Add `virtio_features` suite (3 tests)
+- [x] Set ACKNOWLEDGE and DRIVER status bits
+- [x] Read block device config (capacity at offset 0x100)
+- [x] Add `virtio_features` suite (2 read-only tests)
 
 **Exit criteria**: Boot prints "virtio-blk: capacity = N sectors". All feature tests pass.
 
@@ -255,7 +255,7 @@ struct virtio_blk_outhdr {
 
 Tests use the kernel test framework (`kernel/tests/test.h`). Create `kernel/tests/test_virtio.c` and `kernel/tests/test_bio.c`.
 
-### M1: Device Discovery (kernel tests)
+### M1: Device Discovery (kernel tests, read-only)
 
 ```c
 TEST_SUITE(virtio) {
@@ -263,16 +263,14 @@ TEST_SUITE(virtio) {
     RUN_TEST(virtio_version_legacy);   // == 1
     RUN_TEST(virtio_device_id_block);  // == 2
     RUN_TEST(virtio_vendor_id_qemu);   // == 0x554d4551
-    RUN_TEST(virtio_reset_clears_status);
 }
 ```
 
-### M2: Feature Negotiation (kernel tests)
+### M2: Feature Negotiation (kernel tests, read-only)
 
 ```c
 TEST_SUITE(virtio_features) {
-    RUN_TEST(virtio_status_acknowledge);  // status == 1 after ACK
-    RUN_TEST(virtio_status_driver);       // status == 3 after DRIVER
+    RUN_TEST(virtio_status_initialized);  // status == 3 after init
     RUN_TEST(virtio_config_capacity);     // capacity > 0
 }
 ```
@@ -354,8 +352,8 @@ TEST_SUITE(virtio_errors) {
 
 | Milestone | Suite | Tests | Automated |
 |-----------|-------|-------|-----------|
-| M1 | virtio | 5 | ✓ kernel |
-| M2 | virtio_features | 3 | ✓ kernel |
+| M1 | virtio | 4 | ✓ kernel (read-only) |
+| M2 | virtio_features | 2 | ✓ kernel (read-only) |
 | M3 | virtio_queue | 4 | ✓ kernel |
 | M4 | virtio_read | 3 | ✓ kernel |
 | M5 | virtio_write | 2 | ✓ kernel |
@@ -364,7 +362,9 @@ TEST_SUITE(virtio_errors) {
 | M7 | bio | 6 | ✓ kernel |
 | M8 | virtio_errors | 2 | ✓ kernel |
 
-**Total**: 28 automated tests across 9 test suites.
+**Total**: 26 automated tests across 9 test suites.
+
+**Note**: Tests are read-only where possible to ensure identical system state in test and normal modes.
 
 ## References
 

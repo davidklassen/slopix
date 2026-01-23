@@ -24,6 +24,20 @@ void virtio_init(void) {
 		return;
 	}
 	unsigned int vendor = VIRTIO_REG(VIRTIO_MMIO_VENDOR_ID);
+
 	virtio_reset();
-	kprintf("virtio: block device (vendor %x)\n", vendor);
+
+	VIRTIO_REG(VIRTIO_MMIO_STATUS) = VIRTIO_STATUS_ACKNOWLEDGE;
+	VIRTIO_REG(VIRTIO_MMIO_STATUS) = VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER;
+
+	VIRTIO_REG(VIRTIO_MMIO_DEVICE_FEATURES_SEL) = 0;
+	(void)VIRTIO_REG(VIRTIO_MMIO_DEVICE_FEATURES);
+	VIRTIO_REG(VIRTIO_MMIO_DRIVER_FEATURES_SEL) = 0;
+	VIRTIO_REG(VIRTIO_MMIO_DRIVER_FEATURES) = 0;
+
+	volatile unsigned int *cfg =
+	    (volatile unsigned int *)(VIRTIO0_VA + VIRTIO_MMIO_CONFIG);
+	unsigned long capacity = cfg[0] | ((unsigned long)cfg[1] << 32);
+
+	kprintf("virtio-blk: capacity = %lu sectors (vendor %x)\n", capacity, vendor);
 }
