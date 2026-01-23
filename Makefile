@@ -15,9 +15,6 @@ test:
 mkfs:
 	$(MAKE) -C tools mkfs
 
-disk.img: mkfs
-	./tools/mkfs $@
-
 clean:
 	$(MAKE) -C libc clean
 	$(MAKE) -C cmd clean

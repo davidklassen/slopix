@@ -25,6 +25,7 @@
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR	 0x002
+#define O_TRUNC	 0x200
 
 struct superblock {
 	unsigned int magic;
@@ -81,9 +82,12 @@ struct inode *idup(struct inode *ip);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
 void iput(struct inode *ip);
+void iupdate(struct inode *ip);
 void iunlockput(struct inode *ip);
 unsigned int bmap(struct inode *ip, unsigned int bn);
 int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
+int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n);
+void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
 struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff);
 struct inode *namei(char *path);

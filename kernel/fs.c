@@ -120,25 +120,99 @@ void iput(struct inode *ip) {
 	irq_restore(flags);
 }
 
+void iupdate(struct inode *ip) {
+	struct buf *bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+	if (!bp) {
+		return;
+	}
+	struct dinode *dip = (struct dinode *)bp->data + ip->inum % IPB;
+	dip->type = ip->type;
+	dip->major = ip->major;
+	dip->minor = ip->minor;
+	dip->nlink = ip->nlink;
+	dip->size = ip->size;
+	memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+	bwrite(bp);
+	brelse(bp);
+}
+
+static unsigned int balloc(unsigned int dev) {
+	for (unsigned int b = 0; b < sb.size; b += BPB) {
+		struct buf *bp = bread(dev, BBLOCK(b, sb));
+		if (!bp) {
+			return 0;
+		}
+		for (unsigned int bi = 0; bi < BPB && b + bi < sb.size; bi++) {
+			unsigned int m = 1 << (bi % 8);
+			if ((bp->data[bi / 8] & m) == 0) {
+				bp->data[bi / 8] |= m;
+				bwrite(bp);
+				brelse(bp);
+				struct buf *zbp = bread(dev, b + bi);
+				if (zbp) {
+					memset(zbp->data, 0, BSIZE);
+					bwrite(zbp);
+					brelse(zbp);
+				}
+				return b + bi;
+			}
+		}
+		brelse(bp);
+	}
+	return 0;
+}
+
+static void bfree(unsigned int dev, unsigned int b) {
+	struct buf *bp = bread(dev, BBLOCK(b, sb));
+	if (!bp) {
+		return;
+	}
+	unsigned int bi = b % BPB;
+	unsigned int m = 1 << (bi % 8);
+	bp->data[bi / 8] &= ~m;
+	bwrite(bp);
+	brelse(bp);
+}
+
 unsigned int bmap(struct inode *ip, unsigned int bn) {
+	unsigned int addr;
+
 	if (bn < NDIRECT) {
-		return ip->addrs[bn];
+		if ((addr = ip->addrs[bn]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				return 0;
+			}
+			ip->addrs[bn] = addr;
+		}
+		return addr;
 	}
 
 	bn -= NDIRECT;
 	if (bn < NINDIRECT) {
-		unsigned int addr = ip->addrs[NDIRECT];
-		if (addr == 0) {
-			return 0;
+		if ((addr = ip->addrs[NDIRECT]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				return 0;
+			}
+			ip->addrs[NDIRECT] = addr;
 		}
 		struct buf *bp = bread(ip->dev, addr);
 		if (!bp) {
 			return 0;
 		}
 		unsigned int *a = (unsigned int *)bp->data;
-		unsigned int result = a[bn];
+		if ((addr = a[bn]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				brelse(bp);
+				return 0;
+			}
+			a[bn] = addr;
+			bwrite(bp);
+		}
 		brelse(bp);
-		return result;
+		return addr;
 	}
 
 	return 0;
@@ -192,6 +266,76 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 	}
 
 	return tot;
+}
+
+int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) {
+	if (off > ip->size || off + n < off) {
+		return -1;
+	}
+	if (off + n > MAXFILE * BSIZE) {
+		return -1;
+	}
+
+	unsigned int tot = 0;
+	while (tot < n) {
+		unsigned int bn = off / BSIZE;
+		unsigned int addr = bmap(ip, bn);
+		if (addr == 0) {
+			break;
+		}
+
+		struct buf *bp = bread(ip->dev, addr);
+		if (!bp) {
+			break;
+		}
+
+		unsigned int boff = off % BSIZE;
+		unsigned int m = BSIZE - boff;
+		if (m > n - tot) {
+			m = n - tot;
+		}
+
+		memmove(bp->data + boff, src, m);
+		bwrite(bp);
+		brelse(bp);
+
+		tot += m;
+		off += m;
+		src += m;
+	}
+
+	if (off > ip->size) {
+		ip->size = off;
+	}
+	iupdate(ip);
+	return tot;
+}
+
+void itrunc(struct inode *ip) {
+	for (int i = 0; i < NDIRECT; i++) {
+		if (ip->addrs[i]) {
+			bfree(ip->dev, ip->addrs[i]);
+			ip->addrs[i] = 0;
+		}
+	}
+
+	if (ip->addrs[NDIRECT]) {
+		struct buf *bp = bread(ip->dev, ip->addrs[NDIRECT]);
+		if (bp) {
+			unsigned int *a = (unsigned int *)bp->data;
+			for (unsigned int j = 0; j < NINDIRECT; j++) {
+				if (a[j]) {
+					bfree(ip->dev, a[j]);
+				}
+			}
+			brelse(bp);
+		}
+		bfree(ip->dev, ip->addrs[NDIRECT]);
+		ip->addrs[NDIRECT] = 0;
+	}
+
+	ip->size = 0;
+	iupdate(ip);
 }
 
 void stati(struct inode *ip, struct stat *st) {

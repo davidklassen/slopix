@@ -69,6 +69,61 @@ TEST(read_after_close) {
 	return 0;
 }
 
+TEST(write_file) {
+	int fd = open("/hello", O_WRONLY);
+	ASSERT(fd >= 0, "open for write returns valid fd");
+	const char *data = "Test";
+	int n = write(fd, data, 4);
+	ASSERT_EQ(n, 4, "write returns 4");
+	close(fd);
+	return 0;
+}
+
+TEST(write_read_back) {
+	int fd = open("/hello", O_RDWR);
+	ASSERT(fd >= 0, "open for rdwr returns valid fd");
+	const char *data = "HELLO";
+	int n = write(fd, data, 5);
+	ASSERT_EQ(n, 5, "write returns 5");
+	close(fd);
+
+	fd = open("/hello", O_RDONLY);
+	ASSERT(fd >= 0, "reopen for read returns valid fd");
+	char buf[5];
+	n = read(fd, buf, 5);
+	ASSERT_EQ(n, 5, "read returns 5");
+	ASSERT(buf[0] == 'H' && buf[1] == 'E' && buf[2] == 'L',
+	       "read data matches written data");
+	close(fd);
+	return 0;
+}
+
+TEST(open_trunc) {
+	int fd = open("/hello", O_WRONLY | O_TRUNC);
+	ASSERT(fd >= 0, "open with O_TRUNC returns valid fd");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.size, 0, "file truncated to 0");
+	close(fd);
+	return 0;
+}
+
+TEST(write_extends_file) {
+	int fd = open("/hello", O_WRONLY | O_TRUNC);
+	ASSERT(fd >= 0, "open with O_TRUNC returns valid fd");
+	const char *data = "Extended content for testing file growth.";
+	int n = write(fd, data, 42);
+	ASSERT_EQ(n, 42, "write returns 42");
+	close(fd);
+
+	fd = open("/hello", O_RDONLY);
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.size, 42, "file size is 42");
+	close(fd);
+	return 0;
+}
+
 TEST_SUITE(filesys) {
 	RUN_TEST(open_file);
 	RUN_TEST(open_nonexistent);
@@ -77,4 +132,8 @@ TEST_SUITE(filesys) {
 	RUN_TEST(dup_file);
 	RUN_TEST(close_invalid_fd);
 	RUN_TEST(read_after_close);
+	RUN_TEST(write_file);
+	RUN_TEST(write_read_back);
+	RUN_TEST(open_trunc);
+	RUN_TEST(write_extends_file);
 }

@@ -64,8 +64,8 @@
 #define VIRTIO_TIMEOUT_TICKS 100
 #define VIRTIO_MAX_RETRIES   3
 
-// VIRTIO0 interrupt (SPI 16 = INTID 48)
-#define VIRTIO_IRQ 48
+// VIRTIO0 interrupt (at 0x0a003e00, SPI 47 = INTID 79)
+#define VIRTIO_IRQ 79
 
 // Block request header
 struct virtio_blk_outhdr {

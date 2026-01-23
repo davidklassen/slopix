@@ -253,18 +253,19 @@ Expose read-only file operations to userspace.
 
 **Exit criteria**: User program can open and read files.
 
-### F8: File Writing
+### F8: File Writing ✓
 
 Extend to support writes.
 
-- [ ] Implement `writei(ip, src, off, n)`: write n bytes to inode
-- [ ] Implement `balloc(dev)`: allocate data block from bitmap
-- [ ] Implement `bfree(dev, b)`: free data block
-- [ ] Extend bmap() to allocate blocks on write
-- [ ] Implement `filewrite(f, addr, n)`: write to file
-- [ ] Implement `itrunc(ip)`: truncate file to zero (free all blocks)
-- [ ] Handle O_TRUNC in sys_open
-- [ ] Add `fs_write` test suite
+- [x] Implement `writei(ip, src, off, n)`: write n bytes to inode
+- [x] Implement `balloc(dev)`: allocate data block from bitmap
+- [x] Implement `bfree(dev, b)`: free data block
+- [x] Extend bmap() to allocate blocks on write
+- [x] Implement `filewrite(f, addr, n)`: write to file
+- [x] Implement `itrunc(ip)`: truncate file to zero (free all blocks)
+- [x] Handle O_TRUNC in sys_open
+- [x] Implement `iupdate(ip)`: write inode to disk
+- [x] Add write tests to `filesys` userspace test suite
 
 **Exit criteria**: User program can write to files.
 
@@ -273,7 +274,7 @@ Extend to support writes.
 Create and remove files and directories.
 
 - [ ] Implement `ialloc(dev, type)`: allocate new inode
-- [ ] Implement `iupdate(ip)`: write inode to disk
+- [x] Implement `iupdate(ip)`: write inode to disk (done in F8)
 - [ ] Implement `dirlink(dp, name, inum)`: add directory entry
 - [ ] Implement `create(path, type, major, minor)`: create file/dir/device
 - [ ] Handle O_CREAT in sys_open

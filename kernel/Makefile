@@ -53,7 +53,8 @@ KERNEL = kernel.elf
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU = $(QEMU_BASE)
-QEMU_DISK = $(QEMU_BASE) -drive file=test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
+QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
+QEMU_TEST = $(QEMU_BASE) -drive file=test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
 
 .PHONY: all clean run debug test
 
@@ -84,7 +85,10 @@ initramfs_data_test.o: ../cmd/initramfs-test.bin
 		--rename-section .data=.initramfs \
 		$< $@
 
-run: clean $(KERNEL) test.img
+disk.img: ../tools/mkfs
+	../tools/mkfs $@ -s 1024
+
+run: clean $(KERNEL) disk.img
 	$(QEMU_DISK) -kernel $(KERNEL)
 
 debug: clean $(KERNEL)
@@ -99,7 +103,7 @@ test.img: ../tools/mkfs ../testdata/hello.txt ../testdata/large.txt
 test: CFLAGS += -DRUN_TESTS
 test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ) test.img
 	$(LD) $(LDFLAGS) -o $(KERNEL) $(filter-out initramfs_data.o,$(OBJ)) initramfs_data_test.o $(TEST_OBJ)
-	$(QEMU_DISK) -kernel $(KERNEL)
+	$(QEMU_TEST) -kernel $(KERNEL)
 
 clean:
-	rm -f *.o *.elf tests/*.o tests/*.elf
+	rm -f *.o *.elf tests/*.o tests/*.elf disk.img test.img

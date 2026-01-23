@@ -363,6 +363,10 @@ static long sys_open(const char *path, int flags) {
 	f->readable = !(flags & O_WRONLY);
 	f->writable = (flags & O_WRONLY) || (flags & O_RDWR);
 
+	if ((flags & O_TRUNC) && f->writable && ip->type == T_FILE) {
+		itrunc(ip);
+	}
+
 	iunlock(ip);
 
 	int fd = fdalloc(f);

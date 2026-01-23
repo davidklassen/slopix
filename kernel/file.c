@@ -118,7 +118,16 @@ int filewrite(struct file *f, const char *addr, int n) {
 		return devsw[f->major].write(addr, n);
 	}
 
-	// FD_INODE write support deferred to F8
+	if (f->type == FD_INODE) {
+		ilock(f->ip);
+		int r = writei(f->ip, addr, f->off, n);
+		if (r > 0) {
+			f->off += r;
+		}
+		iunlock(f->ip);
+		return r;
+	}
+
 	return -1;
 }
 
