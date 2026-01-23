@@ -271,25 +271,28 @@ Commands that run in the shell process itself.
 
 Implement command parsing with redirection support.
 
-- [ ] **Tokenizer**:
+- [x] **Tokenizer**:
   - Implement gettoken(): recognize words, |, <, >, >>
   - Implement peek(): look ahead without consuming
   - Handle whitespace and special characters
-- [ ] **Parser** (recursive descent):
-  - parseline(): top-level, handle multiple commands
+- [x] **Parser** (recursive descent):
+  - parsecmd(): top-level entry point
   - parsepipe(): handle | operator
   - parseredirs(): handle <, >, >>
   - parseexec(): parse command and arguments
-- [ ] **Command structures**:
+- [x] **Command structures**:
   - Define execcmd, redircmd, pipecmd structs
-  - Memory allocation for commands (static or simple malloc)
-- [ ] **Redirection execution**:
+  - Static memory pools for allocation (no malloc)
+- [x] **Redirection execution**:
   - Output (>): close(1), open(file, O_WRONLY|O_CREAT|O_TRUNC)
   - Input (<): close(0), open(file, O_RDONLY)
   - Append (>>): close(1), open(file, O_WRONLY|O_CREAT|O_APPEND)
-- [ ] **Error handling**:
+- [x] **Error handling**:
   - Print "syntax error" for malformed input
   - Print "cannot open file" for redirection failures
+- [x] **cat utility** (needed for exit criteria):
+  - Create cmd/cat/cat.c
+  - Add to cmd/Makefile and kernel/Makefile
 
 **Exit criteria**: `echo hello > file`, `cat < file`, `echo more >> file` work.
 
@@ -297,14 +300,14 @@ Implement command parsing with redirection support.
 
 Parse and execute pipelines.
 
-- [ ] Extend parser for | operator
-- [ ] Implement runcmd() for PIPE type:
+- [x] Extend parser for | operator
+- [x] Implement runcmd() for PIPE type:
   - Create pipe with pipe()
   - Fork left child: redirect stdout to pipe write end
   - Fork right child: redirect stdin to pipe read end
   - Close pipe ends in parent
   - Wait for both children
-- [ ] Handle multi-stage pipelines (recursive)
+- [x] Handle multi-stage pipelines (recursive)
 
 **Exit criteria**: `echo hello | cat`, `cat file | grep pattern | wc` work.
 
@@ -318,7 +321,7 @@ Essential commands for shell deliverables.
   - For each entry: stat() to get type/size
   - Print: type (d/-), size, name
   - Create cmd/ls/ls.c, add to Makefile
-- [ ] **cat**:
+- [x] **cat**:
   - For each file argument: open, read loop, write to stdout, close
   - If no arguments: read from stdin
   - Create cmd/cat/cat.c, add to Makefile
