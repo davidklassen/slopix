@@ -315,7 +315,7 @@ Parse and execute pipelines.
 
 Essential commands for shell deliverables.
 
-- [ ] **ls**:
+- [x] **ls**:
   - Open directory (argument or ".")
   - Read directory entries
   - For each entry: stat() to get type/size
