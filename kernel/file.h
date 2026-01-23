@@ -3,6 +3,8 @@
 
 #include "fs.h"
 
+struct pipe;
+
 #define NFILE  100
 #define NOFILE 16
 
@@ -29,6 +31,7 @@ struct file {
 	struct inode *ip;
 	unsigned int off;
 	short major;
+	struct pipe *pipe;
 };
 
 struct file *filealloc(void);

@@ -1,5 +1,5 @@
 .global write, exit, read, sleep, getpid, fork, wait, exec, poll, poweroff, sbrk
-.global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir
+.global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
 
 write:
 	mov x8, #0
@@ -98,5 +98,10 @@ unlink:
 
 chdir:
 	mov x8, #19
+	svc #0
+	ret
+
+pipe:
+	mov x8, #20
 	svc #0
 	ret

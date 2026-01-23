@@ -64,4 +64,13 @@ SECTIONS
     . = ALIGN(16);
     . = . + 0x10000;  /* 64KB stack */
     __stack_top = .;
+
+    /* Discard unused sections to prevent orphan placement issues */
+    /DISCARD/ : {
+        *(.rela*)
+        *(.rel*)
+        *(.igot*)
+        *(.note*)
+        *(.comment*)
+    }
 }

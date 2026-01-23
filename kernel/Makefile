@@ -30,6 +30,7 @@ OBJ = \
 	bio.o \
 	fs.o \
 	file.o \
+	pipe.o \
 	console.o \
 	kstring.o \
 	initramfs_data.o
@@ -47,7 +48,8 @@ TEST_OBJ = \
 	tests/test_bio.o \
 	tests/test_fs.o \
 	tests/test_file.o \
-	tests/test_console.o
+	tests/test_console.o \
+	tests/test_pipe.o
 
 KERNEL = kernel.elf
 

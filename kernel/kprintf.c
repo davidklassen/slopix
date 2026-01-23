@@ -202,7 +202,7 @@ __attribute__((noreturn)) void kpanic(const char *fmt, ...) {
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 	uart_puts(buf);
-	uart_puts("System halted.\n");
+	uart_puts("\nSystem halted.\n");
 	for (;;) {
 		wfe();
 	}

@@ -11,6 +11,7 @@
 #include "psci.h"
 #include "fs.h"
 #include "file.h"
+#include "pipe.h"
 #include "kstring.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
@@ -584,6 +585,36 @@ static long sys_chdir(const char *path) {
 	return 0;
 }
 
+static long sys_pipe(int *fdarray) {
+	if (vmm_validate(current->pagetable, (unsigned long)fdarray, 8, 1) < 0) {
+		return -1;
+	}
+
+	struct file *rf, *wf;
+	if (pipealloc(&rf, &wf) < 0) {
+		return -1;
+	}
+
+	int fd0 = fdalloc(rf);
+	if (fd0 < 0) {
+		fileclose(rf);
+		fileclose(wf);
+		return -1;
+	}
+
+	int fd1 = fdalloc(wf);
+	if (fd1 < 0) {
+		current->ofile[fd0] = 0;
+		fileclose(rf);
+		fileclose(wf);
+		return -1;
+	}
+
+	fdarray[0] = fd0;
+	fdarray[1] = fd1;
+	return 0;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -648,6 +679,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_chdir:
 		ret = sys_chdir((const char *)tf->regs[0]);
+		break;
+	case SYS_pipe:
+		ret = sys_pipe((int *)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

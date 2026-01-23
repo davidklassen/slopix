@@ -22,5 +22,6 @@ int mknod(const char *path, int major, int minor);
 int link(const char *oldpath, const char *newpath);
 int unlink(const char *path);
 int chdir(const char *path);
+int pipe(int fd[2]);
 
 #endif

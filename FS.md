@@ -290,18 +290,18 @@ Create and remove files and directories.
 
 **Exit criteria**: User program can create, link, and delete files.
 
-### F10: Pipes
+### F10: Pipes ✓
 
 Inter-process communication via pipes.
 
-- [ ] Define `struct pipe` with buffer and read/write offsets
-- [ ] Implement `pipealloc(fd0, fd1)`: create pipe pair
-- [ ] Implement `piperead(pi, addr, n)`: read from pipe
-- [ ] Implement `pipewrite(pi, addr, n)`: write to pipe
-- [ ] Implement `pipeclose(pi, writable)`: close pipe end
-- [ ] Implement `sys_pipe(fdarray)`: create pipe, return fds
-- [ ] Add pipe support to fileread/filewrite
-- [ ] Add `pipe` test suite
+- [x] Define `struct pipe` with buffer and read/write offsets
+- [x] Implement `pipealloc(fd0, fd1)`: create pipe pair
+- [x] Implement `piperead(pi, addr, n)`: read from pipe
+- [x] Implement `pipewrite(pi, addr, n)`: write to pipe
+- [x] Implement `pipeclose(pi, writable)`: close pipe end
+- [x] Implement `sys_pipe(fdarray)`: create pipe, return fds
+- [x] Add pipe support to fileread/filewrite
+- [x] Add `pipe` test suite
 
 **Exit criteria**: Two processes can communicate via pipe.
 

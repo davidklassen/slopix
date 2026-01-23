@@ -33,6 +33,7 @@ DECLARE_SUITE(fs_dir);
 DECLARE_SUITE(fs_read);
 DECLARE_SUITE(fs_file);
 DECLARE_SUITE(console);
+DECLARE_SUITE(pipe);
 
 void kernel_main(void) {
 	uart_init();
@@ -71,6 +72,7 @@ void kernel_main(void) {
 	RUN_SUITE(fs_read);
 	RUN_SUITE(fs_file);
 	RUN_SUITE(console);
+	RUN_SUITE(pipe);
 
 	TEST_REPORT();
 

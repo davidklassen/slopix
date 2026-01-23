@@ -1,4 +1,5 @@
 #include "file.h"
+#include "pipe.h"
 #include "cpu.h"
 #include "proc.h"
 
@@ -30,6 +31,7 @@ struct file *filealloc(void) {
 			f->ip = 0;
 			f->off = 0;
 			f->major = 0;
+			f->pipe = 0;
 			irq_restore(flags);
 			return f;
 		}
@@ -64,9 +66,12 @@ void fileclose(struct file *f) {
 	struct file ff = *f;
 	f->type = FD_NONE;
 	f->ip = 0;
+	f->pipe = 0;
 	irq_restore(flags);
 
-	if ((ff.type == FD_INODE || ff.type == FD_DEVICE) && ff.ip) {
+	if (ff.type == FD_PIPE) {
+		pipeclose(ff.pipe, ff.writable);
+	} else if ((ff.type == FD_INODE || ff.type == FD_DEVICE) && ff.ip) {
 		iput(ff.ip);
 	}
 }
@@ -84,6 +89,10 @@ int filestat(struct file *f, struct stat *st) {
 int fileread(struct file *f, char *addr, int n) {
 	if (!f->readable) {
 		return -1;
+	}
+
+	if (f->type == FD_PIPE) {
+		return piperead(f->pipe, addr, n);
 	}
 
 	if (f->type == FD_DEVICE) {
@@ -109,6 +118,10 @@ int fileread(struct file *f, char *addr, int n) {
 int filewrite(struct file *f, const char *addr, int n) {
 	if (!f->writable) {
 		return -1;
+	}
+
+	if (f->type == FD_PIPE) {
+		return pipewrite(f->pipe, addr, n);
 	}
 
 	if (f->type == FD_DEVICE) {
