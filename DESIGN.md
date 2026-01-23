@@ -375,6 +375,49 @@ struct dirent {
 };
 ```
 
+### In-Memory Structures
+
+```
+struct inode {
+    uint32_t dev;         // Device number
+    uint32_t inum;        // Inode number
+    int ref;              // Reference count
+    int valid;            // Has been read from disk?
+    int locked;           // Is inode locked?
+
+    // Copy of on-disk inode
+    uint16_t type;
+    uint16_t major;
+    uint16_t minor;
+    uint16_t nlink;
+    uint32_t size;
+    uint32_t addrs[13];   // 12 direct + 1 indirect
+};
+
+#define FD_NONE   0
+#define FD_PIPE   1
+#define FD_INODE  2
+#define FD_DEVICE 3
+
+struct file {
+    int type;             // FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE
+    int ref;              // Reference count
+    int readable;
+    int writable;
+    struct inode *ip;     // FD_INODE, FD_DEVICE
+    uint32_t off;         // FD_INODE offset
+    short major;          // FD_DEVICE major number
+};
+```
+
+### Memory Layout
+
+| Structure | Count | Notes |
+|-----------|-------|-------|
+| Inode cache | NINODE (50) | Statically allocated |
+| File table | NFILE (100) | Statically allocated |
+| Per-process fds | NOFILE (16) | In struct proc |
+
 ## System Call Table
 
 Implemented syscalls:
