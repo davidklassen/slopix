@@ -6,6 +6,7 @@
 #include "pmm.h"
 #include "proc.h"
 #include "fs.h"
+#include "file.h"
 
 void init(const char *program) {
 	struct initramfs_entry entry;
@@ -45,6 +46,37 @@ void init(const char *program) {
 			ilock(root);
 			iunlock(root);
 			procs[i].cwd = root;
+
+			// Set up stdin (fd 0)
+			struct file *fin = filealloc();
+			if (fin) {
+				fin->type = FD_DEVICE;
+				fin->major = CONSOLE;
+				fin->readable = 1;
+				fin->writable = 0;
+				procs[i].ofile[0] = fin;
+			}
+
+			// Set up stdout (fd 1)
+			struct file *fout = filealloc();
+			if (fout) {
+				fout->type = FD_DEVICE;
+				fout->major = CONSOLE;
+				fout->readable = 0;
+				fout->writable = 1;
+				procs[i].ofile[1] = fout;
+			}
+
+			// Set up stderr (fd 2)
+			struct file *ferr = filealloc();
+			if (ferr) {
+				ferr->type = FD_DEVICE;
+				ferr->major = CONSOLE;
+				ferr->readable = 0;
+				ferr->writable = 1;
+				procs[i].ofile[2] = ferr;
+			}
+
 			break;
 		}
 	}

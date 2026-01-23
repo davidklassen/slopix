@@ -13,7 +13,12 @@
 #include "file.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
-	if (fd != 1) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
 		return -1;
 	}
 
@@ -21,10 +26,7 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 		return -1;
 	}
 
-	for (unsigned long i = 0; i < len; i++) {
-		uart_putc(buf[i]);
-	}
-	return len;
+	return filewrite(f, buf, len);
 }
 
 static long sys_exit(int status) {
@@ -51,7 +53,12 @@ static long sys_exit(int status) {
 }
 
 static long sys_read(int fd, char *buf, unsigned long len) {
-	if (fd != 0) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
 		return -1;
 	}
 
@@ -59,7 +66,7 @@ static long sys_read(int fd, char *buf, unsigned long len) {
 		return -1;
 	}
 
-	return uart_read(buf, len);
+	return fileread(f, buf, len);
 }
 
 static long sys_sleep(unsigned long ms) {
@@ -271,7 +278,17 @@ static long sys_wait(void) {
 }
 
 static long sys_poll(int fd, long timeout_ms) {
-	if (fd != 0) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
+		return -1;
+	}
+
+	// For now, only console device supports polling
+	if (f->type != FD_DEVICE || f->major != CONSOLE) {
 		return -1;
 	}
 

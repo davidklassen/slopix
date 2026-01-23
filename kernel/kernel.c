@@ -10,6 +10,7 @@
 #include "bio.h"
 #include "fs.h"
 #include "file.h"
+#include "console.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(uart);
@@ -31,9 +32,11 @@ DECLARE_SUITE(fs);
 DECLARE_SUITE(fs_dir);
 DECLARE_SUITE(fs_read);
 DECLARE_SUITE(fs_file);
+DECLARE_SUITE(console);
 
 void kernel_main(void) {
 	uart_init();
+	consoleinit();
 	RUN_SUITE(uart);
 	RUN_SUITE(kprintf);
 	RUN_SUITE(exception);
@@ -67,6 +70,7 @@ void kernel_main(void) {
 	RUN_SUITE(fs_dir);
 	RUN_SUITE(fs_read);
 	RUN_SUITE(fs_file);
+	RUN_SUITE(console);
 
 	TEST_REPORT();
 

@@ -128,8 +128,9 @@ struct file {
     int ref;              // Reference count
     int readable;
     int writable;
-    struct inode *ip;     // FD_INODE, FD_DEVICE
+    struct inode *ip;     // FD_INODE, FD_DEVICE (NULL for console)
     uint32_t off;         // FD_INODE
+    short major;          // FD_DEVICE: device major number
 };
 ```
 
@@ -217,16 +218,18 @@ Manage open files per process.
 
 **Exit criteria**: Process can hold open file references.
 
-### F6: Console Device
+### F6: Console Device ✓
 
 Implement console as a device file.
 
-- [ ] Define device switch table: `struct devsw { read, write }`
-- [ ] Implement `consoleread()`: read from UART
-- [ ] Implement `consolewrite()`: write to UART
-- [ ] Register console as device (major=1)
-- [ ] Modify sys_read/sys_write to use file descriptor layer
-- [ ] Special case fd 0,1,2 as console device (before /dev/console exists)
+- [x] Define device switch table: `struct devsw { read, write }`
+- [x] Implement `consoleread()`: read from UART
+- [x] Implement `consolewrite()`: write to UART
+- [x] Register console as device (major=1)
+- [x] Modify sys_read/sys_write to use file descriptor layer
+- [x] Special case fd 0,1,2 as console device (before /dev/console exists)
+- [x] Implement `filewrite(f, addr, n)`: write to file (FD_DEVICE only)
+- [x] Add `console` test suite
 
 **Exit criteria**: sys_read(0) and sys_write(1) work through file layer.
 
@@ -349,6 +352,14 @@ TEST_SUITE(fs_file) {
     RUN_TEST(file_read_advances_offset);// fileread updates offset
     RUN_TEST(file_read_not_readable);   // fileread fails if !readable
     RUN_TEST(file_fdalloc_lowest);      // fdalloc returns lowest fd
+}
+
+TEST_SUITE(console) {
+    RUN_TEST(console_devsw_registered);     // devsw[CONSOLE] has read/write
+    RUN_TEST(console_write_basic);          // consolewrite returns count
+    RUN_TEST(console_file_device_type);     // file can be FD_DEVICE
+    RUN_TEST(console_filewrite);            // filewrite to console works
+    RUN_TEST(console_filewrite_not_writable); // filewrite fails if !writable
 }
 ```
 

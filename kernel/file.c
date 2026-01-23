@@ -29,6 +29,7 @@ struct file *filealloc(void) {
 			f->writable = 0;
 			f->ip = 0;
 			f->off = 0;
+			f->major = 0;
 			irq_restore(flags);
 			return f;
 		}
@@ -65,13 +66,13 @@ void fileclose(struct file *f) {
 	f->ip = 0;
 	irq_restore(flags);
 
-	if (ff.type == FD_INODE || ff.type == FD_DEVICE) {
+	if ((ff.type == FD_INODE || ff.type == FD_DEVICE) && ff.ip) {
 		iput(ff.ip);
 	}
 }
 
 int filestat(struct file *f, struct stat *st) {
-	if (f->type == FD_INODE || f->type == FD_DEVICE) {
+	if ((f->type == FD_INODE || f->type == FD_DEVICE) && f->ip) {
 		ilock(f->ip);
 		stati(f->ip, st);
 		iunlock(f->ip);
@@ -85,6 +86,13 @@ int fileread(struct file *f, char *addr, int n) {
 		return -1;
 	}
 
+	if (f->type == FD_DEVICE) {
+		if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read) {
+			return -1;
+		}
+		return devsw[f->major].read(addr, n);
+	}
+
 	if (f->type == FD_INODE) {
 		ilock(f->ip);
 		int r = readi(f->ip, addr, f->off, n);
@@ -95,6 +103,22 @@ int fileread(struct file *f, char *addr, int n) {
 		return r;
 	}
 
+	return -1;
+}
+
+int filewrite(struct file *f, const char *addr, int n) {
+	if (!f->writable) {
+		return -1;
+	}
+
+	if (f->type == FD_DEVICE) {
+		if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write) {
+			return -1;
+		}
+		return devsw[f->major].write(addr, n);
+	}
+
+	// FD_INODE write support deferred to F8
 	return -1;
 }
 
