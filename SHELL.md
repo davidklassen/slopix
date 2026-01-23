@@ -340,13 +340,13 @@ d      0 subdir
 
 Commands for file operations.
 
-- [ ] **mkdir dir...**:
+- [x] **mkdir dir...**:
   - For each argument: call mkdir() syscall
   - Print error if fails
-- [ ] **rm file...**:
+- [x] **rm file...**:
   - For each argument: call unlink() syscall
   - Print error if fails
-- [ ] **cp src dst**:
+- [x] **cp src dst**:
   - open() source for reading
   - open() destination with O_CREAT|O_WRONLY|O_TRUNC
   - read/write loop to copy content
