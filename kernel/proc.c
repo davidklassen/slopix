@@ -17,7 +17,7 @@ struct proc *proc_alloc(void) {
 			p->state = RUNNABLE;
 			p->pid = nextpid++;
 			paddr_t pa = pmm_alloc();
-			if (pa == 0) {
+			if (pa == PMM_INVALID) {
 				p->state = UNUSED;
 				return 0;
 			}
@@ -43,7 +43,7 @@ static void proc_entry(void) {
 	proc_func func = (proc_func)current->ctx.x19;
 	func();
 	current->state = UNUSED;
-	sched();
+	proc_sched();
 }
 
 void proc_create(proc_func func) {
@@ -99,7 +99,7 @@ int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack
 	return p->pid;
 }
 
-void scheduler(void) {
+void proc_scheduler(void) {
 	for (;;) {
 		// Reap dead processes
 		for (int i = 0; i < NPROC; i++) {
@@ -122,7 +122,7 @@ void scheduler(void) {
 			}
 
 			// Disable IRQs while current is set but we're in scheduler
-			// context. If IRQ fired and timer_handler called yield(),
+			// context. If IRQ fired and timer_handler called proc_yield(),
 			// it would corrupt state by saving scheduler sp to process ctx.
 			disable_irq();
 			current = p;
@@ -141,23 +141,23 @@ void scheduler(void) {
 	}
 }
 
-void sched(void) {
+void proc_sched(void) {
 	context_switch(&current->ctx, &sched_ctx);
 }
 
-void yield(void) {
+void proc_yield(void) {
 	current->state = RUNNABLE;
-	sched();
+	proc_sched();
 }
 
-void sleep(void *chan) {
+void proc_wait(void *chan) {
 	current->chan = chan;
 	current->state = SLEEPING;
-	sched();
+	proc_sched();
 	current->chan = 0;
 }
 
-void wakeup(void *chan) {
+void proc_wakeup(void *chan) {
 	for (int i = 0; i < NPROC; i++) {
 		struct proc *p = &procs[i];
 		if (p->state == SLEEPING && p->chan == chan) {
@@ -166,7 +166,7 @@ void wakeup(void *chan) {
 	}
 }
 
-void wakeup_timed(void) {
+void proc_wakeup_timed(void) {
 	unsigned long now = timer_get_ticks();
 	for (int i = 0; i < NPROC; i++) {
 		struct proc *p = &procs[i];
@@ -178,22 +178,22 @@ void wakeup_timed(void) {
 	}
 }
 
-void ksleep(unsigned long ticks) {
+void proc_sleep(unsigned long ticks) {
 	if (ticks == 0) {
 		return;
 	}
 	current->wakeup_tick = timer_get_ticks() + ticks;
-	sleep(&current->wakeup_tick);
+	proc_wait(&current->wakeup_tick);
 	current->wakeup_tick = 0;
 }
 
-void sleep_timeout(void *chan, unsigned long ticks) {
+void proc_wait_timeout(void *chan, unsigned long ticks) {
 	current->chan = chan;
 	if (ticks > 0) {
 		current->wakeup_tick = timer_get_ticks() + ticks;
 	}
 	current->state = SLEEPING;
-	sched();
+	proc_sched();
 	current->chan = 0;
 	current->wakeup_tick = 0;
 }

@@ -38,29 +38,29 @@ TEST(file_close_decrements_ref) {
 }
 
 TEST(file_close_releases_inode) {
-	struct inode *ip = namei("/hello");
+	struct inode *ip = fs_namei("/hello");
 	ASSERT_NOT_NULL(ip, "namei should find /hello");
 	int inode_ref_before = ip->ref;
 
 	struct file *f = filealloc();
 	f->type = FD_INODE;
-	f->ip = idup(ip);
+	f->ip = fs_idup(ip);
 	ASSERT_EQ(ip->ref, inode_ref_before + 1, "inode ref should increment");
 
 	fileclose(f);
 	ASSERT_EQ(ip->ref, inode_ref_before, "inode ref should return to original");
 
-	iput(ip);
+	fs_iput(ip);
 	return 0;
 }
 
 TEST(file_stat_from_inode) {
-	struct inode *ip = namei("/hello");
+	struct inode *ip = fs_namei("/hello");
 	ASSERT_NOT_NULL(ip, "namei should find /hello");
 
 	struct file *f = filealloc();
 	f->type = FD_INODE;
-	f->ip = idup(ip);
+	f->ip = fs_idup(ip);
 
 	struct stat st;
 	int r = filestat(f, &st);
@@ -69,17 +69,17 @@ TEST(file_stat_from_inode) {
 	ASSERT_EQ(st.ino, ip->inum, "stat ino should match");
 
 	fileclose(f);
-	iput(ip);
+	fs_iput(ip);
 	return 0;
 }
 
 TEST(file_read_advances_offset) {
-	struct inode *ip = namei("/hello");
+	struct inode *ip = fs_namei("/hello");
 	ASSERT_NOT_NULL(ip, "namei should find /hello");
 
 	struct file *f = filealloc();
 	f->type = FD_INODE;
-	f->ip = idup(ip);
+	f->ip = fs_idup(ip);
 	f->readable = 1;
 	f->off = 0;
 
@@ -93,17 +93,17 @@ TEST(file_read_advances_offset) {
 	ASSERT_EQ(f->off, 8, "offset should advance to 8");
 
 	fileclose(f);
-	iput(ip);
+	fs_iput(ip);
 	return 0;
 }
 
 TEST(file_read_not_readable) {
-	struct inode *ip = namei("/hello");
+	struct inode *ip = fs_namei("/hello");
 	ASSERT_NOT_NULL(ip, "namei should find /hello");
 
 	struct file *f = filealloc();
 	f->type = FD_INODE;
-	f->ip = idup(ip);
+	f->ip = fs_idup(ip);
 	f->readable = 0;
 	f->off = 0;
 
@@ -112,7 +112,7 @@ TEST(file_read_not_readable) {
 	ASSERT_EQ(n, -1, "fileread should fail if not readable");
 
 	fileclose(f);
-	iput(ip);
+	fs_iput(ip);
 	return 0;
 }
 

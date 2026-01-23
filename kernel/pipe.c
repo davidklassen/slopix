@@ -5,18 +5,6 @@
 #include "proc.h"
 #include "cpu.h"
 
-static inline unsigned long irq_save(void) {
-	unsigned long daif = read_daif();
-	disable_irq();
-	return daif;
-}
-
-static inline void irq_restore(unsigned long daif) {
-	if (!(daif & DAIF_IRQ_BIT)) {
-		enable_irq();
-	}
-}
-
 int pipealloc(struct file **f0, struct file **f1) {
 	struct pipe *pi = 0;
 	*f0 = *f1 = 0;
@@ -26,7 +14,7 @@ int pipealloc(struct file **f0, struct file **f1) {
 	}
 
 	paddr_t pa = pmm_alloc();
-	if (pa == 0) {
+	if (pa == PMM_INVALID) {
 		goto bad;
 	}
 	pi = (struct pipe *)PA_TO_VA(pa);
@@ -66,10 +54,10 @@ void pipeclose(struct pipe *pi, int writable) {
 
 	if (writable) {
 		pi->writeopen = 0;
-		wakeup(&pi->nread);
+		proc_wakeup(&pi->nread);
 	} else {
 		pi->readopen = 0;
-		wakeup(&pi->nwrite);
+		proc_wakeup(&pi->nwrite);
 	}
 
 	if (pi->readopen == 0 && pi->writeopen == 0) {
@@ -87,7 +75,7 @@ int piperead(struct pipe *pi, char *addr, int n) {
 
 	while (pi->nread == pi->nwrite && pi->writeopen) {
 		irq_restore(flags);
-		sleep(&pi->nread);
+		proc_wait(&pi->nread);
 		flags = irq_save();
 	}
 
@@ -99,7 +87,7 @@ int piperead(struct pipe *pi, char *addr, int n) {
 		pi->nread++;
 	}
 
-	wakeup(&pi->nwrite);
+	proc_wakeup(&pi->nwrite);
 	irq_restore(flags);
 
 	return i;
@@ -116,9 +104,9 @@ int pipewrite(struct pipe *pi, const char *addr, int n) {
 		}
 
 		if (pi->nwrite == pi->nread + PIPESIZE) {
-			wakeup(&pi->nread);
+			proc_wakeup(&pi->nread);
 			irq_restore(flags);
-			sleep(&pi->nwrite);
+			proc_wait(&pi->nwrite);
 			flags = irq_save();
 			continue;
 		}
@@ -128,7 +116,7 @@ int pipewrite(struct pipe *pi, const char *addr, int n) {
 		i++;
 	}
 
-	wakeup(&pi->nread);
+	proc_wakeup(&pi->nread);
 	irq_restore(flags);
 
 	return i;

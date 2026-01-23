@@ -79,25 +79,25 @@ struct stat {
 };
 
 void fs_init(unsigned int dev);
-void readsb(unsigned int dev, struct superblock *sb);
-struct inode *iget(unsigned int dev, unsigned int inum);
-struct inode *idup(struct inode *ip);
-void ilock(struct inode *ip);
-void iunlock(struct inode *ip);
-void iput(struct inode *ip);
-void iupdate(struct inode *ip);
-void iunlockput(struct inode *ip);
-unsigned int bmap(struct inode *ip, unsigned int bn);
-int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
-int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n);
-void itrunc(struct inode *ip);
-void stati(struct inode *ip, struct stat *st);
-struct inode *ialloc(unsigned int dev, unsigned short type);
-int dirlink(struct inode *dp, char *name, unsigned int inum);
-int isdirempty(struct inode *dp);
-struct inode *create(char *path, unsigned short type, unsigned short major, unsigned short minor);
-struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff);
-struct inode *namei(char *path);
-struct inode *nameiparent(char *path, char *name);
+void fs_readsb(unsigned int dev, struct superblock *sb);
+struct inode *fs_iget(unsigned int dev, unsigned int inum);
+struct inode *fs_idup(struct inode *ip);
+void fs_ilock(struct inode *ip);
+void fs_iunlock(struct inode *ip);
+void fs_iput(struct inode *ip);
+void fs_iupdate(struct inode *ip);
+void fs_iunlockput(struct inode *ip);
+unsigned int fs_bmap(struct inode *ip, unsigned int bn);
+int fs_readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
+int fs_writei(struct inode *ip, const char *src, unsigned int off, unsigned int n);
+void fs_itrunc(struct inode *ip);
+void fs_stati(struct inode *ip, struct stat *st);
+struct inode *fs_ialloc(unsigned int dev, unsigned short type);
+int fs_dirlink(struct inode *dp, char *name, unsigned int inum);
+int fs_isdirempty(struct inode *dp);
+struct inode *fs_create(char *path, unsigned short type, unsigned short major, unsigned short minor);
+struct inode *fs_dirlookup(struct inode *dp, char *name, unsigned int *poff);
+struct inode *fs_namei(char *path);
+struct inode *fs_nameiparent(char *path, char *name);
 
 #endif

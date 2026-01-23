@@ -10,20 +10,8 @@ static struct {
 
 static struct superblock sb;
 
-static inline unsigned long irq_save(void) {
-	unsigned long daif = read_daif();
-	disable_irq();
-	return daif;
-}
-
-static inline void irq_restore(unsigned long daif) {
-	if (!(daif & DAIF_IRQ_BIT)) {
-		enable_irq();
-	}
-}
-
-void readsb(unsigned int dev, struct superblock *sbout) {
-	struct buf *bp = bread(dev, 1);
+void fs_readsb(unsigned int dev, struct superblock *sbout) {
+	struct buf *bp = bio_read(dev, 1);
 	if (!bp) {
 		return;
 	}
@@ -34,14 +22,14 @@ void readsb(unsigned int dev, struct superblock *sbout) {
 	sbout->ninodes = sbp->ninodes;
 	sbout->inodestart = sbp->inodestart;
 	sbout->bmapstart = sbp->bmapstart;
-	brelse(bp);
+	bio_release(bp);
 }
 
 void fs_init(unsigned int dev) {
-	readsb(dev, &sb);
+	fs_readsb(dev, &sb);
 }
 
-struct inode *iget(unsigned int dev, unsigned int inum) {
+struct inode *fs_iget(unsigned int dev, unsigned int inum) {
 	unsigned long flags = irq_save();
 
 	struct inode *empty = 0;
@@ -71,7 +59,7 @@ struct inode *iget(unsigned int dev, unsigned int inum) {
 	return empty;
 }
 
-void ilock(struct inode *ip) {
+void fs_ilock(struct inode *ip) {
 	if (ip == 0 || ip->ref < 1) {
 		return;
 	}
@@ -79,14 +67,14 @@ void ilock(struct inode *ip) {
 	unsigned long flags = irq_save();
 	while (ip->locked) {
 		irq_restore(flags);
-		sleep(ip);
+		proc_wait(ip);
 		flags = irq_save();
 	}
 	ip->locked = 1;
 	irq_restore(flags);
 
 	if (!ip->valid) {
-		struct buf *bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+		struct buf *bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
 		if (bp) {
 			struct dinode *dip = (struct dinode *)bp->data + ip->inum % IPB;
 			ip->type = dip->type;
@@ -97,41 +85,41 @@ void ilock(struct inode *ip) {
 			for (int i = 0; i < NDIRECT + 1; i++) {
 				ip->addrs[i] = dip->addrs[i];
 			}
-			brelse(bp);
+			bio_release(bp);
 			ip->valid = 1;
 		}
 	}
 }
 
-void iunlock(struct inode *ip) {
+void fs_iunlock(struct inode *ip) {
 	if (ip == 0 || !ip->locked || ip->ref < 1) {
 		return;
 	}
 
 	unsigned long flags = irq_save();
 	ip->locked = 0;
-	wakeup(ip);
+	proc_wakeup(ip);
 	irq_restore(flags);
 }
 
-void iput(struct inode *ip) {
+void fs_iput(struct inode *ip) {
 	unsigned long flags = irq_save();
 	if (ip->ref == 1 && ip->valid && ip->nlink == 0) {
 		irq_restore(flags);
-		ilock(ip);
-		itrunc(ip);
+		fs_ilock(ip);
+		fs_itrunc(ip);
 		ip->type = 0;
-		iupdate(ip);
+		fs_iupdate(ip);
 		ip->valid = 0;
-		iunlock(ip);
+		fs_iunlock(ip);
 		flags = irq_save();
 	}
 	ip->ref--;
 	irq_restore(flags);
 }
 
-void iupdate(struct inode *ip) {
-	struct buf *bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+void fs_iupdate(struct inode *ip) {
+	struct buf *bp = bio_read(ip->dev, IBLOCK(ip->inum, sb));
 	if (!bp) {
 		return;
 	}
@@ -142,13 +130,13 @@ void iupdate(struct inode *ip) {
 	dip->nlink = ip->nlink;
 	dip->size = ip->size;
 	memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-	bwrite(bp);
-	brelse(bp);
+	bio_write(bp);
+	bio_release(bp);
 }
 
 static unsigned int balloc(unsigned int dev) {
 	for (unsigned int b = 0; b < sb.size; b += BPB) {
-		struct buf *bp = bread(dev, BBLOCK(b, sb));
+		struct buf *bp = bio_read(dev, BBLOCK(b, sb));
 		if (!bp) {
 			return 0;
 		}
@@ -156,35 +144,35 @@ static unsigned int balloc(unsigned int dev) {
 			unsigned int m = 1 << (bi % 8);
 			if ((bp->data[bi / 8] & m) == 0) {
 				bp->data[bi / 8] |= m;
-				bwrite(bp);
-				brelse(bp);
-				struct buf *zbp = bread(dev, b + bi);
+				bio_write(bp);
+				bio_release(bp);
+				struct buf *zbp = bio_read(dev, b + bi);
 				if (zbp) {
 					memset(zbp->data, 0, BSIZE);
-					bwrite(zbp);
-					brelse(zbp);
+					bio_write(zbp);
+					bio_release(zbp);
 				}
 				return b + bi;
 			}
 		}
-		brelse(bp);
+		bio_release(bp);
 	}
 	return 0;
 }
 
 static void bfree(unsigned int dev, unsigned int b) {
-	struct buf *bp = bread(dev, BBLOCK(b, sb));
+	struct buf *bp = bio_read(dev, BBLOCK(b, sb));
 	if (!bp) {
 		return;
 	}
 	unsigned int bi = b % BPB;
 	unsigned int m = 1 << (bi % 8);
 	bp->data[bi / 8] &= ~m;
-	bwrite(bp);
-	brelse(bp);
+	bio_write(bp);
+	bio_release(bp);
 }
 
-unsigned int bmap(struct inode *ip, unsigned int bn) {
+unsigned int fs_bmap(struct inode *ip, unsigned int bn) {
 	unsigned int addr;
 
 	if (bn < NDIRECT) {
@@ -207,7 +195,7 @@ unsigned int bmap(struct inode *ip, unsigned int bn) {
 			}
 			ip->addrs[NDIRECT] = addr;
 		}
-		struct buf *bp = bread(ip->dev, addr);
+		struct buf *bp = bio_read(ip->dev, addr);
 		if (!bp) {
 			return 0;
 		}
@@ -215,32 +203,32 @@ unsigned int bmap(struct inode *ip, unsigned int bn) {
 		if ((addr = a[bn]) == 0) {
 			addr = balloc(ip->dev);
 			if (addr == 0) {
-				brelse(bp);
+				bio_release(bp);
 				return 0;
 			}
 			a[bn] = addr;
-			bwrite(bp);
+			bio_write(bp);
 		}
-		brelse(bp);
+		bio_release(bp);
 		return addr;
 	}
 
 	return 0;
 }
 
-struct inode *idup(struct inode *ip) {
+struct inode *fs_idup(struct inode *ip) {
 	unsigned long flags = irq_save();
 	ip->ref++;
 	irq_restore(flags);
 	return ip;
 }
 
-void iunlockput(struct inode *ip) {
-	iunlock(ip);
-	iput(ip);
+void fs_iunlockput(struct inode *ip) {
+	fs_iunlock(ip);
+	fs_iput(ip);
 }
 
-int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
+int fs_readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 	if (off > ip->size) {
 		return 0;
 	}
@@ -251,12 +239,12 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 	unsigned int tot = 0;
 	while (tot < n) {
 		unsigned int bn = off / BSIZE;
-		unsigned int addr = bmap(ip, bn);
+		unsigned int addr = fs_bmap(ip, bn);
 		if (addr == 0) {
 			break;
 		}
 
-		struct buf *bp = bread(ip->dev, addr);
+		struct buf *bp = bio_read(ip->dev, addr);
 		if (!bp) {
 			break;
 		}
@@ -268,7 +256,7 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 		}
 
 		memmove(dst, bp->data + boff, m);
-		brelse(bp);
+		bio_release(bp);
 
 		tot += m;
 		off += m;
@@ -278,7 +266,7 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 	return tot;
 }
 
-int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) {
+int fs_writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) {
 	if (off > ip->size || off + n < off) {
 		return -1;
 	}
@@ -289,12 +277,12 @@ int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) 
 	unsigned int tot = 0;
 	while (tot < n) {
 		unsigned int bn = off / BSIZE;
-		unsigned int addr = bmap(ip, bn);
+		unsigned int addr = fs_bmap(ip, bn);
 		if (addr == 0) {
 			break;
 		}
 
-		struct buf *bp = bread(ip->dev, addr);
+		struct buf *bp = bio_read(ip->dev, addr);
 		if (!bp) {
 			break;
 		}
@@ -306,8 +294,8 @@ int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) 
 		}
 
 		memmove(bp->data + boff, src, m);
-		bwrite(bp);
-		brelse(bp);
+		bio_write(bp);
+		bio_release(bp);
 
 		tot += m;
 		off += m;
@@ -317,11 +305,11 @@ int writei(struct inode *ip, const char *src, unsigned int off, unsigned int n) 
 	if (off > ip->size) {
 		ip->size = off;
 	}
-	iupdate(ip);
+	fs_iupdate(ip);
 	return tot;
 }
 
-void itrunc(struct inode *ip) {
+void fs_itrunc(struct inode *ip) {
 	for (int i = 0; i < NDIRECT; i++) {
 		if (ip->addrs[i]) {
 			bfree(ip->dev, ip->addrs[i]);
@@ -330,7 +318,7 @@ void itrunc(struct inode *ip) {
 	}
 
 	if (ip->addrs[NDIRECT]) {
-		struct buf *bp = bread(ip->dev, ip->addrs[NDIRECT]);
+		struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
 		if (bp) {
 			unsigned int *a = (unsigned int *)bp->data;
 			for (unsigned int j = 0; j < NINDIRECT; j++) {
@@ -338,17 +326,17 @@ void itrunc(struct inode *ip) {
 					bfree(ip->dev, a[j]);
 				}
 			}
-			brelse(bp);
+			bio_release(bp);
 		}
 		bfree(ip->dev, ip->addrs[NDIRECT]);
 		ip->addrs[NDIRECT] = 0;
 	}
 
 	ip->size = 0;
-	iupdate(ip);
+	fs_iupdate(ip);
 }
 
-void stati(struct inode *ip, struct stat *st) {
+void fs_stati(struct inode *ip, struct stat *st) {
 	st->dev = ip->dev;
 	st->ino = ip->inum;
 	st->type = ip->type;
@@ -356,9 +344,9 @@ void stati(struct inode *ip, struct stat *st) {
 	st->size = ip->size;
 }
 
-struct inode *ialloc(unsigned int dev, unsigned short type) {
+struct inode *fs_ialloc(unsigned int dev, unsigned short type) {
 	for (unsigned int inum = 1; inum < sb.ninodes; inum++) {
-		struct buf *bp = bread(dev, IBLOCK(inum, sb));
+		struct buf *bp = bio_read(dev, IBLOCK(inum, sb));
 		if (!bp) {
 			continue;
 		}
@@ -366,30 +354,30 @@ struct inode *ialloc(unsigned int dev, unsigned short type) {
 		if (dip->type == 0) {
 			memset(dip, 0, sizeof(*dip));
 			dip->type = type;
-			bwrite(bp);
-			brelse(bp);
-			return iget(dev, inum);
+			bio_write(bp);
+			bio_release(bp);
+			return fs_iget(dev, inum);
 		}
-		brelse(bp);
+		bio_release(bp);
 	}
 	return 0;
 }
 
-int dirlink(struct inode *dp, char *name, unsigned int inum) {
+int fs_dirlink(struct inode *dp, char *name, unsigned int inum) {
 	if (dp->type != T_DIR) {
 		return -1;
 	}
 
-	struct inode *ip = dirlookup(dp, name, 0);
+	struct inode *ip = fs_dirlookup(dp, name, 0);
 	if (ip != 0) {
-		iput(ip);
+		fs_iput(ip);
 		return -1;
 	}
 
 	struct dirent de;
 	unsigned int off;
 	for (off = 0; off < dp->size; off += sizeof(de)) {
-		if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		if (fs_readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 			return -1;
 		}
 		if (de.inum == 0) {
@@ -399,16 +387,16 @@ int dirlink(struct inode *dp, char *name, unsigned int inum) {
 
 	strncpy(de.name, name, DIRSIZ);
 	de.inum = inum;
-	if (writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+	if (fs_writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 		return -1;
 	}
 	return 0;
 }
 
-int isdirempty(struct inode *dp) {
+int fs_isdirempty(struct inode *dp) {
 	struct dirent de;
 	for (unsigned int off = 2 * sizeof(de); off < dp->size; off += sizeof(de)) {
-		if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		if (fs_readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 			break;
 		}
 		if (de.inum != 0) {
@@ -418,76 +406,76 @@ int isdirempty(struct inode *dp) {
 	return 1;
 }
 
-struct inode *create(char *path, unsigned short type, unsigned short major, unsigned short minor) {
+struct inode *fs_create(char *path, unsigned short type, unsigned short major, unsigned short minor) {
 	char name[DIRSIZ];
-	struct inode *dp = nameiparent(path, name);
+	struct inode *dp = fs_nameiparent(path, name);
 	if (dp == 0) {
 		return 0;
 	}
 
-	ilock(dp);
+	fs_ilock(dp);
 
-	struct inode *ip = dirlookup(dp, name, 0);
+	struct inode *ip = fs_dirlookup(dp, name, 0);
 	if (ip != 0) {
-		iunlockput(dp);
-		ilock(ip);
+		fs_iunlockput(dp);
+		fs_ilock(ip);
 		if (type == T_FILE && ip->type == T_FILE) {
 			return ip;
 		}
-		iunlockput(ip);
+		fs_iunlockput(ip);
 		return 0;
 	}
 
-	ip = ialloc(dp->dev, type);
+	ip = fs_ialloc(dp->dev, type);
 	if (ip == 0) {
-		iunlockput(dp);
+		fs_iunlockput(dp);
 		return 0;
 	}
 
-	ilock(ip);
+	fs_ilock(ip);
 	ip->major = major;
 	ip->minor = minor;
 	ip->nlink = 1;
-	iupdate(ip);
+	fs_iupdate(ip);
 
 	if (type == T_DIR) {
 		dp->nlink++;
-		iupdate(dp);
-		if (dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0) {
+		fs_iupdate(dp);
+		if (fs_dirlink(ip, ".", ip->inum) < 0 || fs_dirlink(ip, "..", dp->inum) < 0) {
 			ip->nlink = 0;
-			iupdate(ip);
-			iunlockput(ip);
+			fs_iupdate(ip);
+			fs_iunlockput(ip);
 			dp->nlink--;
-			iupdate(dp);
-			iunlockput(dp);
+			fs_iupdate(dp);
+			fs_iunlockput(dp);
 			return 0;
 		}
 	}
 
-	if (dirlink(dp, name, ip->inum) < 0) {
+	if (fs_dirlink(dp, name, ip->inum) < 0) {
 		if (type == T_DIR) {
 			dp->nlink--;
-			iupdate(dp);
+			fs_iupdate(dp);
 		}
 		ip->nlink = 0;
-		iupdate(ip);
-		iunlockput(ip);
-		iunlockput(dp);
+		fs_iupdate(ip);
+		fs_iunlockput(ip);
+		fs_iunlockput(dp);
 		return 0;
 	}
 
-	iunlockput(dp);
+	fs_iunlockput(dp);
 	return ip;
 }
 
-struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff) {
+struct inode *fs_dirlookup(struct inode *dp, char *name, unsigned int *poff) {
 	if (dp->type != T_DIR) {
 		return 0;
 	}
 
 	struct dirent de;
 	for (unsigned int off = 0; off < dp->size; off += sizeof(de)) {
-		if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		if (fs_readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 			break;
 		}
 		if (de.inum == 0) {
@@ -497,7 +485,7 @@ struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff) {
 			if (poff) {
 				*poff = off;
 			}
-			return iget(dp->dev, de.inum);
+			return fs_iget(dp->dev, de.inum);
 		}
 	}
 	return 0;
@@ -534,23 +522,23 @@ static struct inode *namex(char *path, int nameiparent, char *name) {
 	struct inode *ip;
 
 	if (*path == '/') {
-		ip = iget(0, ROOTINO);
+		ip = fs_iget(0, ROOTINO);
 	} else {
-		ip = idup(current->cwd);
+		ip = fs_idup(current->cwd);
 	}
 
 	while ((path = skipelem(path, name)) != 0) {
-		ilock(ip);
+		fs_ilock(ip);
 		if (ip->type != T_DIR) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			return 0;
 		}
 		if (nameiparent && *path == '\0') {
-			iunlock(ip);
+			fs_iunlock(ip);
 			return ip;
 		}
-		struct inode *next = dirlookup(ip, name, 0);
-		iunlockput(ip);
+		struct inode *next = fs_dirlookup(ip, name, 0);
+		fs_iunlockput(ip);
 		if (next == 0) {
 			return 0;
 		}
@@ -558,17 +546,17 @@ static struct inode *namex(char *path, int nameiparent, char *name) {
 	}
 
 	if (nameiparent) {
-		iput(ip);
+		fs_iput(ip);
 		return 0;
 	}
 	return ip;
 }
 
-struct inode *namei(char *path) {
+struct inode *fs_namei(char *path) {
 	char name[DIRSIZ];
 	return namex(path, 0, name);
 }
 
-struct inode *nameiparent(char *path, char *name) {
+struct inode *fs_nameiparent(char *path, char *name) {
 	return namex(path, 1, name);
 }

@@ -2,7 +2,7 @@
 #define CONSOLE_H
 
 void console_init(void);
-int consoleread(char *dst, int n);
-int consolewrite(const char *src, int n);
+int console_read(char *dst, int n);
+int console_write(const char *src, int n);
 
 #endif

@@ -9,23 +9,11 @@ static struct {
 	int disk_busy;
 } bcache;
 
-static inline unsigned long irq_save(void) {
-	unsigned long daif = read_daif();
-	disable_irq();
-	return daif;
-}
-
-static inline void irq_restore(unsigned long daif) {
-	if (!(daif & DAIF_IRQ_BIT)) {
-		enable_irq();
-	}
-}
-
 static void disk_wait(void) {
 	unsigned long flags = irq_save();
 	while (bcache.disk_busy) {
 		irq_restore(flags);
-		sleep(&bcache.disk_busy);
+		proc_wait(&bcache.disk_busy);
 		flags = irq_save();
 	}
 	bcache.disk_busy = 1;
@@ -35,7 +23,7 @@ static void disk_wait(void) {
 static void disk_done(void) {
 	unsigned long flags = irq_save();
 	bcache.disk_busy = 0;
-	wakeup(&bcache.disk_busy);
+	proc_wakeup(&bcache.disk_busy);
 	irq_restore(flags);
 }
 
@@ -84,7 +72,7 @@ static struct buf *bget(unsigned int dev, unsigned int blockno) {
 	return 0;
 }
 
-struct buf *bread(unsigned int dev, unsigned int blockno) {
+struct buf *bio_read(unsigned int dev, unsigned int blockno) {
 	struct buf *b = bget(dev, blockno);
 	if (!b) {
 		return 0;
@@ -100,7 +88,7 @@ struct buf *bread(unsigned int dev, unsigned int blockno) {
 		disk_done();
 
 		if (err1 < 0 || err2 < 0) {
-			brelse(b);
+			bio_release(b);
 			return 0;
 		}
 		b->valid = 1;
@@ -109,7 +97,7 @@ struct buf *bread(unsigned int dev, unsigned int blockno) {
 	return b;
 }
 
-int bwrite(struct buf *b) {
+int bio_write(struct buf *b) {
 	disk_wait();
 
 	unsigned long sector = b->blockno * SECTORS_PER_BLOCK;
@@ -121,7 +109,7 @@ int bwrite(struct buf *b) {
 	return (err1 < 0 || err2 < 0) ? -1 : 0;
 }
 
-void brelse(struct buf *b) {
+void bio_release(struct buf *b) {
 	unsigned long flags = irq_save();
 
 	b->refcnt--;

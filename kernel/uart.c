@@ -2,6 +2,7 @@
 #include "kprintf.h"
 #include "proc.h"
 #include "gic.h"
+#include "cpu.h"
 
 #define UART_RX_BUF_SIZE 64
 
@@ -19,6 +20,7 @@ void uart_init(void) {
 
 	UART_REG(UART_LCR_H_OFFSET) = UART_LCR_H_WLEN8 | UART_LCR_H_FEN;
 	UART_REG(UART_CR_OFFSET) = UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE;
+	isb();
 	kprintf("uart: initialized\n");
 }
 
@@ -67,14 +69,14 @@ void uart_irq_handler(void) {
 		}
 	}
 	UART_REG(UART_ICR_OFFSET) = UART_IMSC_RXIM;
-	wakeup(&uart_rx);
+	proc_wakeup(&uart_rx);
 }
 
 int uart_read(char *buf, unsigned long len) {
 	unsigned long i = 0;
 	while (i < len) {
 		while (uart_rx.head == uart_rx.tail) {
-			sleep(&uart_rx);
+			proc_wait(&uart_rx);
 		}
 		buf[i++] = uart_rx.buf[uart_rx.tail];
 		uart_rx.tail = (uart_rx.tail + 1) % UART_RX_BUF_SIZE;
@@ -94,6 +96,6 @@ int uart_poll_timeout(unsigned long ticks) {
 	if (ticks == 0) {
 		return 0;
 	}
-	sleep_timeout(&uart_rx, ticks);
+	proc_wait_timeout(&uart_rx, ticks);
 	return uart_poll();
 }

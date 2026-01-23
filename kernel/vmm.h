@@ -56,10 +56,16 @@ typedef unsigned long pte_t;
 #define PTE_PXN	     (1UL << 53) // Privileged execute never
 
 // Access Permission bits [7:6]
+// Values (for setting in PTE)
 #define PTE_AP_RW_EL1 (0UL << 6) // EL1 R/W, EL0 none (kernel only)
 #define PTE_AP_RW_ALL (1UL << 6) // EL1 R/W, EL0 R/W (user data)
 #define PTE_AP_RO_EL1 (2UL << 6) // EL1 R/O, EL0 none
 #define PTE_AP_RO_ALL (3UL << 6) // EL1 R/O, EL0 R/O (user code)
+
+// Masks (for testing bits)
+#define PTE_AP_MASK    (3UL << 6) // Mask for AP[2:1] bits
+#define PTE_AP_EL0_BIT (1UL << 6) // Bit 6: if set, EL0 has access
+#define PTE_AP_RO_BIT  (2UL << 6) // Bit 7: if set, read-only
 
 // AttrIndx encoding (bits 4:2)
 #define PTE_ATTR_DEVICE (MAIR_IDX_DEVICE << 2) // Use MAIR index 0

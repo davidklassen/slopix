@@ -44,11 +44,11 @@ static int virtio_queue_init(void) {
 
 	paddr_t pa1 = pmm_alloc();
 	paddr_t pa2 = pmm_alloc();
-	if (pa1 == 0 || pa2 == 0) {
-		if (pa1) {
+	if (pa1 == PMM_INVALID || pa2 == PMM_INVALID) {
+		if (pa1 != PMM_INVALID) {
 			pmm_free(pa1);
 		}
-		if (pa2) {
+		if (pa2 != PMM_INVALID) {
 			pmm_free(pa2);
 		}
 		return -1;
@@ -150,7 +150,7 @@ void virtio_intr(void) {
 		last_used_idx++;
 	}
 
-	wakeup(&virtio_disk_chan);
+	proc_wakeup(&virtio_disk_chan);
 }
 
 static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
@@ -211,7 +211,7 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 				}
 				return VIRTIO_E_TIMEOUT;
 			}
-			sleep_timeout(&virtio_disk_chan, deadline - now);
+			proc_wait_timeout(&virtio_disk_chan, deadline - now);
 		}
 	} else {
 		unsigned long timeout = 100000000;

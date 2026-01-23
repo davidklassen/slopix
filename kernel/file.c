@@ -8,18 +8,6 @@ static struct {
 	struct file file[NFILE];
 } ftable;
 
-static inline unsigned long irq_save(void) {
-	unsigned long daif = read_daif();
-	disable_irq();
-	return daif;
-}
-
-static inline void irq_restore(unsigned long daif) {
-	if (!(daif & DAIF_IRQ_BIT)) {
-		enable_irq();
-	}
-}
-
 struct file *filealloc(void) {
 	unsigned long flags = irq_save();
 	for (int i = 0; i < NFILE; i++) {
@@ -74,15 +62,15 @@ void fileclose(struct file *f) {
 	if (ff.type == FD_PIPE) {
 		pipeclose(ff.pipe, ff.writable);
 	} else if ((ff.type == FD_INODE || ff.type == FD_DEVICE || ff.type == FD_BDEVICE) && ff.ip) {
-		iput(ff.ip);
+		fs_iput(ff.ip);
 	}
 }
 
 int filestat(struct file *f, struct stat *st) {
 	if ((f->type == FD_INODE || f->type == FD_DEVICE || f->type == FD_BDEVICE) && f->ip) {
-		ilock(f->ip);
-		stati(f->ip, st);
-		iunlock(f->ip);
+		fs_ilock(f->ip);
+		fs_stati(f->ip, st);
+		fs_iunlock(f->ip);
 		return 0;
 	}
 	return -1;
@@ -105,12 +93,12 @@ int fileread(struct file *f, char *addr, int n) {
 	}
 
 	if (f->type == FD_INODE) {
-		ilock(f->ip);
-		int r = readi(f->ip, addr, f->off, n);
+		fs_ilock(f->ip);
+		int r = fs_readi(f->ip, addr, f->off, n);
 		if (r > 0) {
 			f->off += r;
 		}
-		iunlock(f->ip);
+		fs_iunlock(f->ip);
 		return r;
 	}
 
@@ -159,15 +147,15 @@ int filewrite(struct file *f, const char *addr, int n) {
 	}
 
 	if (f->type == FD_INODE) {
-		ilock(f->ip);
+		fs_ilock(f->ip);
 		if (f->append) {
 			f->off = f->ip->size;
 		}
-		int r = writei(f->ip, addr, f->off, n);
+		int r = fs_writei(f->ip, addr, f->off, n);
 		if (r > 0) {
 			f->off += r;
 		}
-		iunlock(f->ip);
+		fs_iunlock(f->ip);
 		return r;
 	}
 

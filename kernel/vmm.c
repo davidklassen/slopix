@@ -36,7 +36,7 @@ static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 				return 0;
 			}
 			paddr_t pa = pmm_alloc();
-			if (pa == 0) {
+			if (pa == PMM_INVALID) {
 				return 0;
 			}
 			*entry = make_table_desc(pa);
@@ -63,7 +63,7 @@ int vmm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int 
 // Allocate an empty user page table (just L0)
 pte_t *vmm_create(void) {
 	paddr_t pa = pmm_alloc();
-	if (pa == 0) {
+	if (pa == PMM_INVALID) {
 		return 0;
 	}
 	return (pte_t *)PA_TO_VA(pa);
@@ -121,7 +121,7 @@ static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
 		if (level < 3) {
 			// Table descriptor: allocate new table and recurse
 			paddr_t dst_pa = pmm_alloc();
-			if (dst_pa == 0) {
+			if (dst_pa == PMM_INVALID) {
 				return -1;
 			}
 			dst[i] = make_table_desc(dst_pa);
@@ -144,7 +144,7 @@ static int copywalk(pte_t *dst, pte_t *src, int level, unsigned long va) {
 		} else {
 			// L3 entry: allocate new page and copy data
 			paddr_t dst_pa = pmm_alloc();
-			if (dst_pa == 0) {
+			if (dst_pa == PMM_INVALID) {
 				return -1;
 			}
 			copy_page(dst_pa, src_pa);
@@ -182,8 +182,8 @@ static int validate_page(pte_t *pagetable, unsigned long va) {
 		return -1;
 	}
 
-	// Check user access (AP[0] must be set for EL0 access)
-	if ((*pte & PTE_AP_RW_ALL) == 0) {
+	// Check EL0 access (bit 6 must be set for user access)
+	if ((*pte & PTE_AP_EL0_BIT) == 0) {
 		return -1;
 	}
 
@@ -218,13 +218,13 @@ int vmm_validate(pte_t *pagetable, unsigned long va, unsigned long len, int writ
 			return -1;
 		}
 
-		// Check user access (AP[0] must be set for EL0 access)
-		if ((*pte & PTE_AP_RW_ALL) == 0) {
+		// Check EL0 access (bit 6 must be set for user access)
+		if ((*pte & PTE_AP_EL0_BIT) == 0) {
 			return -1;
 		}
 
-		// If write access needed, check not read-only (AP[1] must be clear)
-		if (write && (*pte & (2UL << 6))) {
+		// If write access needed, check not read-only (bit 7 must be clear)
+		if (write && (*pte & PTE_AP_RO_BIT)) {
 			return -1;
 		}
 	}

@@ -41,17 +41,17 @@ static long sys_exit(int status) {
 	}
 
 	if (current->cwd) {
-		iput(current->cwd);
+		fs_iput(current->cwd);
 		current->cwd = 0;
 	}
 	current->exit_status = status;
 	if (current->parent) {
 		current->state = ZOMBIE;
-		wakeup(current->parent);
+		proc_wakeup(current->parent);
 	} else {
 		current->state = UNUSED;
 	}
-	sched();
+	proc_sched();
 	return 0;
 }
 
@@ -77,7 +77,7 @@ static long sys_sleep(unsigned long ms) {
 	if (ticks == 0 && ms > 0) {
 		ticks = 1;
 	}
-	ksleep(ticks);
+	proc_sleep(ticks);
 	return 0;
 }
 
@@ -122,26 +122,26 @@ static long sys_exec(const char *cmdline) {
 	pte_t *new_pt = 0;
 
 	if (argv[0][0] == '/') {
-		struct inode *ip = namei(argv[0]);
+		struct inode *ip = fs_namei(argv[0]);
 		if (ip == 0) {
 			return -1;
 		}
-		ilock(ip);
+		fs_ilock(ip);
 		if (ip->type != T_FILE) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			return -1;
 		}
 		new_pt = vmm_create();
 		if (!new_pt) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			return -1;
 		}
 		if (elf_load_from_inode(ip, new_pt, &entry_addr, &brk) < 0) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			vmm_free(new_pt);
 			return -1;
 		}
-		iunlockput(ip);
+		fs_iunlockput(ip);
 	} else {
 		struct initramfs_entry entry;
 		if (initramfs_find(argv[0], &entry) < 0) {
@@ -158,7 +158,7 @@ static long sys_exec(const char *cmdline) {
 	}
 
 	paddr_t stack_pa = pmm_alloc();
-	if (stack_pa == 0) {
+	if (stack_pa == PMM_INVALID) {
 		vmm_free(new_pt);
 		return -1;
 	}
@@ -267,7 +267,7 @@ static long sys_fork(void) {
 
 	// Copy cwd
 	if (current->cwd) {
-		child->cwd = idup(current->cwd);
+		child->cwd = fs_idup(current->cwd);
 	}
 
 	// Copy file descriptors
@@ -298,7 +298,7 @@ static long sys_wait(void) {
 		if (!has_children) {
 			return -1;
 		}
-		sleep(current);
+		proc_wait(current);
 	}
 }
 
@@ -344,7 +344,7 @@ static long sys_sbrk(long n) {
 
 		for (unsigned long va = old_end; va < new_end; va += PAGE_SIZE) {
 			paddr_t pa = pmm_alloc();
-			if (pa == 0) {
+			if (pa == PMM_INVALID) {
 				return -1;
 			}
 			if (vmm_map_page(current->pagetable, va, pa, 1, 0) < 0) {
@@ -366,21 +366,21 @@ static long sys_open(const char *path, int flags) {
 
 	struct inode *ip;
 	if (flags & O_CREAT) {
-		ip = create(kpath, T_FILE, 0, 0);
+		ip = fs_create(kpath, T_FILE, 0, 0);
 		if (ip == 0) {
 			return -1;
 		}
 	} else {
-		ip = namei(kpath);
+		ip = fs_namei(kpath);
 		if (ip == 0) {
 			return -1;
 		}
-		ilock(ip);
+		fs_ilock(ip);
 	}
 
 	struct file *f = filealloc();
 	if (f == 0) {
-		iunlockput(ip);
+		fs_iunlockput(ip);
 		return -1;
 	}
 
@@ -400,10 +400,10 @@ static long sys_open(const char *path, int flags) {
 	f->append = !!(flags & O_APPEND);
 
 	if ((flags & O_TRUNC) && f->writable && ip->type == T_FILE) {
-		itrunc(ip);
+		fs_itrunc(ip);
 	}
 
-	iunlock(ip);
+	fs_iunlock(ip);
 
 	int fd = fdalloc(f);
 	if (fd < 0) {
@@ -463,11 +463,11 @@ static long sys_mkdir(const char *path) {
 		return -1;
 	}
 
-	struct inode *ip = create(kpath, T_DIR, 0, 0);
+	struct inode *ip = fs_create(kpath, T_DIR, 0, 0);
 	if (ip == 0) {
 		return -1;
 	}
-	iunlockput(ip);
+	fs_iunlockput(ip);
 	return 0;
 }
 
@@ -477,11 +477,11 @@ static long sys_mknod(const char *path, int major, int minor) {
 		return -1;
 	}
 
-	struct inode *ip = create(kpath, T_DEVICE, major, minor);
+	struct inode *ip = fs_create(kpath, T_DEVICE, major, minor);
 	if (ip == 0) {
 		return -1;
 	}
-	iunlockput(ip);
+	fs_iunlockput(ip);
 	return 0;
 }
 
@@ -495,39 +495,39 @@ static long sys_link(const char *old, const char *new) {
 		return -1;
 	}
 
-	struct inode *ip = namei(kold);
+	struct inode *ip = fs_namei(kold);
 	if (ip == 0) {
 		return -1;
 	}
 
-	ilock(ip);
+	fs_ilock(ip);
 	if (ip->type == T_DIR) {
-		iunlockput(ip);
+		fs_iunlockput(ip);
 		return -1;
 	}
 	ip->nlink++;
-	iupdate(ip);
-	iunlock(ip);
+	fs_iupdate(ip);
+	fs_iunlock(ip);
 
-	struct inode *dp = nameiparent(knew, name);
+	struct inode *dp = fs_nameiparent(knew, name);
 	if (dp == 0) {
 		goto bad;
 	}
 
-	ilock(dp);
-	if (dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0) {
-		iunlockput(dp);
+	fs_ilock(dp);
+	if (dp->dev != ip->dev || fs_dirlink(dp, name, ip->inum) < 0) {
+		fs_iunlockput(dp);
 		goto bad;
 	}
-	iunlockput(dp);
-	iput(ip);
+	fs_iunlockput(dp);
+	fs_iput(ip);
 	return 0;
 
 bad:
-	ilock(ip);
+	fs_ilock(ip);
 	ip->nlink--;
-	iupdate(ip);
-	iunlockput(ip);
+	fs_iupdate(ip);
+	fs_iunlockput(ip);
 	return -1;
 }
 
@@ -537,54 +537,54 @@ static long sys_unlink(const char *path) {
 		return -1;
 	}
 
-	struct inode *dp = nameiparent(kpath, name);
+	struct inode *dp = fs_nameiparent(kpath, name);
 	if (dp == 0) {
 		return -1;
 	}
 
-	ilock(dp);
+	fs_ilock(dp);
 
 	if (name[0] == '.' && name[1] == '\0') {
-		iunlockput(dp);
+		fs_iunlockput(dp);
 		return -1;
 	}
 	if (name[0] == '.' && name[1] == '.' && name[2] == '\0') {
-		iunlockput(dp);
+		fs_iunlockput(dp);
 		return -1;
 	}
 
 	unsigned int off;
-	struct inode *ip = dirlookup(dp, name, &off);
+	struct inode *ip = fs_dirlookup(dp, name, &off);
 	if (ip == 0) {
-		iunlockput(dp);
+		fs_iunlockput(dp);
 		return -1;
 	}
 
-	ilock(ip);
+	fs_ilock(ip);
 
-	if (ip->type == T_DIR && !isdirempty(ip)) {
-		iunlockput(ip);
-		iunlockput(dp);
+	if (ip->type == T_DIR && !fs_isdirempty(ip)) {
+		fs_iunlockput(ip);
+		fs_iunlockput(dp);
 		return -1;
 	}
 
 	struct dirent de;
 	memset(&de, 0, sizeof(de));
-	if (writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
-		iunlockput(ip);
-		iunlockput(dp);
+	if (fs_writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+		fs_iunlockput(ip);
+		fs_iunlockput(dp);
 		return -1;
 	}
 
 	if (ip->type == T_DIR) {
 		dp->nlink--;
-		iupdate(dp);
+		fs_iupdate(dp);
 	}
-	iunlockput(dp);
+	fs_iunlockput(dp);
 
 	ip->nlink--;
-	iupdate(ip);
-	iunlockput(ip);
+	fs_iupdate(ip);
+	fs_iunlockput(ip);
 
 	return 0;
 }
@@ -595,19 +595,19 @@ static long sys_chdir(const char *path) {
 		return -1;
 	}
 
-	struct inode *ip = namei(kpath);
+	struct inode *ip = fs_namei(kpath);
 	if (ip == 0) {
 		return -1;
 	}
 
-	ilock(ip);
+	fs_ilock(ip);
 	if (ip->type != T_DIR) {
-		iunlockput(ip);
+		fs_iunlockput(ip);
 		return -1;
 	}
-	iunlock(ip);
+	fs_iunlock(ip);
 
-	iput(current->cwd);
+	fs_iput(current->cwd);
 	current->cwd = ip;
 	return 0;
 }
@@ -651,14 +651,14 @@ static long sys_stat(const char *path, struct stat *st) {
 		return -1;
 	}
 
-	struct inode *ip = namei(kpath);
+	struct inode *ip = fs_namei(kpath);
 	if (ip == 0) {
 		return -1;
 	}
 
-	ilock(ip);
-	stati(ip, st);
-	iunlockput(ip);
+	fs_ilock(ip);
+	fs_stati(ip, st);
+	fs_iunlockput(ip);
 	return 0;
 }
 
@@ -670,22 +670,22 @@ static long sys_getcwd(char *buf, unsigned long size) {
 	char names[16][DIRSIZ];
 	int depth = 0;
 
-	struct inode *ip = idup(current->cwd);
+	struct inode *ip = fs_idup(current->cwd);
 
 	while (ip->inum != ROOTINO && depth < 16) {
-		ilock(ip);
-		struct inode *parent = dirlookup(ip, "..", 0);
+		fs_ilock(ip);
+		struct inode *parent = fs_dirlookup(ip, "..", 0);
 		if (parent == 0) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			return -1;
 		}
-		iunlock(ip);
+		fs_iunlock(ip);
 
-		ilock(parent);
+		fs_ilock(parent);
 		struct dirent de;
 		int found = 0;
 		for (unsigned int off = 0; off < parent->size; off += sizeof(de)) {
-			if (readi(parent, (char *)&de, off, sizeof(de)) != sizeof(de)) {
+			if (fs_readi(parent, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 				break;
 			}
 			if (de.inum == ip->inum && strcmp(de.name, ".") != 0 && strcmp(de.name, "..") != 0) {
@@ -694,16 +694,16 @@ static long sys_getcwd(char *buf, unsigned long size) {
 				break;
 			}
 		}
-		iunlock(parent);
-		iput(ip);
+		fs_iunlock(parent);
+		fs_iput(ip);
 		if (!found) {
-			iput(parent);
+			fs_iput(parent);
 			return -1;
 		}
 		ip = parent;
 		depth++;
 	}
-	iput(ip);
+	fs_iput(ip);
 
 	unsigned long pos = 0;
 	if (depth == 0) {
@@ -741,9 +741,9 @@ static long sys_lseek(int fd, long offset, int whence) {
 		newoff = (long)f->off + offset;
 		break;
 	case 2:
-		ilock(f->ip);
+		fs_ilock(f->ip);
 		newoff = (long)f->ip->size + offset;
-		iunlock(f->ip);
+		fs_iunlock(f->ip);
 		break;
 	default:
 		return -1;
@@ -771,20 +771,20 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 
 	sleep_lock(&rename_lock);
 
-	struct inode *ip = namei(kold);
+	struct inode *ip = fs_namei(kold);
 	if (ip == 0) {
 		sleep_unlock(&rename_lock);
 		return -1;
 	}
 
 	int is_dir = 0;
-	ilock(ip);
+	fs_ilock(ip);
 	is_dir = (ip->type == T_DIR);
 	ip->nlink++;
-	iupdate(ip);
-	iunlock(ip);
+	fs_iupdate(ip);
+	fs_iunlock(ip);
 
-	struct inode *new_dp = nameiparent(knew, newname);
+	struct inode *new_dp = fs_nameiparent(knew, newname);
 	if (new_dp == 0) {
 		goto fail;
 	}
@@ -792,117 +792,117 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 	// Cycle detection for directories: walk from new_dp to root,
 	// ensure we don't hit ip (would create unreachable cycle)
 	if (is_dir) {
-		struct inode *check = idup(new_dp);
+		struct inode *check = fs_idup(new_dp);
 		while (check->inum != ROOTINO) {
 			if (check->inum == ip->inum) {
-				iput(check);
-				iput(new_dp);
+				fs_iput(check);
+				fs_iput(new_dp);
 				goto fail;
 			}
-			ilock(check);
-			struct inode *parent = dirlookup(check, "..", 0);
-			iunlockput(check);
+			fs_ilock(check);
+			struct inode *parent = fs_dirlookup(check, "..", 0);
+			fs_iunlockput(check);
 			if (parent == 0) {
-				iput(new_dp);
+				fs_iput(new_dp);
 				goto fail;
 			}
 			check = parent;
 		}
-		iput(check);
+		fs_iput(check);
 	}
 
 	unsigned int new_parent_inum = new_dp->inum;
-	ilock(new_dp);
+	fs_ilock(new_dp);
 
 	unsigned int off;
-	struct inode *existing = dirlookup(new_dp, newname, &off);
+	struct inode *existing = fs_dirlookup(new_dp, newname, &off);
 	if (existing) {
-		ilock(existing);
+		fs_ilock(existing);
 		if (existing->type == T_DIR) {
-			iunlockput(existing);
-			iunlockput(new_dp);
+			fs_iunlockput(existing);
+			fs_iunlockput(new_dp);
 			goto fail;
 		}
 		struct dirent de;
 		memset(&de, 0, sizeof(de));
-		writei(new_dp, (char *)&de, off, sizeof(de));
+		fs_writei(new_dp, (char *)&de, off, sizeof(de));
 		existing->nlink--;
-		iupdate(existing);
-		iunlockput(existing);
+		fs_iupdate(existing);
+		fs_iunlockput(existing);
 	}
 
-	if (new_dp->dev != ip->dev || dirlink(new_dp, newname, ip->inum) < 0) {
-		iunlockput(new_dp);
+	if (new_dp->dev != ip->dev || fs_dirlink(new_dp, newname, ip->inum) < 0) {
+		fs_iunlockput(new_dp);
 		goto fail;
 	}
 
 	// For directories: increment new parent's nlink (new ".." reference)
 	if (is_dir) {
 		new_dp->nlink++;
-		iupdate(new_dp);
+		fs_iupdate(new_dp);
 	}
-	iunlockput(new_dp);
+	fs_iunlockput(new_dp);
 
 	// Unlink from old location
-	struct inode *old_dp = nameiparent(kold, oldname);
+	struct inode *old_dp = fs_nameiparent(kold, oldname);
 	if (old_dp == 0) {
-		iput(ip);
+		fs_iput(ip);
 		sleep_unlock(&rename_lock);
 		return -1;
 	}
-	ilock(old_dp);
-	struct inode *check = dirlookup(old_dp, oldname, &off);
+	fs_ilock(old_dp);
+	struct inode *check = fs_dirlookup(old_dp, oldname, &off);
 	if (check == 0 || check->inum != ip->inum) {
 		if (check) {
-			iput(check);
+			fs_iput(check);
 		}
-		iunlockput(old_dp);
-		iput(ip);
+		fs_iunlockput(old_dp);
+		fs_iput(ip);
 		sleep_unlock(&rename_lock);
 		return -1;
 	}
-	iput(check);
+	fs_iput(check);
 	struct dirent de;
 	memset(&de, 0, sizeof(de));
-	writei(old_dp, (char *)&de, off, sizeof(de));
+	fs_writei(old_dp, (char *)&de, off, sizeof(de));
 
 	// For directories: decrement old parent's nlink (removed ".." reference)
 	if (is_dir) {
 		old_dp->nlink--;
-		iupdate(old_dp);
+		fs_iupdate(old_dp);
 	}
-	iunlockput(old_dp);
+	fs_iunlockput(old_dp);
 
 	// Update ".." inside moved directory to point to new parent
 	if (is_dir) {
-		ilock(ip);
+		fs_ilock(ip);
 		struct dirent dotdot;
 		for (unsigned int o = 0; o < ip->size; o += sizeof(dotdot)) {
-			if (readi(ip, (char *)&dotdot, o, sizeof(dotdot)) !=
+			if (fs_readi(ip, (char *)&dotdot, o, sizeof(dotdot)) !=
 			    sizeof(dotdot)) {
 				break;
 			}
 			if (strcmp(dotdot.name, "..") == 0) {
 				dotdot.inum = new_parent_inum;
-				writei(ip, (char *)&dotdot, o, sizeof(dotdot));
+				fs_writei(ip, (char *)&dotdot, o, sizeof(dotdot));
 				break;
 			}
 		}
-		iunlock(ip);
+		fs_iunlock(ip);
 	}
 
-	ilock(ip);
+	fs_ilock(ip);
 	ip->nlink--;
-	iupdate(ip);
-	iunlockput(ip);
+	fs_iupdate(ip);
+	fs_iunlockput(ip);
 	sleep_unlock(&rename_lock);
 	return 0;
 
 fail:
-	ilock(ip);
+	fs_ilock(ip);
 	ip->nlink--;
-	iupdate(ip);
-	iunlockput(ip);
+	fs_iupdate(ip);
+	fs_iunlockput(ip);
 	sleep_unlock(&rename_lock);
 	return -1;
 }

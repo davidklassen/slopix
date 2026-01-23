@@ -97,5 +97,5 @@ void kernel_main(void) {
 	uart_puts("To exit QEMU press Ctrl-a x\n\n");
 	init(init_prog);
 
-	scheduler();
+	proc_scheduler();
 }

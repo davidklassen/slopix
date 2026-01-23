@@ -4,8 +4,8 @@
 #include "buf.h"
 
 void bio_init(void);
-struct buf *bread(unsigned int dev, unsigned int blockno);
-int bwrite(struct buf *b);
-void brelse(struct buf *b);
+struct buf *bio_read(unsigned int dev, unsigned int blockno);
+int bio_write(struct buf *b);
+void bio_release(struct buf *b);
 
 #endif

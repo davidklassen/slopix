@@ -45,7 +45,7 @@ int elf_load(const char *data, unsigned long size, pte_t *pagetable, unsigned lo
 		for (unsigned long page_va = va_start; page_va < va_end;
 		     page_va += PAGE_SIZE) {
 			paddr_t pa = pmm_alloc();
-			if (pa == 0) {
+			if (pa == PMM_INVALID) {
 				return -1;
 			}
 
@@ -87,7 +87,7 @@ int elf_load_from_inode(struct inode *ip, pte_t *pagetable, unsigned long *entry
 	Elf64_Ehdr ehdr;
 
 	// Read ELF header
-	if (readi(ip, (char *)&ehdr, 0, sizeof(ehdr)) != sizeof(ehdr)) {
+	if (fs_readi(ip, (char *)&ehdr, 0, sizeof(ehdr)) != sizeof(ehdr)) {
 		return -1;
 	}
 
@@ -114,7 +114,7 @@ int elf_load_from_inode(struct inode *ip, pte_t *pagetable, unsigned long *entry
 	unsigned long phoff = ehdr.e_phoff;
 	unsigned long phsize = ehdr.e_phnum * sizeof(Elf64_Phdr);
 
-	if (readi(ip, (char *)phdr, phoff, phsize) != (int)phsize) {
+	if (fs_readi(ip, (char *)phdr, phoff, phsize) != (int)phsize) {
 		return -1;
 	}
 
@@ -140,7 +140,7 @@ int elf_load_from_inode(struct inode *ip, pte_t *pagetable, unsigned long *entry
 		for (unsigned long page_va = va_start; page_va < va_end;
 		     page_va += PAGE_SIZE) {
 			paddr_t pa = pmm_alloc();
-			if (pa == 0) {
+			if (pa == PMM_INVALID) {
 				return -1;
 			}
 
@@ -159,7 +159,7 @@ int elf_load_from_inode(struct inode *ip, pte_t *pagetable, unsigned long *entry
 				    offset + (copy_start - va);
 				unsigned long copy_len = copy_end - copy_start;
 
-				if (readi(ip, (char *)page + page_offset, file_offset, copy_len) !=
+				if (fs_readi(ip, (char *)page + page_offset, file_offset, copy_len) !=
 				    (int)copy_len) {
 					pmm_free(pa);
 					return -1;

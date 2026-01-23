@@ -105,4 +105,20 @@ static inline unsigned long read_far_el1(void) {
 
 #define DAIF_IRQ_BIT (1 << 7)
 
+// Save IRQ state and disable IRQs. Returns previous DAIF value.
+// Call irq_restore() with the returned value to restore state.
+static inline unsigned long irq_save(void) {
+	unsigned long daif = read_daif();
+	disable_irq();
+	return daif;
+}
+
+// Restore IRQ state from a previous irq_save() call.
+// Only re-enables IRQs if they were enabled before irq_save().
+static inline void irq_restore(unsigned long daif) {
+	if (!(daif & DAIF_IRQ_BIT)) {
+		enable_irq();
+	}
+}
+
 #endif

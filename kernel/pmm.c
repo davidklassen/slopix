@@ -1,3 +1,14 @@
+// Physical memory allocator
+//
+// Manages free physical pages using a simple free list. Each free page
+// stores a pointer to the next free page, avoiding separate metadata.
+//
+// This implementation is NOT reentrant. It relies on:
+// - Single-core execution (QEMU virt with one CPU)
+// - Callers not calling pmm functions from interrupt handlers
+//
+// For multi-core support, add spinlock protection around freelist access.
+
 #include "pmm.h"
 #include "kprintf.h"
 
@@ -34,7 +45,7 @@ void pmm_init(void) {
 paddr_t pmm_alloc(void) {
 	struct run *r = freelist;
 	if (!r) {
-		return 0;
+		return PMM_INVALID;
 	}
 	freelist = r->next;
 	free_count--;

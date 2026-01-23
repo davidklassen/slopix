@@ -31,30 +31,30 @@ void init(const char *program) {
 		char path[128];
 		strncpy(path, program, 127);
 		path[127] = '\0';
-		struct inode *ip = namei(path);
+		struct inode *ip = fs_namei(path);
 		if (ip == 0) {
 			vmm_free(pt);
 			kpanic("init: program not found on disk");
 		}
-		ilock(ip);
+		fs_ilock(ip);
 		if (ip->type != T_FILE) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			vmm_free(pt);
 			kpanic("init: not a file");
 		}
 		if (elf_load_from_inode(ip, pt, &entry_addr, &brk) < 0) {
-			iunlockput(ip);
+			fs_iunlockput(ip);
 			vmm_free(pt);
 			kpanic("init: failed to load ELF from disk");
 		}
-		iunlockput(ip);
+		fs_iunlockput(ip);
 	} else {
 		vmm_free(pt);
 		kpanic("init: invalid program path");
 	}
 
 	paddr_t stack_pa = pmm_alloc();
-	if (stack_pa == 0) {
+	if (stack_pa == PMM_INVALID) {
 		kpanic("init: failed to allocate stack");
 	}
 
@@ -70,9 +70,9 @@ void init(const char *program) {
 
 	for (int i = 0; i < NPROC; i++) {
 		if (procs[i].pid == pid) {
-			struct inode *root = iget(0, ROOTINO);
-			ilock(root);
-			iunlock(root);
+			struct inode *root = fs_iget(0, ROOTINO);
+			fs_ilock(root);
+			fs_iunlock(root);
 			procs[i].cwd = root;
 
 			// Set up stdin (fd 0)
