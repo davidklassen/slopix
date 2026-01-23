@@ -87,5 +87,6 @@ void virtio_init(void);
 int virtio_probe(void);
 void virtio_reset(void);
 int virtio_disk_read(unsigned long sector, void *buf);
+int virtio_disk_write(unsigned long sector, void *buf);
 
 #endif

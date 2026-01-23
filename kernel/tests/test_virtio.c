@@ -124,4 +124,55 @@ TEST_SUITE(virtio_read) {
 	RUN_TEST(virtio_read_multiple);
 }
 
+// M5: Block write (polling)
+
+#define SCRATCH_SECTOR_1 100
+#define SCRATCH_SECTOR_2 101
+#define SCRATCH_SECTOR_3 102
+
+static unsigned char write_buf[512];
+
+TEST(virtio_write_read_verify) {
+	for (int i = 0; i < 512; i++) {
+		write_buf[i] = (unsigned char)(i & 0xFF);
+	}
+	int ret = virtio_disk_write(SCRATCH_SECTOR_1, write_buf);
+	ASSERT_EQ(ret, 0, "Write should succeed");
+
+	for (int i = 0; i < 512; i++) {
+		write_buf[i] = 0;
+	}
+	ret = virtio_disk_read(SCRATCH_SECTOR_1, write_buf);
+	ASSERT_EQ(ret, 0, "Read should succeed");
+
+	for (int i = 0; i < 512; i++) {
+		if (write_buf[i] != (unsigned char)(i & 0xFF)) {
+			ASSERT(0, "Data mismatch after write-read");
+		}
+	}
+	return 0;
+}
+
+TEST(virtio_write_multiple) {
+	unsigned long sectors[] = {SCRATCH_SECTOR_1, SCRATCH_SECTOR_2, SCRATCH_SECTOR_3};
+	for (int s = 0; s < 3; s++) {
+		for (int i = 0; i < 512; i++) {
+			write_buf[i] = (unsigned char)(s + 1);
+		}
+		int ret = virtio_disk_write(sectors[s], write_buf);
+		ASSERT_EQ(ret, 0, "Write should succeed");
+	}
+	for (int s = 0; s < 3; s++) {
+		int ret = virtio_disk_read(sectors[s], write_buf);
+		ASSERT_EQ(ret, 0, "Read should succeed");
+		ASSERT_EQ(write_buf[0], (unsigned char)(s + 1), "Data should match written pattern");
+	}
+	return 0;
+}
+
+TEST_SUITE(virtio_write) {
+	RUN_TEST(virtio_write_read_verify);
+	RUN_TEST(virtio_write_multiple);
+}
+
 #endif

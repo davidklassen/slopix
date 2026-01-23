@@ -113,14 +113,14 @@ Implement blocking read using polling (no interrupts).
 
 **Exit criteria**: Can read superblock from disk. All read tests pass.
 
-### M5: Synchronous Block Write (Polling)
+### M5: Synchronous Block Write (Polling) ✓
 
 Extend to support writes.
 
-- [ ] Implement `virtio_disk_write(sector, buf)`:
+- [x] Implement `virtio_disk_write(sector, buf)`:
   - Same as read but type=OUT
   - Data descriptor: no WRITE flag (device reads from buffer)
-- [ ] Add `virtio_write` suite (2 tests)
+- [x] Add `virtio_write` suite (2 tests)
 
 **Exit criteria**: Read-after-write returns correct data. All write tests pass.
 

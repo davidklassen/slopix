@@ -188,3 +188,7 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 int virtio_disk_read(unsigned long sector, void *buf) {
 	return virtio_disk_rw(sector, buf, 0);
 }
+
+int virtio_disk_write(unsigned long sector, void *buf) {
+	return virtio_disk_rw(sector, buf, 1);
+}
