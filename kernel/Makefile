@@ -56,7 +56,10 @@ TEST_OBJ = \
 	tests/test_console.o \
 	tests/test_pipe.o \
 	tests/test_string.o \
-	tests/test_sync.o
+	tests/test_sync.o \
+	tests/test_gic.o \
+	tests/test_dtb.o \
+	tests/test_cmdline.o
 
 KERNEL = kernel.elf
 KERNEL_BIN = kernel.bin

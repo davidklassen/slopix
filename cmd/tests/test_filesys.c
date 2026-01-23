@@ -190,6 +190,52 @@ TEST(mkdir_duplicate) {
 	return 0;
 }
 
+TEST(fork_shares_offset) {
+	int fd = open("/large", O_RDONLY);
+	ASSERT(fd >= 0, "open returns valid fd");
+
+	char buf[4];
+	read(fd, buf, 4);
+
+	int pid = fork();
+	if (pid == 0) {
+		read(fd, buf, 4);
+		close(fd);
+		exit(0);
+	}
+	ASSERT(pid > 0, "fork succeeds");
+	wait();
+
+	long off = lseek(fd, 0, 1);
+	ASSERT_EQ(off, 8, "offset advanced by both parent and child reads");
+
+	close(fd);
+	return 0;
+}
+
+TEST(dup_shares_offset) {
+	int fd = open("/large", O_RDONLY);
+	ASSERT(fd >= 0, "open returns valid fd");
+
+	int fd2 = dup(fd);
+	ASSERT(fd2 >= 0, "dup returns valid fd");
+
+	char buf[4];
+	read(fd, buf, 4);
+	read(fd2, buf, 4);
+
+	long off1 = lseek(fd, 0, 1);
+	long off2 = lseek(fd2, 0, 1);
+
+	ASSERT_EQ(off1, 8, "fd offset is 8");
+	ASSERT_EQ(off2, 8, "dup'd fd offset is also 8");
+	ASSERT_EQ(off1, off2, "both fds share same offset");
+
+	close(fd);
+	close(fd2);
+	return 0;
+}
+
 TEST_SUITE(filesys) {
 	RUN_TEST(open_file);
 	RUN_TEST(open_nonexistent);
@@ -208,4 +254,6 @@ TEST_SUITE(filesys) {
 	RUN_TEST(chdir_basic);
 	RUN_TEST(unlink_nonexistent);
 	RUN_TEST(mkdir_duplicate);
+	RUN_TEST(fork_shares_offset);
+	RUN_TEST(dup_shares_offset);
 }

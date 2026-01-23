@@ -9,5 +9,6 @@ char *strchr(const char *s, int c);
 void *memset(void *s, int c, unsigned int n);
 void *memcpy(void *dst, const void *src, unsigned int n);
 void *memmove(void *dst, const void *src, unsigned int n);
+char *strstr(const char *haystack, const char *needle);
 
 #endif

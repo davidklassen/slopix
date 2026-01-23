@@ -74,9 +74,76 @@ TEST(mmap_tlb_invalidation) {
 	return 0;
 }
 
+TEST(mmap_fork_inherits) {
+	void *p = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	ASSERT(p != MAP_FAILED, "mmap succeeds");
+
+	volatile char *cp = (volatile char *)p;
+	cp[0] = 0x42;
+	cp[1] = 0x43;
+
+	int pid = fork();
+	if (pid == 0) {
+		if (cp[0] == 0x42 && cp[1] == 0x43) {
+			exit(0);
+		}
+		exit(1);
+	}
+	ASSERT(pid > 0, "fork succeeds");
+	int status = wait();
+	ASSERT_EQ(status, 0, "child read parent's mmap'd memory");
+
+	munmap(p, 4096);
+	return 0;
+}
+
+TEST(mmap_fork_independent) {
+	void *p = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	ASSERT(p != MAP_FAILED, "mmap succeeds");
+
+	volatile char *cp = (volatile char *)p;
+	cp[0] = 0xAA;
+
+	int pid = fork();
+	if (pid == 0) {
+		cp[0] = 0xBB;
+		exit(0);
+	}
+	ASSERT(pid > 0, "fork succeeds");
+	wait();
+
+	ASSERT_EQ(cp[0], (char)0xAA, "child write did not affect parent");
+
+	munmap(p, 4096);
+	return 0;
+}
+
+TEST(mmap_multiple_regions) {
+	void *p1 = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	ASSERT(p1 != MAP_FAILED, "first mmap succeeds");
+
+	void *p2 = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	ASSERT(p2 != MAP_FAILED, "second mmap succeeds");
+
+	void *p3 = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	ASSERT(p3 != MAP_FAILED, "third mmap succeeds");
+
+	ASSERT_NE(p1, p2, "first and second addresses differ");
+	ASSERT_NE(p2, p3, "second and third addresses differ");
+	ASSERT_NE(p1, p3, "first and third addresses differ");
+
+	munmap(p1, 4096);
+	munmap(p2, 4096);
+	munmap(p3, 4096);
+	return 0;
+}
+
 TEST_SUITE(mmap) {
 	RUN_TEST(mmap_basic);
 	RUN_TEST(mmap_zeroed);
 	RUN_TEST(mmap_fixed);
 	RUN_TEST(mmap_tlb_invalidation);
+	RUN_TEST(mmap_fork_inherits);
+	RUN_TEST(mmap_fork_independent);
+	RUN_TEST(mmap_multiple_regions);
 }

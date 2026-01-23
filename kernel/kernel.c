@@ -40,6 +40,9 @@ DECLARE_SUITE(fs_read);
 DECLARE_SUITE(fs_file);
 DECLARE_SUITE(console);
 DECLARE_SUITE(pipe);
+DECLARE_SUITE(dtb);
+DECLARE_SUITE(cmdline);
+DECLARE_SUITE(gic);
 
 void kernel_main(void) {
 	uart_init();
@@ -48,7 +51,9 @@ void kernel_main(void) {
 
 	extern unsigned long _dtb_address;
 	dtb_init((void *)_dtb_address);
+	RUN_SUITE(dtb);
 	cmdline_init(dtb_get_bootargs());
+	RUN_SUITE(cmdline);
 	RUN_SUITE(string);
 	RUN_SUITE(sync);
 	RUN_SUITE(uart);
@@ -71,6 +76,7 @@ void kernel_main(void) {
 	bio_init();
 
 	gic_init();
+	RUN_SUITE(gic);
 	timer_init();
 	uart_init_irq();
 	virtio_init_irq();
