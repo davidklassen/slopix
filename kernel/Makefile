@@ -91,7 +91,8 @@ initramfs_data.o: ../cmd/initramfs.bin
 
 USER_PROGS = ../cmd/init.elf ../cmd/echo.elf ../cmd/shell.elf ../cmd/shutdown.elf \
 	../cmd/true.elf ../cmd/false.elf ../cmd/ticker.elf ../cmd/cursor_blink.elf \
-	../cmd/cat.elf ../cmd/ls.elf ../cmd/mkdir.elf ../cmd/rm.elf ../cmd/cp.elf
+	../cmd/cat.elf ../cmd/ls.elf ../cmd/mkdir.elf ../cmd/rm.elf ../cmd/cp.elf \
+	../cmd/mv.elf ../cmd/touch.elf ../cmd/wc.elf ../cmd/head.elf ../cmd/grep.elf
 
 $(USER_PROGS):
 	$(MAKE) -C ../cmd
@@ -114,7 +115,12 @@ disk.img: ../tools/mkfs $(USER_PROGS)
 		../cmd/ls.elf:/ls \
 		../cmd/mkdir.elf:/mkdir \
 		../cmd/rm.elf:/rm \
-		../cmd/cp.elf:/cp
+		../cmd/cp.elf:/cp \
+		../cmd/mv.elf:/mv \
+		../cmd/touch.elf:/touch \
+		../cmd/wc.elf:/wc \
+		../cmd/head.elf:/head \
+		../cmd/grep.elf:/grep
 
 run: clean $(KERNEL_BIN) disk.img
 	$(QEMU_DISK) -kernel $(KERNEL_BIN) -append "init=/init"

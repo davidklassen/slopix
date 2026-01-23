@@ -358,17 +358,17 @@ Commands for file operations.
 
 Nice-to-have commands.
 
-- [ ] **mv src dst**:
+- [x] **mv src dst**:
   - Call rename() syscall
   - Print error if fails
-- [ ] **touch file...**:
+- [x] **touch file...**:
   - For each argument: open(file, O_CREAT|O_WRONLY), close()
-- [ ] **wc [file...]**:
+- [x] **wc [file...]**:
   - Count lines, words, characters
   - Print counts
-- [ ] **head [-n N] [file...]**:
+- [x] **head [-n N] [file...]**:
   - Print first N lines (default 10)
-- [ ] **grep pattern [file...]**:
+- [x] **grep pattern [file...]**:
   - Simple substring search (not regex)
   - Print matching lines
 
