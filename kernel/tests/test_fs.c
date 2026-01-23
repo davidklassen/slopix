@@ -181,4 +181,86 @@ TEST_SUITE(fs_dir) {
 	RUN_TEST(fs_namei_relative_dot);
 }
 
+TEST(fs_readi_small) {
+	struct inode *ip = namei("/hello");
+	ASSERT_NOT_NULL(ip, "namei('/hello') should return non-null");
+	ilock(ip);
+	char buf[64];
+	int n = readi(ip, buf, 0, sizeof(buf));
+	ASSERT(n > 0, "readi should return bytes read");
+	ASSERT(n == (int)ip->size, "readi should read entire file");
+	ASSERT(buf[0] == 'H', "first byte should be 'H'");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_readi_offset) {
+	struct inode *ip = namei("/hello");
+	ASSERT_NOT_NULL(ip, "namei('/hello') should return non-null");
+	ilock(ip);
+	char buf[16];
+	int n = readi(ip, buf, 6, 4);
+	ASSERT_EQ(n, 4, "readi should read 4 bytes");
+	ASSERT(buf[0] == 'f', "offset 6 should be 'f' (from 'from')");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_readi_eof) {
+	struct inode *ip = namei("/hello");
+	ASSERT_NOT_NULL(ip, "namei('/hello') should return non-null");
+	ilock(ip);
+	unsigned int sz = ip->size;
+	char buf[16];
+	int n = readi(ip, buf, sz - 2, 16);
+	ASSERT_EQ(n, 2, "readi should clamp to EOF");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_stati) {
+	struct inode *ip = namei("/hello");
+	ASSERT_NOT_NULL(ip, "namei('/hello') should return non-null");
+	ilock(ip);
+	struct stat st;
+	stati(ip, &st);
+	ASSERT_EQ(st.type, T_FILE, "stat type should be T_FILE");
+	ASSERT_EQ(st.ino, ip->inum, "stat ino should match inode");
+	ASSERT_EQ(st.size, ip->size, "stat size should match inode");
+	ASSERT(st.size > 0, "file should have content");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST(fs_readi_large) {
+	struct inode *ip = namei("/large");
+	ASSERT_NOT_NULL(ip, "namei('/large') should return non-null");
+	ilock(ip);
+	ASSERT(ip->size > BSIZE, "large file should span multiple blocks");
+	char buf[64];
+	int n = readi(ip, buf, 0, 4);
+	ASSERT_EQ(n, 4, "readi should read 4 bytes");
+	ASSERT(buf[0] == 'L', "first byte should be 'L'");
+	n = readi(ip, buf, 1024, 4);
+	ASSERT_EQ(n, 4, "readi at block boundary should read 4 bytes");
+	ASSERT(buf[0] == 's', "byte at offset 1024 should be 's'");
+	n = readi(ip, buf, 1022, 8);
+	ASSERT_EQ(n, 8, "readi across block boundary should read 8 bytes");
+	iunlock(ip);
+	iput(ip);
+	return 0;
+}
+
+TEST_SUITE(fs_read) {
+	RUN_TEST(fs_readi_small);
+	RUN_TEST(fs_readi_offset);
+	RUN_TEST(fs_readi_eof);
+	RUN_TEST(fs_stati);
+	RUN_TEST(fs_readi_large);
+}
+
 #endif

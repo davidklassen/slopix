@@ -194,6 +194,14 @@ int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n) {
 	return tot;
 }
 
+void stati(struct inode *ip, struct stat *st) {
+	st->dev = ip->dev;
+	st->ino = ip->inum;
+	st->type = ip->type;
+	st->nlink = ip->nlink;
+	st->size = ip->size;
+}
+
 struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff) {
 	if (dp->type != T_DIR) {
 		return 0;

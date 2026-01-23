@@ -62,6 +62,14 @@ struct inode {
 	unsigned int addrs[NDIRECT + 1];
 };
 
+struct stat {
+	unsigned int dev;
+	unsigned int ino;
+	unsigned short type;
+	unsigned short nlink;
+	unsigned int size;
+};
+
 void fsinit(unsigned int dev);
 void readsb(unsigned int dev, struct superblock *sb);
 struct inode *iget(unsigned int dev, unsigned int inum);
@@ -72,6 +80,7 @@ void iput(struct inode *ip);
 void iunlockput(struct inode *ip);
 unsigned int bmap(struct inode *ip, unsigned int bn);
 int readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
+void stati(struct inode *ip, struct stat *st);
 struct inode *dirlookup(struct inode *dp, char *name, unsigned int *poff);
 struct inode *namei(char *path);
 struct inode *nameiparent(char *path, char *name);

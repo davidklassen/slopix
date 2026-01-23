@@ -89,8 +89,8 @@ debug: clean $(KERNEL)
 ../tools/mkfs:
 	$(MAKE) -C ../tools mkfs
 
-test.img: ../tools/mkfs ../testdata/hello.txt
-	../tools/mkfs $@ -s 1024 ../testdata/hello.txt:/hello
+test.img: ../tools/mkfs ../testdata/hello.txt ../testdata/large.txt
+	../tools/mkfs $@ -s 1024 ../testdata/hello.txt:/hello ../testdata/large.txt:/large
 
 test: CFLAGS += -DRUN_TESTS
 test: clean ../cmd/initramfs-test.bin initramfs_data_test.o $(filter-out initramfs_data.o,$(OBJ)) $(TEST_OBJ) test.img

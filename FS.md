@@ -188,13 +188,13 @@ Navigate the directory tree.
 
 **Exit criteria**: Can resolve "/", "/file", "/dir/file" paths (absolute and relative).
 
-### F4: File Reading
+### F4: File Reading ✓
 
 Read file contents.
 
 - [x] Implement `readi(ip, dst, off, n)`: read n bytes from inode at offset (done in F3)
-- [ ] Implement `stati(ip, st)`: fill stat structure from inode
-- [ ] Add `fs_read` test suite
+- [x] Implement `stati(ip, st)`: fill stat structure from inode
+- [x] Add `fs_read` test suite
 
 **Exit criteria**: Can read file contents from inode.
 
@@ -334,6 +334,9 @@ TEST_SUITE(fs_dir) {
 
 TEST_SUITE(fs_read) {
     RUN_TEST(fs_readi_small);           // read small file
+    RUN_TEST(fs_readi_offset);          // read from offset
+    RUN_TEST(fs_readi_eof);             // read clamped to EOF
+    RUN_TEST(fs_stati);                 // stat structure from inode
     RUN_TEST(fs_readi_large);           // read multi-block file
 }
 ```
@@ -360,7 +363,7 @@ The mkfs tool supports adding files during image creation:
 
 This adds `testfile.txt` from the host as `/test.txt` in the image.
 
-The test disk image includes `/hello` (from `testdata/hello.txt`) for testing path resolution.
+The test disk image includes `/hello` (from `testdata/hello.txt`) for testing path resolution and `/large` (from `testdata/large.txt`, 12KB) for testing multi-block reads.
 
 ## Implementation Notes
 
