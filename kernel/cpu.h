@@ -85,6 +85,12 @@ static inline void tlbi_vmalle1(void) {
 	isb();
 }
 
+static inline void tlbi_va(unsigned long va) {
+	__asm__ volatile("tlbi vaae1is, %0" : : "r"(va >> 12));
+	dsb();
+	isb();
+}
+
 static inline unsigned long read_pc(void) {
 	unsigned long pc;
 	__asm__ volatile("adr %0, ." : "=r"(pc));

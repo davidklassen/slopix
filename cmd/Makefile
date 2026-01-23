@@ -80,6 +80,7 @@ TEST_OBJ = \
 	tests/test_syscall.o \
 	tests/test_sched.o \
 	tests/test_memory.o \
+	tests/test_mmap.o \
 	tests/test_filesys.o \
 	tests/test_pipe.o \
 	tests/test_libc.o \

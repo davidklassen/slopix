@@ -26,6 +26,8 @@
 #define SYS_getcwd   22
 #define SYS_lseek    23
 #define SYS_rename   24
+#define SYS_mmap     25
+#define SYS_munmap   26
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);

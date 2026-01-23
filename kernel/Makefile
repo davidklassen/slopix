@@ -46,6 +46,7 @@ TEST_OBJ = \
 	tests/test_exception.o \
 	tests/test_timer.o \
 	tests/test_vmm.o \
+	tests/test_tlb.o \
 	tests/test_pmm.o \
 	tests/test_initramfs.o \
 	tests/test_virtio.o \

@@ -5,6 +5,7 @@
 
 #include "vmm.h"
 #include "pmm.h"
+#include "cpu.h"
 
 // Create a table descriptor pointing to next-level table
 static pte_t make_table_desc(paddr_t next_table_pa) {
@@ -57,6 +58,21 @@ int vmm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int 
 		return -1;
 	}
 	*pte = make_page_desc_user(pa, write, exec);
+	return 0;
+}
+
+// Unmap a single 4KB page from a user page table
+// Returns the physical address of the unmapped page via pa_out (if non-null)
+int vmm_unmap_page(pte_t *pagetable, unsigned long va, paddr_t *pa_out) {
+	pte_t *pte = walk(pagetable, va, 0);
+	if (pte == 0 || (*pte & PTE_VALID) == 0) {
+		return -1;
+	}
+	if (pa_out) {
+		*pa_out = *pte & PTE_ADDR_MASK;
+	}
+	*pte = 0;
+	tlbi_va(va);
 	return 0;
 }
 

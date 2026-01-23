@@ -86,6 +86,7 @@ typedef unsigned long pte_t;
 pte_t *vmm_create(void);
 void vmm_free(pte_t *pagetable);
 int vmm_map_page(pte_t *pagetable, unsigned long va, paddr_t pa, int write, int exec);
+int vmm_unmap_page(pte_t *pagetable, unsigned long va, paddr_t *pa_out);
 pte_t *vmm_copy(pte_t *src);
 int vmm_validate(pte_t *pagetable, unsigned long va, unsigned long len, int write);
 int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned long max);

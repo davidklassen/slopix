@@ -23,6 +23,7 @@ DECLARE_SUITE(kprintf);
 DECLARE_SUITE(exception);
 DECLARE_SUITE(timer);
 DECLARE_SUITE(vmm);
+DECLARE_SUITE(tlb);
 DECLARE_SUITE(pmm);
 DECLARE_SUITE(initramfs);
 DECLARE_SUITE(virtio);
@@ -57,6 +58,7 @@ void kernel_main(void) {
 
 	pmm_init();
 	RUN_SUITE(pmm);
+	RUN_SUITE(tlb);
 	RUN_SUITE(initramfs);
 
 	virtio_init();

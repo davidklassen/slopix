@@ -756,6 +756,107 @@ static long sys_lseek(int fd, long offset, int whence) {
 	return newoff;
 }
 
+// mmap flags (minimal subset)
+#define MAP_FAILED    ((void *)-1)
+#define PROT_READ     0x1
+#define PROT_WRITE    0x2
+#define MAP_PRIVATE   0x02
+#define MAP_ANONYMOUS 0x20
+#define MAP_FIXED     0x10
+
+static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags) {
+	if (len == 0) {
+		return -1;
+	}
+
+	// Only support anonymous private mappings for now
+	if (!(flags & MAP_ANONYMOUS) || !(flags & MAP_PRIVATE)) {
+		return -1;
+	}
+
+	// Round len up to page size
+	len = (len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+
+	// Find a free virtual address range if not MAP_FIXED
+	unsigned long va;
+	if (flags & MAP_FIXED) {
+		if (addr & (PAGE_SIZE - 1)) {
+			return -1;
+		}
+		va = addr;
+	} else {
+		// Start after current program break, page-aligned
+		va = (current->sz + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+	}
+
+	// Check bounds
+	if (va + len > USER_STACK - PAGE_SIZE || va + len < va) {
+		return -1;
+	}
+
+	int write = (prot & PROT_WRITE) ? 1 : 0;
+
+	// Allocate and map pages
+	for (unsigned long page_va = va; page_va < va + len; page_va += PAGE_SIZE) {
+		paddr_t pa = pmm_alloc();
+		if (pa == PMM_INVALID) {
+			// Unmap what we've mapped so far
+			for (unsigned long unmap_va = va; unmap_va < page_va; unmap_va += PAGE_SIZE) {
+				paddr_t unmap_pa;
+				if (vmm_unmap_page(current->pagetable, unmap_va, &unmap_pa) == 0) {
+					pmm_free(unmap_pa);
+				}
+			}
+			return -1;
+		}
+
+		// Zero the page
+		char *page = (char *)PA_TO_VA(pa);
+		for (unsigned long i = 0; i < PAGE_SIZE; i++) {
+			page[i] = 0;
+		}
+
+		if (vmm_map_page(current->pagetable, page_va, pa, write, 0) < 0) {
+			pmm_free(pa);
+			// Unmap what we've mapped so far
+			for (unsigned long unmap_va = va; unmap_va < page_va; unmap_va += PAGE_SIZE) {
+				paddr_t unmap_pa;
+				if (vmm_unmap_page(current->pagetable, unmap_va, &unmap_pa) == 0) {
+					pmm_free(unmap_pa);
+				}
+			}
+			return -1;
+		}
+	}
+
+	// Update process size if we extended past current break
+	if (va + len > current->sz) {
+		current->sz = va + len;
+	}
+
+	return (long)va;
+}
+
+static long sys_munmap(unsigned long addr, unsigned long len) {
+	if (addr & (PAGE_SIZE - 1)) {
+		return -1;
+	}
+	if (len == 0) {
+		return -1;
+	}
+
+	len = (len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+
+	for (unsigned long va = addr; va < addr + len; va += PAGE_SIZE) {
+		paddr_t pa;
+		if (vmm_unmap_page(current->pagetable, va, &pa) == 0) {
+			pmm_free(pa);
+		}
+	}
+
+	return 0;
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -986,6 +1087,12 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_rename:
 		ret = sys_rename((const char *)tf->regs[0], (const char *)tf->regs[1]);
+		break;
+	case SYS_mmap:
+		ret = sys_mmap(tf->regs[0], tf->regs[1], (int)tf->regs[2], (int)tf->regs[3]);
+		break;
+	case SYS_munmap:
+		ret = sys_munmap(tf->regs[0], tf->regs[1]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

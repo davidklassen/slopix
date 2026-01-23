@@ -1,6 +1,6 @@
 .global write, exit, read, sleep, getpid, fork, wait, exec, poll, poweroff, sbrk
 .global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
-.global stat, getcwd, lseek, rename
+.global stat, getcwd, lseek, rename, mmap, munmap
 
 write:
 	mov x8, #0
@@ -124,5 +124,15 @@ lseek:
 
 rename:
 	mov x8, #24
+	svc #0
+	ret
+
+mmap:
+	mov x8, #25
+	svc #0
+	ret
+
+munmap:
+	mov x8, #26
 	svc #0
 	ret
