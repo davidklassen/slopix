@@ -520,11 +520,6 @@ static int run_builtin(int argc, char **argv) {
 }
 
 int main(void) {
-	if (fork() == 0) {
-		exec("cursor_blink");
-		exit(1);
-	}
-
 	char buf[128];
 
 	printf("slopix> ");

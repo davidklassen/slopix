@@ -95,8 +95,6 @@ void kernel_main(void) {
 		kpanic("init= not specified in kernel command line");
 	}
 
-	uart_puts("\nWelcome to Slopix!\n");
-	uart_puts("To exit QEMU press Ctrl-a x\n\n");
 	init(init_prog);
 
 	proc_scheduler();
