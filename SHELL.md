@@ -251,17 +251,17 @@ Set up /dev with character and block devices.
 
 Commands that run in the shell process itself.
 
-- [ ] **cd [dir]**:
+- [x] **cd [dir]**:
   - Parse optional argument (default: "/")
   - Call chdir() syscall
   - Print error if path not found
-- [ ] **pwd**:
+- [x] **pwd**:
   - Call getcwd()
   - Print result
-- [ ] **exit [status]**:
+- [x] **exit [status]**:
   - Parse optional status (default: 0)
   - Call exit()
-- [ ] Modify shell main loop:
+- [x] Modify shell main loop:
   - Check for built-in before fork/exec
   - Call built-in handler directly
 

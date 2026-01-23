@@ -8,7 +8,7 @@ LDFLAGS = -nostdlib -T link.ld
 
 LIBC = ../libc/libc.a
 
-ALL_APPS = shell cursor_blink echo ticker shutdown true false tests
+ALL_APPS = init shell cursor_blink echo ticker shutdown true false tests
 
 PROGS = $(addsuffix .elf,$(ALL_APPS))
 
@@ -20,6 +20,9 @@ $(LIBC):
 mkramfs:
 	$(MAKE) -C ../tools mkramfs
 	cp ../tools/mkramfs $@
+
+init.elf: init/init.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
 shell.elf: shell/shell.o $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)

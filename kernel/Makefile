@@ -89,7 +89,7 @@ initramfs_data.o: ../cmd/initramfs.bin
 		--rename-section .data=.initramfs \
 		$< $@
 
-USER_PROGS = ../cmd/echo.elf ../cmd/shell.elf ../cmd/shutdown.elf \
+USER_PROGS = ../cmd/init.elf ../cmd/echo.elf ../cmd/shell.elf ../cmd/shutdown.elf \
 	../cmd/true.elf ../cmd/false.elf ../cmd/ticker.elf ../cmd/cursor_blink.elf
 
 $(USER_PROGS):
@@ -101,6 +101,7 @@ disk.img: ../tools/mkfs $(USER_PROGS)
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
+		../cmd/init.elf:/init \
 		../cmd/echo.elf:/echo \
 		../cmd/shell.elf:/shell \
 		../cmd/shutdown.elf:/shutdown \
@@ -110,7 +111,7 @@ disk.img: ../tools/mkfs $(USER_PROGS)
 		../cmd/cursor_blink.elf:/cursor_blink
 
 run: clean $(KERNEL_BIN) disk.img
-	$(QEMU_DISK) -kernel $(KERNEL_BIN) -append "init=/shell"
+	$(QEMU_DISK) -kernel $(KERNEL_BIN) -append "init=/init"
 
 debug: clean $(KERNEL)
 	$(QEMU) -kernel $(KERNEL) -s -S
