@@ -431,9 +431,14 @@ static long sys_open(const char *path, int flags) {
 
 	struct inode *ip;
 	if (flags & O_CREAT) {
-		ip = fs_create(kpath, T_FILE, 0, 0);
+		ip = fs_namei(kpath);
 		if (ip == 0) {
-			return -1;
+			ip = fs_create(kpath, T_FILE, 0, 0);
+			if (ip == 0) {
+				return -1;
+			}
+		} else {
+			fs_ilock(ip);
 		}
 	} else {
 		ip = fs_namei(kpath);
