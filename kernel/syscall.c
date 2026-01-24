@@ -222,6 +222,19 @@ static long sys_exec(const char *cmdline) {
 	current->tf->sp_el0 = sp;
 	current->tf->regs[1] = ustack_top;
 
+	// Extract basename and store in current->name
+	char *basename = argv[0];
+	for (char *q = argv[0]; *q; q++) {
+		if (*q == '/') {
+			basename = q + 1;
+		}
+	}
+	int k;
+	for (k = 0; k < 15 && basename[k]; k++) {
+		current->name[k] = basename[k];
+	}
+	current->name[k] = '\0';
+
 	return argc;
 }
 
@@ -297,6 +310,30 @@ static long sys_wait(void) {
 		}
 		if (!has_children) {
 			return -1;
+		}
+		proc_wait(current);
+	}
+}
+
+static long sys_waitpid(int pid) {
+	if (pid <= 0) {
+		return -1;
+	}
+	for (;;) {
+		struct proc *p = 0;
+		for (int i = 0; i < NPROC; i++) {
+			if (procs[i].pid == pid && procs[i].parent == current) {
+				p = &procs[i];
+				break;
+			}
+		}
+		if (p == 0) {
+			return -1;
+		}
+		if (p->state == ZOMBIE) {
+			int status = p->exit_status;
+			p->state = UNUSED;
+			return status;
 		}
 		proc_wait(current);
 	}
@@ -857,6 +894,45 @@ static long sys_munmap(unsigned long addr, unsigned long len) {
 	return 0;
 }
 
+static long sys_kill(int pid) {
+	if (pid <= 0) {
+		return -1;
+	}
+	return proc_setkilled(pid);
+}
+
+static long sys_getprocs(struct procinfo *buf, int max) {
+	if (max <= 0) {
+		return -1;
+	}
+	if (vmm_validate(current->pagetable, (unsigned long)buf, max * sizeof(struct procinfo), 1) < 0) {
+		return -1;
+	}
+
+	int count = 0;
+	for (int i = 0; i < NPROC && count < max; i++) {
+		struct proc *p = &procs[i];
+		if (p->state == UNUSED) {
+			continue;
+		}
+
+		buf[count].pid = p->pid;
+		buf[count].ppid = p->parent ? p->parent->pid : 0;
+		buf[count].state = p->state;
+		int j;
+		for (j = 0; j < 15 && p->name[j]; j++) {
+			buf[count].name[j] = p->name[j];
+		}
+		buf[count].name[j] = '\0';
+		count++;
+	}
+	return count;
+}
+
+static long sys_getppid(void) {
+	return current->parent ? current->parent->pid : 0;
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -1093,6 +1169,18 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_munmap:
 		ret = sys_munmap(tf->regs[0], tf->regs[1]);
+		break;
+	case SYS_kill:
+		ret = sys_kill((int)tf->regs[0]);
+		break;
+	case SYS_getprocs:
+		ret = sys_getprocs((struct procinfo *)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_getppid:
+		ret = sys_getppid();
+		break;
+	case SYS_waitpid:
+		ret = sys_waitpid((int)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

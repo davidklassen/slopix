@@ -298,7 +298,37 @@ Before starting:
 
 ---
 
-## Milestone 13: Self-Hosting
+## Milestone 13: Signals and Job Control
+
+**Goal**: Unix-style process signals and shell job control
+
+**Detailed plan**: See [JOBS.md](JOBS.md) for step-by-step implementation guide.
+
+### What You'll Build
+- Process termination with `kill` command
+- Signal infrastructure (SIGKILL, SIGSTOP, SIGCONT, SIGINT, SIGTSTP)
+- Process groups for terminal job control
+- Shell job control (`&`, `fg`, `bg`, `jobs`, Ctrl+C, Ctrl+Z)
+
+### Essential Reading
+| Resource | Focus |
+|----------|-------|
+| [POSIX signal.h](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html) | Signal numbers and semantics |
+| [Linux signal(7)](https://man7.org/linux/man-pages/man7/signal.7.html) | Signal behavior reference |
+| [xv6-riscv proc.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/proc.c) | killed flag pattern |
+| [GNU Libc Job Control](https://www.gnu.org/software/libc/manual/html_node/Job-Control.html) | Process groups and sessions |
+
+### Deliverables
+- `ps` shows running processes
+- `kill` terminates or signals processes
+- Ctrl+C terminates foreground process
+- Ctrl+Z stops foreground process
+- Background jobs with `&`
+- `fg`, `bg`, `jobs` shell builtins
+
+---
+
+## Milestone 14: Self-Hosting
 
 **Goal**: Compile Slopix on Slopix
 

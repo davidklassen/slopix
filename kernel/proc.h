@@ -41,6 +41,9 @@ struct proc {
 
 	int exit_status;
 
+	int killed;
+	char name[16];
+
 	// Filesystem support
 	struct inode *cwd;
 	struct file *ofile[NOFILE];
@@ -66,5 +69,6 @@ void proc_wait(void *chan);
 void proc_wait_timeout(void *chan, unsigned long ticks);
 void proc_wakeup(void *chan);
 void proc_wakeup_timed(void);
+int proc_setkilled(int pid);
 
 #endif

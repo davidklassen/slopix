@@ -28,6 +28,17 @@
 #define SYS_rename   24
 #define SYS_mmap     25
 #define SYS_munmap   26
+#define SYS_kill     27
+#define SYS_getprocs 28
+#define SYS_getppid  29
+#define SYS_waitpid  30
+
+struct procinfo {
+	int pid;
+	int ppid;
+	int state;
+	char name[16];
+};
 
 struct trap_frame;
 void syscall(struct trap_frame *tf);

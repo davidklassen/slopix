@@ -6,6 +6,9 @@
 #include "virtio.h"
 #include "kprintf.h"
 #include "syscall.h"
+#include "proc.h"
+#include "file.h"
+#include "fs.h"
 
 static const char *vector_names[] = {
     "SP0 Sync",
@@ -159,38 +162,63 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 
 	case EC_IABT_LOWER: {
 		unsigned int fsc = iss & FSC_MASK;
-		kprintf("USER INSTRUCTION ABORT at 0x%lx\n", tf->elr);
+		kprintf("USER INSTRUCTION ABORT (pid %d: %s) at 0x%lx\n",
+			current->pid,
+			current->name,
+			tf->elr);
 		kprintf("  FAR: 0x%lx, Fault: %s (0x%x)\n",
 			read_far_el1(),
 			fault_status_string(fsc),
 			fsc);
-		for (;;) {
-			wfi();
-		}
+		current->killed = 1;
 		break;
 	}
 
 	case EC_DABT_LOWER: {
 		unsigned int fsc = iss & FSC_MASK;
 		const char *op = (iss & ISS_WNR) ? "write" : "read";
-		kprintf("USER DATA ABORT (%s) at 0x%lx\n", op, tf->elr);
+		kprintf("USER DATA ABORT (%s, pid %d: %s) at 0x%lx\n",
+			op,
+			current->pid,
+			current->name,
+			tf->elr);
 		kprintf("  FAR: 0x%lx, Fault: %s (0x%x)\n",
 			read_far_el1(),
 			fault_status_string(fsc),
 			fsc);
-		for (;;) {
-			wfi();
-		}
+		current->killed = 1;
 		break;
 	}
 
 	default:
-		kprintf("UNHANDLED USER EXCEPTION: EC=0x%x, ISS=0x%x, ELR=0x%lx\n",
+		kprintf("UNHANDLED USER EXCEPTION (pid %d: %s): EC=0x%x, ISS=0x%x, ELR=0x%lx\n",
+			current->pid,
+			current->name,
 			ec,
 			iss,
 			tf->elr);
-		for (;;) {
-			wfi();
+		current->killed = 1;
+		break;
+	}
+
+	if (current->killed) {
+		for (int fd = 0; fd < NOFILE; fd++) {
+			if (current->ofile[fd]) {
+				fileclose(current->ofile[fd]);
+				current->ofile[fd] = 0;
+			}
 		}
+		if (current->cwd) {
+			fs_iput(current->cwd);
+			current->cwd = 0;
+		}
+		current->exit_status = -1;
+		if (current->parent) {
+			current->state = ZOMBIE;
+			proc_wakeup(current->parent);
+		} else {
+			current->state = UNUSED;
+		}
+		proc_sched();
 	}
 }

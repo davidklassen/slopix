@@ -33,6 +33,29 @@ static void print_hex(unsigned int n) {
 	}
 }
 
+static void print_int_width(int n, int width) {
+	char buf[16];
+	itoa(n, buf);
+	int len = strlen(buf);
+	while (len < width) {
+		write(1, " ", 1);
+		len++;
+	}
+	puts(buf);
+}
+
+static void print_str_width(const char *s, int width) {
+	if (!s) {
+		s = "(null)";
+	}
+	int len = strlen(s);
+	while (len < width) {
+		write(1, " ", 1);
+		len++;
+	}
+	puts(s);
+}
+
 int printf(const char *fmt, ...) {
 	__builtin_va_list ap;
 	__builtin_va_start(ap, fmt);
@@ -41,13 +64,25 @@ int printf(const char *fmt, ...) {
 	while (*fmt) {
 		if (*fmt == '%' && *(fmt + 1)) {
 			fmt++;
+			// Parse width specifier
+			int width = 0;
+			while (*fmt >= '0' && *fmt <= '9') {
+				width = width * 10 + (*fmt - '0');
+				fmt++;
+			}
 			switch (*fmt) {
 			case 'd':
-				print_int(__builtin_va_arg(ap, int));
+				if (width > 0) {
+					print_int_width(__builtin_va_arg(ap, int), width);
+				} else {
+					print_int(__builtin_va_arg(ap, int));
+				}
 				break;
 			case 's': {
 				const char *s = __builtin_va_arg(ap, const char *);
-				if (s) {
+				if (width > 0) {
+					print_str_width(s, width);
+				} else if (s) {
 					count += puts(s);
 				}
 				break;

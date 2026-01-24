@@ -11,12 +11,12 @@ int main(void) {
 	}
 
 	for (;;) {
-		int pid = fork();
-		if (pid == 0) {
+		int shell_pid = fork();
+		if (shell_pid == 0) {
 			exec("/shell");
 			printf("init: failed to exec /shell\n");
 			exit(1);
 		}
-		wait();
+		waitpid(shell_pid);
 	}
 }

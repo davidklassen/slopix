@@ -28,6 +28,8 @@ struct proc *proc_alloc(void) {
 			p->tf = 0;
 			p->chan = 0;
 			p->wakeup_tick = 0;
+			p->killed = 0;
+			p->name[0] = '\0';
 			p->cwd = 0;
 			return p;
 		}
@@ -151,6 +153,9 @@ void proc_yield(void) {
 }
 
 void proc_wait(void *chan) {
+	if (current->killed) {
+		return;
+	}
 	current->chan = chan;
 	current->state = SLEEPING;
 	proc_sched();
@@ -188,6 +193,9 @@ void proc_sleep(unsigned long ticks) {
 }
 
 void proc_wait_timeout(void *chan, unsigned long ticks) {
+	if (current->killed) {
+		return;
+	}
 	current->chan = chan;
 	if (ticks > 0) {
 		current->wakeup_tick = timer_get_ticks() + ticks;
@@ -196,4 +204,18 @@ void proc_wait_timeout(void *chan, unsigned long ticks) {
 	proc_sched();
 	current->chan = 0;
 	current->wakeup_tick = 0;
+}
+
+int proc_setkilled(int pid) {
+	for (int i = 0; i < NPROC; i++) {
+		struct proc *p = &procs[i];
+		if (p->state != UNUSED && p->pid == pid) {
+			p->killed = 1;
+			if (p->state == SLEEPING) {
+				p->state = RUNNABLE;
+			}
+			return 0;
+		}
+	}
+	return -1;
 }

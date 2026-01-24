@@ -1,6 +1,7 @@
 #include <test.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/procinfo.h>
 #include <fcntl.h>
 #include <string.h>
 
@@ -159,6 +160,148 @@ TEST(exec_from_disk) {
 	return 0;
 }
 
+TEST(getppid_returns_parent) {
+	int parent_pid = getpid();
+	int child_pid = fork();
+	if (child_pid == 0) {
+		int ppid = getppid();
+		exit(ppid == parent_pid ? 0 : 1);
+	}
+	int status = wait();
+	ASSERT_EQ(status, 0, "child sees correct ppid");
+	return 0;
+}
+
+TEST(kill_nonexistent) {
+	ASSERT_EQ(kill(9999), -1, "kill nonexistent returns -1");
+	return 0;
+}
+
+TEST(kill_zero_invalid) {
+	ASSERT_EQ(kill(0), -1, "kill(0) invalid");
+	return 0;
+}
+
+TEST(kill_negative_invalid) {
+	ASSERT_EQ(kill(-1), -1, "kill(-1) invalid");
+	return 0;
+}
+
+TEST(kill_terminates_child) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		sleep(10000);
+		exit(0);
+	}
+	ASSERT_EQ(kill(child_pid), 0, "kill returns 0");
+	int status = wait();
+	ASSERT_EQ(status, -1, "killed child exits -1");
+	return 0;
+}
+
+TEST(getprocs_returns_count) {
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	ASSERT(n > 0, "getprocs returns positive");
+	return 0;
+}
+
+TEST(getprocs_bad_pointer) {
+	ASSERT_EQ(getprocs((struct procinfo *)0xDEADBEEF, 8), -1, "bad ptr");
+	return 0;
+}
+
+TEST(getprocs_zero_max) {
+	struct procinfo procs[8];
+	ASSERT_EQ(getprocs(procs, 0), -1, "max=0 invalid");
+	return 0;
+}
+
+TEST(getprocs_negative_max) {
+	struct procinfo procs[8];
+	ASSERT_EQ(getprocs(procs, -1), -1, "max=-1 invalid");
+	return 0;
+}
+
+TEST(getprocs_finds_self) {
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	ASSERT(n > 0, "got procs");
+	int mypid = getpid();
+	int found = 0;
+	for (int i = 0; i < n; i++) {
+		if (procs[i].pid == mypid) {
+			found = 1;
+			ASSERT(procs[i].state > 0, "state valid");
+			break;
+		}
+	}
+	ASSERT(found, "found self in list");
+	return 0;
+}
+
+TEST(getprocs_ppid_valid) {
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	ASSERT(n > 0, "got procs");
+	for (int i = 0; i < n; i++) {
+		ASSERT(procs[i].ppid >= 0, "ppid non-negative");
+	}
+	return 0;
+}
+
+TEST(waitpid_returns_status) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		exit(42);
+	}
+	int status = waitpid(child_pid);
+	ASSERT_EQ(status, 42, "waitpid returns exit status");
+	return 0;
+}
+
+TEST(waitpid_nonexistent) {
+	ASSERT_EQ(waitpid(9999), -1, "waitpid nonexistent returns -1");
+	return 0;
+}
+
+TEST(waitpid_zero_invalid) {
+	ASSERT_EQ(waitpid(0), -1, "waitpid(0) invalid");
+	return 0;
+}
+
+TEST(waitpid_negative_invalid) {
+	ASSERT_EQ(waitpid(-1), -1, "waitpid(-1) invalid");
+	return 0;
+}
+
+TEST(waitpid_not_child) {
+	ASSERT_EQ(waitpid(1), -1, "waitpid for init fails");
+	return 0;
+}
+
+TEST(waitpid_specific_child) {
+	int child1 = fork();
+	if (child1 == 0) {
+		sleep(5000);
+		exit(1);
+	}
+
+	int child2 = fork();
+	if (child2 == 0) {
+		exit(2);
+	}
+
+	sleep(10);
+	int status = waitpid(child2);
+	ASSERT_EQ(status, 2, "got child2 status");
+
+	kill(child1);
+	status = waitpid(child1);
+	ASSERT_EQ(status, -1, "got child1 killed status");
+	return 0;
+}
+
 TEST_SUITE(syscalls) {
 	RUN_TEST(write_returns_count);
 	RUN_TEST(read_poll);
@@ -175,4 +318,21 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(rename_dir_cycle);
 	RUN_TEST(open_append);
 	RUN_TEST(exec_from_disk);
+	RUN_TEST(getppid_returns_parent);
+	RUN_TEST(kill_nonexistent);
+	RUN_TEST(kill_zero_invalid);
+	RUN_TEST(kill_negative_invalid);
+	RUN_TEST(kill_terminates_child);
+	RUN_TEST(getprocs_returns_count);
+	RUN_TEST(getprocs_bad_pointer);
+	RUN_TEST(getprocs_zero_max);
+	RUN_TEST(getprocs_negative_max);
+	RUN_TEST(getprocs_finds_self);
+	RUN_TEST(getprocs_ppid_valid);
+	RUN_TEST(waitpid_returns_status);
+	RUN_TEST(waitpid_nonexistent);
+	RUN_TEST(waitpid_zero_invalid);
+	RUN_TEST(waitpid_negative_invalid);
+	RUN_TEST(waitpid_not_child);
+	RUN_TEST(waitpid_specific_child);
 }
