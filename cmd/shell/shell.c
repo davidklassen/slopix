@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -7,10 +8,16 @@
 
 #define MAXARGS 10
 #define MAXCMDS 4
+#define MAXJOBS 8
 
 #define CMD_EXEC  1
 #define CMD_REDIR 2
 #define CMD_PIPE  3
+
+#define JOB_FREE    0
+#define JOB_RUNNING 1
+#define JOB_STOPPED 2
+#define JOB_DONE    3
 
 #define KEY_UP	      256
 #define KEY_DOWN      257
@@ -51,8 +58,80 @@ static struct redircmd redir_pool[MAXCMDS];
 static struct pipecmd pipe_pool[MAXCMDS];
 static int exec_next, redir_next, pipe_next;
 
+struct job {
+	int jid;
+	int pgid;
+	int state;
+	int status;
+	char cmd[64];
+};
+
+static struct job jobs[MAXJOBS];
+static int next_jid = 1;
+static int background;
+static int shell_pgid;
+
 static char *ps;
 static char *es;
+
+static int add_job(int pgid, const char *cmdstr) {
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state == JOB_FREE) {
+			jobs[i].jid = next_jid++;
+			jobs[i].pgid = pgid;
+			jobs[i].state = JOB_RUNNING;
+			jobs[i].status = 0;
+			strncpy(jobs[i].cmd, cmdstr, 63);
+			jobs[i].cmd[63] = '\0';
+			return jobs[i].jid;
+		}
+	}
+	return -1;
+}
+
+static struct job *find_job_by_jid(int jid) {
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state != JOB_FREE && jobs[i].jid == jid) {
+			return &jobs[i];
+		}
+	}
+	return 0;
+}
+
+static void remove_job(struct job *j) {
+	j->state = JOB_FREE;
+}
+
+static void update_jobs(void) {
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state == JOB_FREE || jobs[i].state == JOB_DONE) {
+			continue;
+		}
+		int ret = waitpid(jobs[i].pgid, WNOHANG | WUNTRACED);
+		if (ret > 0) {
+			int status = ret & 0xffff;
+			if (WIFSTOPPED(status)) {
+				jobs[i].state = JOB_STOPPED;
+			} else {
+				jobs[i].state = JOB_DONE;
+				jobs[i].status = status;
+			}
+		}
+	}
+}
+
+static void report_done_jobs(void) {
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state == JOB_DONE) {
+			if (WIFSIGNALED(jobs[i].status)) {
+				printf("[%d] killed  %s\n", jobs[i].jid, jobs[i].cmd);
+			} else {
+				printf("[%d] done    %s\n", jobs[i].jid, jobs[i].cmd);
+			}
+			remove_job(&jobs[i]);
+		}
+	}
+}
 
 static void reset_pools(void) {
 	exec_next = redir_next = pipe_next = 0;
@@ -123,7 +202,7 @@ static int gettoken(char **q, char **eq) {
 		ps++;
 	} else {
 		tok = 'w';
-		while (ps < es && !isspace(*ps) && !strchr("<>|", *ps)) {
+		while (ps < es && !isspace(*ps) && !strchr("<>|&", *ps)) {
 			ps++;
 		}
 	}
@@ -140,6 +219,7 @@ static struct cmd *parseredirs(struct cmd *cmd);
 
 static struct cmd *parsecmd(char *buf) {
 	reset_pools();
+	background = 0;
 	ps = buf;
 	es = buf + strlen(buf);
 
@@ -148,6 +228,13 @@ static struct cmd *parsecmd(char *buf) {
 		return 0;
 	}
 
+	while (ps < es && isspace(*ps)) {
+		ps++;
+	}
+	if (ps < es && *ps == '&') {
+		background = 1;
+		ps++;
+	}
 	while (ps < es && isspace(*ps)) {
 		ps++;
 	}
@@ -191,7 +278,7 @@ static struct cmd *parseexec(void) {
 	}
 
 	int argc = 0;
-	while (!peek("<>|")) {
+	while (!peek("<>|&")) {
 		char *q, *eq;
 		int tok = gettoken(&q, &eq);
 		if (tok == 0) {
@@ -494,6 +581,106 @@ static int builtin_exit(int argc, char **argv) {
 	return 0;
 }
 
+static int builtin_jobs(int argc, char **argv) {
+	(void)argc;
+	(void)argv;
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state == JOB_FREE) {
+			continue;
+		}
+		const char *state;
+		switch (jobs[i].state) {
+		case JOB_RUNNING:
+			state = "running";
+			break;
+		case JOB_STOPPED:
+			state = "stopped";
+			break;
+		case JOB_DONE:
+			state = "done";
+			break;
+		default:
+			state = "unknown";
+		}
+		printf("[%d] %s  %s\n", jobs[i].jid, state, jobs[i].cmd);
+	}
+	return 0;
+}
+
+static struct job *find_most_recent_job(int stopped_only) {
+	struct job *best = 0;
+	for (int i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].state == JOB_FREE || jobs[i].state == JOB_DONE) {
+			continue;
+		}
+		if (stopped_only && jobs[i].state != JOB_STOPPED) {
+			continue;
+		}
+		if (best == 0 || jobs[i].jid > best->jid) {
+			best = &jobs[i];
+		}
+	}
+	return best;
+}
+
+static int builtin_fg(int argc, char **argv) {
+	struct job *j;
+	if (argc > 1 && argv[1][0] == '%') {
+		int jid = atoi(argv[1] + 1);
+		j = find_job_by_jid(jid);
+	} else {
+		j = find_most_recent_job(0);
+	}
+
+	if (j == 0) {
+		printf("fg: no current job\n");
+		return 1;
+	}
+
+	printf("%s\n", j->cmd);
+
+	if (j->state == JOB_STOPPED) {
+		kill(-j->pgid, SIGCONT);
+		j->state = JOB_RUNNING;
+	}
+
+	tcsetpgrp(0, j->pgid);
+	int ret = waitpid(j->pgid, WUNTRACED);
+	tcsetpgrp(0, shell_pgid);
+
+	if (ret > 0) {
+		int status = ret & 0xffff;
+		if (WIFSTOPPED(status)) {
+			j->state = JOB_STOPPED;
+			printf("\n[%d] stopped  %s\n", j->jid, j->cmd);
+		} else {
+			remove_job(j);
+		}
+	}
+
+	return 0;
+}
+
+static int builtin_bg(int argc, char **argv) {
+	struct job *j;
+	if (argc > 1 && argv[1][0] == '%') {
+		int jid = atoi(argv[1] + 1);
+		j = find_job_by_jid(jid);
+	} else {
+		j = find_most_recent_job(1);
+	}
+
+	if (j == 0 || j->state != JOB_STOPPED) {
+		printf("bg: no stopped job\n");
+		return 1;
+	}
+
+	printf("[%d] %s &\n", j->jid, j->cmd);
+	kill(-j->pgid, SIGCONT);
+	j->state = JOB_RUNNING;
+	return 0;
+}
+
 struct builtin {
 	const char *name;
 	int (*func)(int argc, char **argv);
@@ -503,21 +690,11 @@ static struct builtin builtins[] = {
     {"cd", builtin_cd},
     {"pwd", builtin_pwd},
     {"exit", builtin_exit},
+    {"jobs", builtin_jobs},
+    {"fg", builtin_fg},
+    {"bg", builtin_bg},
     {0, 0},
 };
-
-static void reap_zombies(void) {
-	int ret;
-	while ((ret = waitpid(-1, WNOHANG)) > 0) {
-		int pid = ret >> 16;
-		int status = ret & 0xffff;
-		if (WIFSIGNALED(status)) {
-			printf("[%d] killed\n", pid);
-		} else if (WIFEXITED(status)) {
-			printf("[%d] done\n", pid);
-		}
-	}
-}
 
 static int run_builtin(int argc, char **argv) {
 	if (argc == 0) {
@@ -537,12 +714,13 @@ int main(void) {
 	char buf[128];
 
 	setpgid(0, 0);
-	int shell_pgid = getpid();
+	shell_pgid = getpid();
 	tcsetpgrp(0, shell_pgid);
 
 	for (;;) {
 		poll(0, 10);
-		reap_zombies();
+		update_jobs();
+		report_done_jobs();
 		printf("slopix> ");
 		int n = readline(buf, sizeof(buf));
 		if (n < 0) {
@@ -550,6 +728,10 @@ int main(void) {
 			exit(0);
 		}
 		if (n > 0) {
+			char cmdstr[64];
+			strncpy(cmdstr, buf, 63);
+			cmdstr[63] = '\0';
+
 			struct cmd *cmd = parsecmd(buf);
 			if (cmd == 0) {
 				printf("syntax error\n");
@@ -577,12 +759,19 @@ int main(void) {
 						runcmd(cmd);
 					}
 					setpgid(child_pid, child_pid);
-					tcsetpgrp(0, child_pid);
-					int status = waitpid(child_pid, WUNTRACED);
-					if (WIFSTOPPED(status)) {
-						printf("\n[%d] stopped\n", child_pid);
+
+					if (background) {
+						int jid = add_job(child_pid, cmdstr);
+						printf("[%d] %d\n", jid, child_pid);
+					} else {
+						tcsetpgrp(0, child_pid);
+						int status = waitpid(child_pid, WUNTRACED);
+						if (WIFSTOPPED(status)) {
+							int jid = add_job(child_pid, cmdstr);
+							printf("\n[%d] stopped  %s\n", jid, cmdstr);
+						}
+						tcsetpgrp(0, shell_pgid);
 					}
-					tcsetpgrp(0, shell_pgid);
 				}
 			}
 		}

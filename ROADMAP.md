@@ -298,11 +298,9 @@ Before starting:
 
 ---
 
-## Milestone 13: Signals and Job Control
+## Milestone 13: Signals and Job Control ✓
 
 **Goal**: Unix-style process signals and shell job control
-
-**Detailed plan**: See [JOBS.md](JOBS.md) for step-by-step implementation guide.
 
 ### What You'll Build
 - Process termination with `kill` command

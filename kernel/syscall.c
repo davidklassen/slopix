@@ -923,10 +923,13 @@ static long sys_munmap(unsigned long addr, unsigned long len) {
 }
 
 static long sys_kill(int pid, int sig) {
-	if (pid <= 0) {
-		return -1;
+	if (pid > 0) {
+		return proc_signal(pid, sig);
 	}
-	return proc_signal(pid, sig);
+	if (pid < -1) {
+		return proc_signal_pgrp(-pid, sig);
+	}
+	return -1;
 }
 
 static long sys_getprocs(struct procinfo *buf, int max) {
