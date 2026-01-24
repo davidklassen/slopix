@@ -1,6 +1,8 @@
 // vim: ft=arm64asm
-// AArch64 exception vectors
-// Vector table must be 2KB aligned, each entry is 128 bytes
+
+.equ TRAP_FRAME_SIZE,    272
+.equ VECTOR_ENTRY_SIZE,  0x80
+.equ VECTOR_TABLE_ALIGN, 0x800
 
 .section .text
 
@@ -11,7 +13,7 @@
 // [sp, #264]: SPSR_EL1
 
 .macro save_trap_frame
-    sub     sp, sp, #272
+    sub     sp, sp, #TRAP_FRAME_SIZE
     stp     x0, x1, [sp, #0]
     stp     x2, x3, [sp, #16]
     stp     x4, x5, [sp, #32]
@@ -65,11 +67,11 @@
     ldp     x26, x27, [sp, #208]
     ldp     x28, x29, [sp, #224]
     ldr     x30, [sp, #240]
-    add     sp, sp, #272
+    add     sp, sp, #TRAP_FRAME_SIZE
 .endm
 
 .macro vector_entry label
-    .balign 0x80
+    .balign VECTOR_ENTRY_SIZE
 \label:
 .endm
 
@@ -86,8 +88,7 @@ panic_entry:
     mrs     x2, esr_el1
     b       panic
 
-// Vector table: 16 entries, 2KB aligned
-.balign 0x800
+.balign VECTOR_TABLE_ALIGN
 .global vectors
 vectors:
 
