@@ -6,7 +6,7 @@ int main(void) {
 	printf("To exit QEMU press Ctrl-a x\n\n");
 
 	if (fork() == 0) {
-		exec("/cursor_blink");
+		exec("/bin/cursor_blink");
 		exit(1);
 	}
 
@@ -15,8 +15,8 @@ int main(void) {
 		if (shell_pid < 0) {
 			shell_pid = fork();
 			if (shell_pid == 0) {
-				exec("/shell");
-				printf("init: failed to exec /shell\n");
+				exec("/bin/shell");
+				printf("init: failed to exec /bin/shell\n");
 				exit(1);
 			}
 		}

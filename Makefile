@@ -36,31 +36,59 @@ kernel/kernel-test.bin:
 	$(MAKE) -C kernel kernel-test.bin
 
 disk.img: $(MKFS) cmd
-	$(MKFS) $@ -s 2048 \
+	$(MKFS) $@ -s 4096 \
 		:dir:/dev \
+		:dir:/bin \
+		:dir:/src \
+		:dir:/src/libc \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
 		cmd/init.elf:/init \
-		cmd/echo.elf:/echo \
-		cmd/shell.elf:/shell \
-		cmd/shutdown.elf:/shutdown \
-		cmd/true.elf:/true \
-		cmd/false.elf:/false \
-		cmd/ticker.elf:/ticker \
-		cmd/cursor_blink.elf:/cursor_blink \
-		cmd/cat.elf:/cat \
-		cmd/ls.elf:/ls \
-		cmd/mkdir.elf:/mkdir \
-		cmd/rm.elf:/rm \
-		cmd/cp.elf:/cp \
-		cmd/mv.elf:/mv \
-		cmd/touch.elf:/touch \
-		cmd/wc.elf:/wc \
-		cmd/head.elf:/head \
-		cmd/grep.elf:/grep \
-		cmd/ps.elf:/ps \
-		cmd/kill.elf:/kill
+		cmd/shell.elf:/bin/shell \
+		cmd/echo.elf:/bin/echo \
+		cmd/shutdown.elf:/bin/shutdown \
+		cmd/true.elf:/bin/true \
+		cmd/false.elf:/bin/false \
+		cmd/ticker.elf:/bin/ticker \
+		cmd/cursor_blink.elf:/bin/cursor_blink \
+		cmd/cat.elf:/bin/cat \
+		cmd/ls.elf:/bin/ls \
+		cmd/mkdir.elf:/bin/mkdir \
+		cmd/rm.elf:/bin/rm \
+		cmd/cp.elf:/bin/cp \
+		cmd/mv.elf:/bin/mv \
+		cmd/touch.elf:/bin/touch \
+		cmd/wc.elf:/bin/wc \
+		cmd/head.elf:/bin/head \
+		cmd/grep.elf:/bin/grep \
+		cmd/ps.elf:/bin/ps \
+		cmd/kill.elf:/bin/kill \
+		cmd/sleep.elf:/bin/sleep \
+		cmd/cat/cat.c:/src/cat.c \
+		cmd/cp/cp.c:/src/cp.c \
+		cmd/echo/echo.c:/src/echo.c \
+		cmd/grep/grep.c:/src/grep.c \
+		cmd/head/head.c:/src/head.c \
+		cmd/kill/kill.c:/src/kill.c \
+		cmd/ls/ls.c:/src/ls.c \
+		cmd/mkdir/mkdir.c:/src/mkdir.c \
+		cmd/mv/mv.c:/src/mv.c \
+		cmd/ps/ps.c:/src/ps.c \
+		cmd/rm/rm.c:/src/rm.c \
+		cmd/sleep/sleep.c:/src/sleep.c \
+		cmd/touch/touch.c:/src/touch.c \
+		cmd/wc/wc.c:/src/wc.c \
+		libc/ctype.c:/src/libc/ctype.c \
+		libc/stdio.c:/src/libc/stdio.c \
+		libc/string.c:/src/libc/string.c \
+		libc/syscall.S:/src/libc/syscall.S \
+		libc/include/ctype.h:/src/libc/ctype.h \
+		libc/include/fcntl.h:/src/libc/fcntl.h \
+		libc/include/signal.h:/src/libc/signal.h \
+		libc/include/stdio.h:/src/libc/stdio.h \
+		libc/include/string.h:/src/libc/string.h \
+		libc/include/unistd.h:/src/libc/unistd.h
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 1024 \

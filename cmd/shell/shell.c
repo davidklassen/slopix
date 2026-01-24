@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -373,6 +374,7 @@ static void runcmd(struct cmd *cmd) {
 			exit(0);
 		}
 		char cmdline[128];
+		char pathbuf[32];
 		int pos = 0;
 		for (int i = 0; ecmd->argv[i] && pos < 127; i++) {
 			if (i > 0 && pos < 127) {
@@ -380,6 +382,16 @@ static void runcmd(struct cmd *cmd) {
 			}
 			char *arg = ecmd->argv[i];
 			if (i == 0 && arg[0] != '/' && !strchr(arg, '/')) {
+				strcpy(pathbuf, "/bin/");
+				strncpy(pathbuf + 5, arg, sizeof(pathbuf) - 6);
+				pathbuf[sizeof(pathbuf) - 1] = '\0';
+				struct stat st;
+				if (stat(pathbuf, &st) == 0) {
+					for (char *p = pathbuf; *p && pos < 127; p++) {
+						cmdline[pos++] = *p;
+					}
+					continue;
+				}
 				cmdline[pos++] = '/';
 			}
 			for (char *p = arg; *p && pos < 127; p++) {
