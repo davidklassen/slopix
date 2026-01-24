@@ -326,23 +326,66 @@ Before starting:
 
 ---
 
-## Milestone 14: Self-Hosting
+## Milestone 14: C Compiler
 
-**Goal**: Compile Slopix on Slopix
+**Goal**: Port chibicc to compile C programs on Slopix
+
+**Detailed plan**: See [CC.md](CC.md) for comprehensive implementation guide.
 
 ### What You'll Build
-- Port C compiler (chibicc or tcc)
-- Port assembler
-- Port linker
-- Port make or build tool
-- Port text editor
+
+**Phase 1: Cross-Compiler**
+- Fork chibicc, rewrite codegen.c for AArch64
+- Emit AArch64 assembly (AT&T or GNU syntax)
+- Test: cross-compile C programs from host, run on Slopix
+
+**Phase 2: libc Extensions**
+- malloc/calloc/realloc on top of sbrk
+- String functions: strdup, strndup, strrchr, strtok, memcmp
+- stdio: FILE*, fopen/fclose/fread/fwrite, fprintf/sprintf
+- stdlib: strtoul, strtol
+- ctype: isalnum, ispunct, isxdigit
+
+**Phase 3: Native Compiler**
+- Port chibicc to run on Slopix
+- Replace Linux syscalls with Slopix equivalents
+- Handle open_memstream alternative
+
+**Phase 4: Self-Hosting**
+- chibicc compiles itself on Slopix
+- Verify reproducibility
 
 ### Essential Reading
 | Resource | Focus |
 |----------|-------|
+| [CC.md](CC.md) | Full gap analysis and porting guide |
+| [chibicc](https://github.com/rui314/chibicc) | Source code (~8,500 lines) |
+| [AAPCS64](docs/aapcs64/aapcs64.md) | AArch64 calling convention |
 | [ELF for AArch64](docs/aaelf64/aaelf64.md) | Executable format |
-| [chibicc](https://github.com/rui314/chibicc) | Small C compiler |
-| [tcc](https://bellard.org/tcc/) | Tiny C compiler |
+
+### Deliverables
+- `cc hello.c -o hello` compiles and links on Slopix
+- `cc cc.c -o cc2` self-hosts the compiler
+- Test suite passes
+
+---
+
+## Milestone 15: Build System and Editor
+
+**Goal**: Complete self-hosting development environment
+
+### What You'll Build
+- Port or write assembler (or use chibicc's direct output)
+- Port or write linker (or integrate into compiler)
+- Simple make-like build tool
+- Text editor (line editor or visual)
+
+### Essential Reading
+| Resource | Focus |
+|----------|-------|
+| [GNU as manual](https://sourceware.org/binutils/docs/as/) | Assembler reference |
+| [ed](https://man.openbsd.org/ed) | Classic line editor |
+| [kilo](https://github.com/antirez/kilo) | Minimal text editor (~1K lines) |
 
 ### Deliverables
 - Edit source file in Slopix editor
