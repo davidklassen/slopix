@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define MAXARGS 10
@@ -505,6 +506,19 @@ static struct builtin builtins[] = {
     {0, 0},
 };
 
+static void reap_zombies(void) {
+	int ret;
+	while ((ret = waitpid(-1, WNOHANG)) > 0) {
+		int pid = ret >> 16;
+		int status = ret & 0xffff;
+		if (WIFSIGNALED(status)) {
+			printf("[%d] killed\n", pid);
+		} else if (WIFEXITED(status)) {
+			printf("[%d] done\n", pid);
+		}
+	}
+}
+
 static int run_builtin(int argc, char **argv) {
 	if (argc == 0) {
 		return 0;
@@ -522,9 +536,14 @@ static int run_builtin(int argc, char **argv) {
 int main(void) {
 	char buf[128];
 
-	printf("slopix> ");
+	setpgid(0, 0);
+	int shell_pgid = getpid();
+	tcsetpgrp(0, shell_pgid);
 
 	for (;;) {
+		poll(0, 10);
+		reap_zombies();
+		printf("slopix> ");
 		int n = readline(buf, sizeof(buf));
 		if (n < 0) {
 			printf("\n");
@@ -552,13 +571,20 @@ int main(void) {
 				}
 
 				if (!builtin_handled) {
-					if (fork() == 0) {
+					int child_pid = fork();
+					if (child_pid == 0) {
+						setpgid(0, 0);
 						runcmd(cmd);
 					}
-					wait();
+					setpgid(child_pid, child_pid);
+					tcsetpgrp(0, child_pid);
+					int status = waitpid(child_pid, WUNTRACED);
+					if (WIFSTOPPED(status)) {
+						printf("\n[%d] stopped\n", child_pid);
+					}
+					tcsetpgrp(0, shell_pgid);
 				}
 			}
 		}
-		printf("slopix> ");
 	}
 }

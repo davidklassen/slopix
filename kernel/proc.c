@@ -18,6 +18,7 @@ struct proc *proc_alloc(void) {
 		if (p->state == UNUSED) {
 			p->state = RUNNABLE;
 			p->pid = nextpid++;
+			p->pgid = p->pid;
 			paddr_t pa = pmm_alloc();
 			if (pa == PMM_INVALID) {
 				p->state = UNUSED;
@@ -239,6 +240,70 @@ int proc_signal(int pid, int sig) {
 	return -1;
 }
 
+int proc_setpgid(int pid, int pgid) {
+	struct proc *p;
+
+	if (pid == 0) {
+		p = current;
+		pid = current->pid;
+	} else {
+		p = 0;
+		for (int i = 0; i < NPROC; i++) {
+			if (procs[i].state != UNUSED && procs[i].pid == pid) {
+				p = &procs[i];
+				break;
+			}
+		}
+		if (p == 0) {
+			return -1;
+		}
+	}
+
+	if (pgid == 0) {
+		pgid = pid;
+	}
+
+	if (pgid <= 0) {
+		return -1;
+	}
+
+	p->pgid = pgid;
+	return 0;
+}
+
+int proc_getpgid(int pid) {
+	if (pid == 0) {
+		return current->pgid;
+	}
+	for (int i = 0; i < NPROC; i++) {
+		if (procs[i].state != UNUSED && procs[i].pid == pid) {
+			return procs[i].pgid;
+		}
+	}
+	return -1;
+}
+
+int proc_signal_pgrp(int pgid, int sig) {
+	if (pgid <= 0 || sig < 1 || sig >= NSIG) {
+		return -1;
+	}
+
+	int found = 0;
+	for (int i = 0; i < NPROC; i++) {
+		struct proc *p = &procs[i];
+		if (p->state != UNUSED && p->pgid == pgid) {
+			p->pending |= (1 << sig);
+			if ((sig == SIGCONT || sig == SIGKILL) && p->state == STOPPED) {
+				p->state = RUNNABLE;
+			} else if (p->state == SLEEPING) {
+				p->state = RUNNABLE;
+			}
+			found = 1;
+		}
+	}
+	return found ? 0 : -1;
+}
+
 void proc_check_signals(void) {
 	if (current->pending == 0) {
 		return;
@@ -246,33 +311,36 @@ void proc_check_signals(void) {
 
 	if (current->pending & (1 << SIGKILL)) {
 		current->pending &= ~(1 << SIGKILL);
+		current->exit_status = -SIGKILL;
 		goto do_exit;
 	}
 
-	if (current->pending & (1 << SIGSTOP)) {
-		current->pending &= ~(1 << SIGSTOP);
-		current->state = STOPPED;
-		proc_sched();
-		return;
-	}
-
-	if (current->pending & (1 << SIGTSTP)) {
-		current->pending &= ~(1 << SIGTSTP);
-		current->state = STOPPED;
-		proc_sched();
-		return;
+	int stop_sigs[] = {SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU};
+	for (int i = 0; i < 4; i++) {
+		if (current->pending & (1 << stop_sigs[i])) {
+			current->pending &= ~(1 << stop_sigs[i]);
+			current->state = STOPPED;
+			current->stop_signal = stop_sigs[i];
+			if (current->parent) {
+				proc_wakeup(current->parent);
+			}
+			proc_sched();
+			current->pending &= ~(1 << SIGCONT);
+			return;
+		}
 	}
 
 	if (current->pending & (1 << SIGCONT)) {
 		current->pending &= ~(1 << SIGCONT);
 	}
 
-	unsigned int term_sigs = (1 << SIGTERM) | (1 << SIGINT) | (1 << SIGHUP) |
-				 (1 << SIGQUIT) | (1 << SIGPIPE) |
-				 (1 << SIGALRM) | (1 << SIGUSR1) | (1 << SIGUSR2);
-	if (current->pending & term_sigs) {
-		current->pending &= ~term_sigs;
-		goto do_exit;
+	int term_sigs[] = {SIGTERM, SIGINT, SIGHUP, SIGQUIT, SIGPIPE, SIGALRM, SIGUSR1, SIGUSR2};
+	for (int i = 0; i < 8; i++) {
+		if (current->pending & (1 << term_sigs[i])) {
+			current->pending &= ~(1 << term_sigs[i]);
+			current->exit_status = -term_sigs[i];
+			goto do_exit;
+		}
 	}
 
 	return;
@@ -288,7 +356,6 @@ do_exit:
 		fs_iput(current->cwd);
 		current->cwd = 0;
 	}
-	current->exit_status = -1;
 	if (current->parent) {
 		current->state = ZOMBIE;
 		proc_wakeup(current->parent);

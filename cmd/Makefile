@@ -8,7 +8,7 @@ LDFLAGS = -nostdlib -T link.ld
 
 LIBC = ../libc/libc.a
 
-ALL_APPS = init shell cursor_blink echo ticker shutdown true false tests cat ls mkdir rm cp mv touch wc head grep ps kill
+ALL_APPS = init shell cursor_blink echo ticker shutdown true false tests cat ls mkdir rm cp mv touch wc head grep ps kill sleep
 
 PROGS = $(addsuffix .elf,$(ALL_APPS))
 
@@ -79,6 +79,9 @@ ps.elf: ps/ps.o $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
 kill.elf: kill/kill.o $(LIBC)
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+
+sleep.elf: sleep/sleep.o $(LIBC)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
 TEST_OBJ = \

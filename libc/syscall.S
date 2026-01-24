@@ -2,6 +2,7 @@
 .global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
 .global stat, getcwd, lseek, rename, mmap, munmap
 .global kill, getprocs, getppid, waitpid
+.global setpgid, getpgid, tcsetpgrp, tcgetpgrp
 
 write:
 	mov x8, #0
@@ -155,5 +156,25 @@ getppid:
 
 waitpid:
 	mov x8, #30
+	svc #0
+	ret
+
+setpgid:
+	mov x8, #31
+	svc #0
+	ret
+
+getpgid:
+	mov x8, #32
+	svc #0
+	ret
+
+tcsetpgrp:
+	mov x8, #33
+	svc #0
+	ret
+
+tcgetpgrp:
+	mov x8, #34
 	svc #0
 	ret

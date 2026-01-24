@@ -28,6 +28,10 @@ char *getcwd(char *buf, unsigned long size);
 int rename(const char *oldpath, const char *newpath);
 int kill(int pid, int sig);
 int getppid(void);
-int waitpid(int pid);
+int waitpid(int pid, int options);
+int setpgid(int pid, int pgid);
+int getpgid(int pid);
+int tcsetpgrp(int fd, int pgid);
+int tcgetpgrp(int fd);
 
 #endif

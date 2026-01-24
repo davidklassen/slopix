@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/procinfo.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <string.h>
 
@@ -157,7 +158,7 @@ TEST(exec_from_disk) {
 		exit(1);
 	}
 	int status = wait();
-	ASSERT_EQ(status, 0, "exec /true from disk");
+	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "exec /true from disk");
 	return 0;
 }
 
@@ -169,7 +170,7 @@ TEST(getppid_returns_parent) {
 		exit(ppid == parent_pid ? 0 : 1);
 	}
 	int status = wait();
-	ASSERT_EQ(status, 0, "child sees correct ppid");
+	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child sees correct ppid");
 	return 0;
 }
 
@@ -196,7 +197,7 @@ TEST(kill_terminates_child) {
 	}
 	ASSERT_EQ(kill(child_pid, SIGTERM), 0, "kill returns 0");
 	int status = wait();
-	ASSERT_EQ(status, -1, "killed child exits -1");
+	ASSERT(!WIFEXITED(status), "killed child did not exit normally");
 	return 0;
 }
 
@@ -256,28 +257,29 @@ TEST(waitpid_returns_status) {
 	if (child_pid == 0) {
 		exit(42);
 	}
-	int status = waitpid(child_pid);
-	ASSERT_EQ(status, 42, "waitpid returns exit status");
+	int status = waitpid(child_pid, 0);
+	ASSERT(WIFEXITED(status), "child exited normally");
+	ASSERT_EQ(WEXITSTATUS(status), 42, "waitpid returns exit status");
 	return 0;
 }
 
 TEST(waitpid_nonexistent) {
-	ASSERT_EQ(waitpid(9999), -1, "waitpid nonexistent returns -1");
+	ASSERT_EQ(waitpid(9999, 0), -1, "waitpid nonexistent returns -1");
 	return 0;
 }
 
-TEST(waitpid_zero_invalid) {
-	ASSERT_EQ(waitpid(0), -1, "waitpid(0) invalid");
+TEST(waitpid_zero_no_children) {
+	ASSERT_EQ(waitpid(0, 0), -1, "waitpid(0) with no children returns -1");
 	return 0;
 }
 
-TEST(waitpid_negative_invalid) {
-	ASSERT_EQ(waitpid(-1), -1, "waitpid(-1) invalid");
+TEST(waitpid_any_no_children) {
+	ASSERT_EQ(waitpid(-1, 0), -1, "waitpid(-1) with no children returns -1");
 	return 0;
 }
 
 TEST(waitpid_not_child) {
-	ASSERT_EQ(waitpid(1), -1, "waitpid for init fails");
+	ASSERT_EQ(waitpid(1, 0), -1, "waitpid for init fails");
 	return 0;
 }
 
@@ -294,12 +296,13 @@ TEST(waitpid_specific_child) {
 	}
 
 	sleep(10);
-	int status = waitpid(child2);
-	ASSERT_EQ(status, 2, "got child2 status");
+	int status = waitpid(child2, 0);
+	ASSERT(WIFEXITED(status), "child2 exited normally");
+	ASSERT_EQ(WEXITSTATUS(status), 2, "got child2 status");
 
 	kill(child1, SIGKILL);
-	status = waitpid(child1);
-	ASSERT_EQ(status, -1, "got child1 killed status");
+	status = waitpid(child1, 0);
+	ASSERT(!WIFEXITED(status), "child1 was killed");
 	return 0;
 }
 
@@ -311,7 +314,7 @@ TEST(kill_with_sigkill) {
 	}
 	ASSERT_EQ(kill(child_pid, SIGKILL), 0, "sigkill ok");
 	int status = wait();
-	ASSERT_EQ(status, -1, "killed by sigkill");
+	ASSERT(!WIFEXITED(status), "killed by sigkill");
 	return 0;
 }
 
@@ -409,6 +412,62 @@ TEST(ps_shows_stopped) {
 	return 0;
 }
 
+TEST(setpgid_self) {
+	int old_pgid = getpgid(0);
+	ASSERT(old_pgid > 0, "getpgid returns positive");
+	ASSERT_EQ(setpgid(0, 0), 0, "setpgid(0,0) succeeds");
+	int new_pgid = getpgid(0);
+	ASSERT_EQ(new_pgid, getpid(), "pgid equals pid after setpgid(0,0)");
+	return 0;
+}
+
+TEST(getpgid_returns_correct) {
+	int parent_pgid = getpgid(0);
+	int child_pid = fork();
+	if (child_pid == 0) {
+		int my_pgid = getpgid(0);
+		exit(my_pgid == parent_pgid ? 0 : 1);
+	}
+	int status = wait();
+	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child inherited parent pgid");
+	return 0;
+}
+
+TEST(child_new_pgrp) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		setpgid(0, 0);
+		int my_pgid = getpgid(0);
+		exit(my_pgid == getpid() ? 0 : 1);
+	}
+	int status = wait();
+	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child created own process group");
+	return 0;
+}
+
+TEST(tcsetpgrp_tcgetpgrp) {
+	int orig = tcgetpgrp(0);
+	ASSERT(orig >= 0, "tcgetpgrp returns non-negative");
+
+	int child_pid = fork();
+	if (child_pid == 0) {
+		setpgid(0, 0);
+		sleep(1000);
+		exit(0);
+	}
+
+	setpgid(child_pid, child_pid);
+	ASSERT_EQ(tcsetpgrp(0, child_pid), 0, "tcsetpgrp succeeds");
+	ASSERT_EQ(tcgetpgrp(0), child_pid, "tcgetpgrp returns child pgid");
+
+	tcsetpgrp(0, 0);
+	ASSERT_EQ(tcgetpgrp(0), 0, "tcgetpgrp returns 0 after clear");
+
+	kill(child_pid, SIGKILL);
+	wait();
+	return 0;
+}
+
 TEST_SUITE(syscalls) {
 	RUN_TEST(write_returns_count);
 	RUN_TEST(read_poll);
@@ -438,8 +497,8 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(getprocs_ppid_valid);
 	RUN_TEST(waitpid_returns_status);
 	RUN_TEST(waitpid_nonexistent);
-	RUN_TEST(waitpid_zero_invalid);
-	RUN_TEST(waitpid_negative_invalid);
+	RUN_TEST(waitpid_zero_no_children);
+	RUN_TEST(waitpid_any_no_children);
 	RUN_TEST(waitpid_not_child);
 	RUN_TEST(waitpid_specific_child);
 	RUN_TEST(kill_with_sigkill);
@@ -448,4 +507,8 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(signal_zero_exists);
 	RUN_TEST(signal_zero_nonexistent);
 	RUN_TEST(ps_shows_stopped);
+	RUN_TEST(setpgid_self);
+	RUN_TEST(getpgid_returns_correct);
+	RUN_TEST(child_new_pgrp);
+	RUN_TEST(tcsetpgrp_tcgetpgrp);
 }

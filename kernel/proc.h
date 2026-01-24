@@ -28,6 +28,7 @@ enum proc_state { UNUSED,
 struct proc {
 	enum proc_state state;
 	int pid;
+	int pgid;
 	struct proc *parent;
 	char *kstack;
 	struct context ctx;
@@ -42,6 +43,7 @@ struct proc {
 	unsigned long wakeup_tick;
 
 	int exit_status;
+	int stop_signal;
 
 	unsigned int pending;
 	char name[16];
@@ -74,6 +76,9 @@ void proc_wakeup_timed(void);
 #define proc_is_killed(p) ((p)->pending & (1 << SIGKILL))
 
 int proc_signal(int pid, int sig);
+int proc_setpgid(int pid, int pgid);
+int proc_getpgid(int pid);
+int proc_signal_pgrp(int pgid, int sig);
 void proc_check_signals(void);
 
 #endif

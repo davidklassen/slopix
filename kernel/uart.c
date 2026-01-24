@@ -3,6 +3,8 @@
 #include "proc.h"
 #include "gic.h"
 #include "cpu.h"
+#include "console.h"
+#include "signal.h"
 
 #define UART_RX_BUF_SIZE 64
 
@@ -60,16 +62,36 @@ void uart_init_irq(void) {
 }
 
 void uart_irq_handler(void) {
+	int got_data = 0;
 	while (!(UART_REG(UART_FR_OFFSET) & UART_FR_RXFE)) {
 		char c = UART_REG(UART_DR_OFFSET) & 0xFF;
+
+		if (c == 0x03) {
+			int pgid = console_get_fg_pgid();
+			if (pgid > 0) {
+				proc_signal_pgrp(pgid, SIGINT);
+			}
+			continue;
+		}
+		if (c == 0x1A) {
+			int pgid = console_get_fg_pgid();
+			if (pgid > 0) {
+				proc_signal_pgrp(pgid, SIGTSTP);
+			}
+			continue;
+		}
+
 		unsigned int next = (uart_rx.head + 1) % UART_RX_BUF_SIZE;
 		if (next != uart_rx.tail) {
 			uart_rx.buf[uart_rx.head] = c;
 			uart_rx.head = next;
+			got_data = 1;
 		}
 	}
 	UART_REG(UART_ICR_OFFSET) = UART_IMSC_RXIM;
-	proc_wakeup(&uart_rx);
+	if (got_data) {
+		proc_wakeup(&uart_rx);
+	}
 }
 
 int uart_read(char *buf, unsigned long len) {

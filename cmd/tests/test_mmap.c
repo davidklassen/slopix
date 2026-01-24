@@ -1,5 +1,6 @@
 #include <test.h>
 #include <sys/mman.h>
+#include <sys/wait.h>
 
 TEST(mmap_basic) {
 	void *p = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -90,8 +91,9 @@ TEST(mmap_fork_inherits) {
 		exit(1);
 	}
 	ASSERT(pid > 0, "fork succeeds");
-	int status = wait();
-	ASSERT_EQ(status, 0, "child read parent's mmap'd memory");
+	int ret = wait();
+	ASSERT(WIFEXITED(ret), "child exited normally");
+	ASSERT_EQ(WEXITSTATUS(ret), 0, "child read parent's mmap'd memory");
 
 	munmap(p, 4096);
 	return 0;

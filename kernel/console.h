@@ -5,4 +5,7 @@ void console_init(void);
 int console_read(char *dst, int n);
 int console_write(const char *src, int n);
 
+void console_set_fg_pgid(int pgid);
+int console_get_fg_pgid(void);
+
 #endif

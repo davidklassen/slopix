@@ -414,11 +414,27 @@ tcsetpgrp(0, shell_pgid);  // Shell regains foreground
 
 ### Exit Criteria
 
-- [ ] Ctrl+C terminates foreground command only
-- [ ] Ctrl+Z stops foreground command
-- [ ] Shell remains responsive after sending signals
-- [ ] `getpgid()` returns correct values
-- [ ] Child processes can be placed in their own process groups
+- [x] Ctrl+C terminates foreground command only
+- [x] Ctrl+Z stops foreground command
+- [x] Shell remains responsive after sending signals
+- [x] `getpgid()` returns correct values
+- [x] Child processes can be placed in their own process groups
+
+### Implementation Notes
+
+Completed implementation included:
+- `pgid` field in struct proc, initialized to pid in proc_alloc()
+- `proc_setpgid()`, `proc_getpgid()`, `proc_signal_pgrp()` functions in proc.c
+- `fg_pgid` tracking in console.c with `console_set_fg_pgid()` and `console_get_fg_pgid()`
+- Ctrl+C (0x03) sends SIGINT and Ctrl+Z (0x1A) sends SIGTSTP to foreground group in uart.c
+- `sys_setpgid`, `sys_getpgid`, `sys_tcsetpgrp`, `sys_tcgetpgrp` syscalls
+- SIGTTIN check in console_read() stops background processes trying to read terminal
+- SIGTTIN/SIGTTOU handling in proc_check_signals() with default Stop action
+- Shell creates child process groups with setpgid(0,0) and sets foreground with tcsetpgrp()
+- Shell restores itself as foreground after child exits or stops
+- Enhanced waitpid() to support WNOHANG and pid=-1 (any child)
+- Shell reaps background zombies with waitpid(-1, WNOHANG) before each prompt
+- waitpid returns (pid << 16) | status to identify which child was reaped
 
 ---
 

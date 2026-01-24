@@ -252,6 +252,7 @@ static long sys_fork(void) {
 
 	child->pagetable = child_pt;
 	child->parent = current;
+	child->pgid = current->pgid;
 
 	// Copy trap frame to child's kernel stack
 	char *sp = child->kstack + PAGE_SIZE;
@@ -294,6 +295,16 @@ static long sys_fork(void) {
 	return child->pid;
 }
 
+static long encode_wait_status(struct proc *p) {
+	int exit_code = p->exit_status;
+	int child_pid = p->pid;
+	p->state = UNUSED;
+	if (exit_code < 0) {
+		return (child_pid << 16) | ((-exit_code) & 0x7f);
+	}
+	return (child_pid << 16) | (exit_code << 8);
+}
+
 static long sys_wait(void) {
 	for (;;) {
 		int has_children = 0;
@@ -302,9 +313,7 @@ static long sys_wait(void) {
 			if (p->parent == current && p->state != UNUSED) {
 				has_children = 1;
 				if (p->state == ZOMBIE) {
-					int status = p->exit_status;
-					p->state = UNUSED;
-					return status;
+					return encode_wait_status(p);
 				}
 			}
 		}
@@ -315,26 +324,45 @@ static long sys_wait(void) {
 	}
 }
 
-static long sys_waitpid(int pid) {
-	if (pid <= 0) {
-		return -1;
-	}
+static long sys_waitpid(int pid, int options) {
+	int wnohang = options & 1;
+	int wuntraced = options & 2;
+
 	for (;;) {
-		struct proc *p = 0;
+		struct proc *stopped = 0;
+		int has_children = 0;
+
 		for (int i = 0; i < NPROC; i++) {
-			if (procs[i].pid == pid && procs[i].parent == current) {
-				p = &procs[i];
-				break;
+			struct proc *p = &procs[i];
+			if (p->state == UNUSED || p->parent != current) {
+				continue;
+			}
+			if (pid > 0 && p->pid != pid) {
+				continue;
+			}
+			has_children = 1;
+
+			if (p->state == ZOMBIE) {
+				return encode_wait_status(p);
+			}
+			if (wuntraced && p->state == STOPPED) {
+				stopped = p;
 			}
 		}
-		if (p == 0) {
+
+		if (!has_children) {
 			return -1;
 		}
-		if (p->state == ZOMBIE) {
-			int status = p->exit_status;
-			p->state = UNUSED;
-			return status;
+
+		if (stopped) {
+			int sig = stopped->stop_signal ? stopped->stop_signal : SIGTSTP;
+			return (stopped->pid << 16) | (sig << 8) | 0x7f;
 		}
+
+		if (wnohang) {
+			return 0;
+		}
+
 		proc_wait(current);
 	}
 }
@@ -933,6 +961,30 @@ static long sys_getppid(void) {
 	return current->parent ? current->parent->pid : 0;
 }
 
+static long sys_setpgid(int pid, int pgid) {
+	return proc_setpgid(pid, pgid);
+}
+
+static long sys_getpgid(int pid) {
+	return proc_getpgid(pid);
+}
+
+static long sys_tcsetpgrp(int fd, int pgid) {
+	(void)fd;
+	if (pgid < 0) {
+		return -1;
+	}
+	extern void console_set_fg_pgid(int pgid);
+	console_set_fg_pgid(pgid);
+	return 0;
+}
+
+static long sys_tcgetpgrp(int fd) {
+	(void)fd;
+	extern int console_get_fg_pgid(void);
+	return console_get_fg_pgid();
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -1180,7 +1232,19 @@ void syscall(struct trap_frame *tf) {
 		ret = sys_getppid();
 		break;
 	case SYS_waitpid:
-		ret = sys_waitpid((int)tf->regs[0]);
+		ret = sys_waitpid((int)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_setpgid:
+		ret = sys_setpgid((int)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_getpgid:
+		ret = sys_getpgid((int)tf->regs[0]);
+		break;
+	case SYS_tcsetpgrp:
+		ret = sys_tcsetpgrp((int)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_tcgetpgrp:
+		ret = sys_tcgetpgrp((int)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

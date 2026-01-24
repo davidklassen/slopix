@@ -1,12 +1,15 @@
 #include <test.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 TEST(fork_wait) {
 	int pid = fork();
 	if (pid == 0) {
 		exit(42);
 	}
-	ASSERT_EQ(wait(), 42, "child exit status is 42");
+	int ret = wait();
+	ASSERT(WIFEXITED(ret), "child exited normally");
+	ASSERT_EQ(WEXITSTATUS(ret), 42, "child exit status is 42");
 	return 0;
 }
 
@@ -36,7 +39,9 @@ TEST(exec_true) {
 		exec("true");
 		exit(1);
 	}
-	ASSERT_EQ(wait(), 0, "exec'd program exits 0");
+	int ret = wait();
+	ASSERT(WIFEXITED(ret), "exec'd program exited normally");
+	ASSERT_EQ(WEXITSTATUS(ret), 0, "exec'd program exits 0");
 	return 0;
 }
 
