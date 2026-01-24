@@ -14,6 +14,7 @@
 #include "disk.h"
 #include "dtb.h"
 #include "cmdline.h"
+#include "initramfs.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(string);
@@ -51,6 +52,14 @@ void kernel_main(void) {
 
 	extern unsigned long _dtb_address;
 	dtb_init((void *)_dtb_address);
+	initramfs_init();
+
+	unsigned long initrd_start = dtb_get_initrd_start();
+	unsigned long initrd_end = dtb_get_initrd_end();
+	if (initrd_start != 0 && initrd_end != 0) {
+		pmm_reserve_region(initrd_start, initrd_end);
+	}
+
 	RUN_SUITE(dtb);
 	cmdline_init(dtb_get_bootargs());
 	RUN_SUITE(cmdline);

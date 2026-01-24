@@ -13,6 +13,7 @@
 #define PMM_INVALID ((paddr_t) - 1)
 
 void pmm_init(void);
+void pmm_reserve_region(paddr_t start, paddr_t end);
 paddr_t pmm_alloc(void);
 void pmm_free(paddr_t pa);
 unsigned long pmm_free_count(void);

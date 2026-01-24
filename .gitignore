@@ -6,8 +6,8 @@ docsearch.db*
 
 tools/mkfs
 tools/mkramfs
-cmd/initramfs.bin
+initramfs-test.bin
 kernel/kernel.bin
 kernel/kernel-test.bin
 disk.img
-test.img
+disk-test.img

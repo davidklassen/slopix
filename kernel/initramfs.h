@@ -19,6 +19,7 @@ struct initramfs_entry {
 	unsigned int size;
 };
 
+void initramfs_init(void);
 int initramfs_find(const char *name, struct initramfs_entry *entry);
 
 #endif

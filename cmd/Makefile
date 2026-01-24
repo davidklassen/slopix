@@ -5,7 +5,11 @@ LD = $(CROSS)ld
 CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T link.ld
 
-all: initramfs.bin
+PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
+	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
+	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
+
+all: $(PROGS)
 
 init.elf: init/init.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
@@ -77,15 +81,8 @@ tests.elf:
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
-	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
-	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
-
-initramfs.bin: $(PROGS)
-	$(MKRAMFS) $@ $(PROGS)
-
 clean:
-	rm -f */*.o *.elf initramfs.bin
+	rm -f */*.o *.elf
 	$(MAKE) -C tests clean
 
 .PHONY: all clean

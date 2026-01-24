@@ -20,12 +20,19 @@ struct run {
 
 static struct run *freelist;
 static unsigned long free_count;
+static paddr_t reserved_start;
+static paddr_t reserved_end;
 
 static void zero_page(paddr_t pa) {
 	unsigned long *p = (unsigned long *)PA_TO_VA(pa);
 	for (unsigned long i = 0; i < PAGE_SIZE / sizeof(unsigned long); i++) {
 		p[i] = 0;
 	}
+}
+
+void pmm_reserve_region(paddr_t start, paddr_t end) {
+	reserved_start = start & ~(PAGE_SIZE - 1);
+	reserved_end = PAGE_ALIGN(end);
 }
 
 void pmm_init(void) {
@@ -36,6 +43,9 @@ void pmm_init(void) {
 	free_count = 0;
 
 	for (paddr_t pa = start; pa + PAGE_SIZE <= end; pa += PAGE_SIZE) {
+		if (reserved_start != 0 && pa >= reserved_start && pa < reserved_end) {
+			continue;
+		}
 		pmm_free(pa);
 	}
 

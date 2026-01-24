@@ -378,7 +378,11 @@ static void runcmd(struct cmd *cmd) {
 			if (i > 0 && pos < 127) {
 				cmdline[pos++] = ' ';
 			}
-			for (char *p = ecmd->argv[i]; *p && pos < 127; p++) {
+			char *arg = ecmd->argv[i];
+			if (i == 0 && arg[0] != '/' && !strchr(arg, '/')) {
+				cmdline[pos++] = '/';
+			}
+			for (char *p = arg; *p && pos < 127; p++) {
 				cmdline[pos++] = *p;
 			}
 		}

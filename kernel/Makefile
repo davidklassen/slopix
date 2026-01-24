@@ -7,8 +7,6 @@ CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostar
 ASFLAGS = -g -mcpu=cortex-a57
 LDFLAGS = -nostdlib -T linker.ld
 
-INITRAMFS = ../cmd/initramfs.bin
-
 OBJ = \
 	boot.o \
 	tables.o \
@@ -38,8 +36,7 @@ OBJ = \
 	string.o \
 	sync.o \
 	dtb.o \
-	cmdline.o \
-	initramfs_data.o
+	cmdline.o
 
 TEST_OBJ = \
 	tests/test.o \
@@ -85,11 +82,6 @@ kernel-test.bin: kernel-test.elf
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-initramfs_data.o: $(INITRAMFS)
-	$(OBJCOPY) -I binary -O elf64-littleaarch64 -B aarch64 \
-		--rename-section .data=.initramfs \
-		$< $@
 
 clean:
 	rm -f *.o *.elf *.bin tests/*.o
