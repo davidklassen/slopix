@@ -894,11 +894,11 @@ static long sys_munmap(unsigned long addr, unsigned long len) {
 	return 0;
 }
 
-static long sys_kill(int pid) {
+static long sys_kill(int pid, int sig) {
 	if (pid <= 0) {
 		return -1;
 	}
-	return proc_setkilled(pid);
+	return proc_signal(pid, sig);
 }
 
 static long sys_getprocs(struct procinfo *buf, int max) {
@@ -1171,7 +1171,7 @@ void syscall(struct trap_frame *tf) {
 		ret = sys_munmap(tf->regs[0], tf->regs[1]);
 		break;
 	case SYS_kill:
-		ret = sys_kill((int)tf->regs[0]);
+		ret = sys_kill((int)tf->regs[0], (int)tf->regs[1]);
 		break;
 	case SYS_getprocs:
 		ret = sys_getprocs((struct procinfo *)tf->regs[0], (int)tf->regs[1]);

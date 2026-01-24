@@ -7,6 +7,7 @@
 #include "kprintf.h"
 #include "syscall.h"
 #include "proc.h"
+#include "signal.h"
 #include "file.h"
 #include "fs.h"
 
@@ -158,6 +159,7 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 	switch (ec) {
 	case EC_SVC_AARCH64:
 		syscall(tf);
+		proc_check_signals();
 		break;
 
 	case EC_IABT_LOWER: {
@@ -170,7 +172,7 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 			read_far_el1(),
 			fault_status_string(fsc),
 			fsc);
-		current->killed = 1;
+		current->pending |= (1 << SIGKILL);
 		break;
 	}
 
@@ -186,7 +188,7 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 			read_far_el1(),
 			fault_status_string(fsc),
 			fsc);
-		current->killed = 1;
+		current->pending |= (1 << SIGKILL);
 		break;
 	}
 
@@ -197,11 +199,11 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 			ec,
 			iss,
 			tf->elr);
-		current->killed = 1;
+		current->pending |= (1 << SIGKILL);
 		break;
 	}
 
-	if (current->killed) {
+	if (proc_is_killed(current)) {
 		for (int fd = 0; fd < NOFILE; fd++) {
 			if (current->ofile[fd]) {
 				fileclose(current->ofile[fd]);

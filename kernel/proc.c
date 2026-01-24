@@ -3,6 +3,8 @@
 #include "vmm.h"
 #include "cpu.h"
 #include "timer.h"
+#include "file.h"
+#include "fs.h"
 
 struct proc procs[NPROC];
 struct proc *current;
@@ -28,7 +30,7 @@ struct proc *proc_alloc(void) {
 			p->tf = 0;
 			p->chan = 0;
 			p->wakeup_tick = 0;
-			p->killed = 0;
+			p->pending = 0;
 			p->name[0] = '\0';
 			p->cwd = 0;
 			return p;
@@ -153,7 +155,7 @@ void proc_yield(void) {
 }
 
 void proc_wait(void *chan) {
-	if (current->killed) {
+	if (current->pending) {
 		return;
 	}
 	current->chan = chan;
@@ -193,7 +195,7 @@ void proc_sleep(unsigned long ticks) {
 }
 
 void proc_wait_timeout(void *chan, unsigned long ticks) {
-	if (current->killed) {
+	if (current->pending) {
 		return;
 	}
 	current->chan = chan;
@@ -206,16 +208,92 @@ void proc_wait_timeout(void *chan, unsigned long ticks) {
 	current->wakeup_tick = 0;
 }
 
-int proc_setkilled(int pid) {
+int proc_signal(int pid, int sig) {
+	if (sig == 0) {
+		for (int i = 0; i < NPROC; i++) {
+			struct proc *p = &procs[i];
+			if (p->state != UNUSED && p->pid == pid) {
+				return 0;
+			}
+		}
+		return -1;
+	}
+
+	if (sig < 1 || sig >= NSIG) {
+		return -1;
+	}
+
 	for (int i = 0; i < NPROC; i++) {
 		struct proc *p = &procs[i];
 		if (p->state != UNUSED && p->pid == pid) {
-			p->killed = 1;
-			if (p->state == SLEEPING) {
+			p->pending |= (1 << sig);
+
+			if ((sig == SIGCONT || sig == SIGKILL) && p->state == STOPPED) {
+				p->state = RUNNABLE;
+			} else if (p->state == SLEEPING) {
 				p->state = RUNNABLE;
 			}
 			return 0;
 		}
 	}
 	return -1;
+}
+
+void proc_check_signals(void) {
+	if (current->pending == 0) {
+		return;
+	}
+
+	if (current->pending & (1 << SIGKILL)) {
+		current->pending &= ~(1 << SIGKILL);
+		goto do_exit;
+	}
+
+	if (current->pending & (1 << SIGSTOP)) {
+		current->pending &= ~(1 << SIGSTOP);
+		current->state = STOPPED;
+		proc_sched();
+		return;
+	}
+
+	if (current->pending & (1 << SIGTSTP)) {
+		current->pending &= ~(1 << SIGTSTP);
+		current->state = STOPPED;
+		proc_sched();
+		return;
+	}
+
+	if (current->pending & (1 << SIGCONT)) {
+		current->pending &= ~(1 << SIGCONT);
+	}
+
+	unsigned int term_sigs = (1 << SIGTERM) | (1 << SIGINT) | (1 << SIGHUP) |
+				 (1 << SIGQUIT) | (1 << SIGPIPE) |
+				 (1 << SIGALRM) | (1 << SIGUSR1) | (1 << SIGUSR2);
+	if (current->pending & term_sigs) {
+		current->pending &= ~term_sigs;
+		goto do_exit;
+	}
+
+	return;
+
+do_exit:
+	for (int fd = 0; fd < NOFILE; fd++) {
+		if (current->ofile[fd]) {
+			fileclose(current->ofile[fd]);
+			current->ofile[fd] = 0;
+		}
+	}
+	if (current->cwd) {
+		fs_iput(current->cwd);
+		current->cwd = 0;
+	}
+	current->exit_status = -1;
+	if (current->parent) {
+		current->state = ZOMBIE;
+		proc_wakeup(current->parent);
+	} else {
+		current->state = UNUSED;
+	}
+	proc_sched();
 }

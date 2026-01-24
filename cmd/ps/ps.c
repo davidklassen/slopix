@@ -9,6 +9,8 @@ static const char *state_str(int state) {
 	case 3:
 		return "S";
 	case 4:
+		return "T";
+	case 5:
 		return "Z";
 	default:
 		return "?";

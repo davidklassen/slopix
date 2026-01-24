@@ -290,11 +290,26 @@ int kill(int pid, int sig);
 
 ### Exit Criteria
 
-- [ ] Process can be stopped with SIGSTOP
-- [ ] Stopped process resumes with SIGCONT
-- [ ] `ps` shows STOPPED state correctly
-- [ ] Signal 0 checks process existence without sending signal
-- [ ] SIGKILL cannot be blocked (always terminates)
+- [x] Process can be stopped with SIGSTOP
+- [x] Stopped process resumes with SIGCONT
+- [x] `ps` shows STOPPED state correctly
+- [x] Signal 0 checks process existence without sending signal
+- [x] SIGKILL cannot be blocked (always terminates)
+
+### Implementation Notes
+
+Completed implementation included:
+- `kernel/signal.h` with POSIX signal number definitions (SIGINT, SIGKILL, SIGTERM, SIGSTOP, SIGCONT, etc.)
+- `pending` signal bitmask replacing `killed` flag in struct proc
+- `proc_is_killed(p)` macro for checking SIGKILL
+- STOPPED state added to proc_state enum
+- `proc_signal(pid, sig)` function replacing proc_setkilled
+- `proc_check_signals()` function called after syscalls to handle pending signals
+- SIGKILL and SIGCONT wake STOPPED processes
+- `libc/include/signal.h` for userspace signal constants
+- Extended kill command to support `-STOP`, `-CONT`, `-TERM`, `-9` options
+- Updated ps command to show 'T' state for STOPPED processes
+- Signal 0 checks process existence without delivering signal
 
 ---
 

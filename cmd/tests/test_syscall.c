@@ -1,5 +1,6 @@
 #include <test.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/procinfo.h>
 #include <fcntl.h>
@@ -173,17 +174,17 @@ TEST(getppid_returns_parent) {
 }
 
 TEST(kill_nonexistent) {
-	ASSERT_EQ(kill(9999), -1, "kill nonexistent returns -1");
+	ASSERT_EQ(kill(9999, SIGTERM), -1, "kill nonexistent returns -1");
 	return 0;
 }
 
 TEST(kill_zero_invalid) {
-	ASSERT_EQ(kill(0), -1, "kill(0) invalid");
+	ASSERT_EQ(kill(0, SIGTERM), -1, "kill(0) invalid");
 	return 0;
 }
 
 TEST(kill_negative_invalid) {
-	ASSERT_EQ(kill(-1), -1, "kill(-1) invalid");
+	ASSERT_EQ(kill(-1, SIGTERM), -1, "kill(-1) invalid");
 	return 0;
 }
 
@@ -193,7 +194,7 @@ TEST(kill_terminates_child) {
 		sleep(10000);
 		exit(0);
 	}
-	ASSERT_EQ(kill(child_pid), 0, "kill returns 0");
+	ASSERT_EQ(kill(child_pid, SIGTERM), 0, "kill returns 0");
 	int status = wait();
 	ASSERT_EQ(status, -1, "killed child exits -1");
 	return 0;
@@ -296,9 +297,115 @@ TEST(waitpid_specific_child) {
 	int status = waitpid(child2);
 	ASSERT_EQ(status, 2, "got child2 status");
 
-	kill(child1);
+	kill(child1, SIGKILL);
 	status = waitpid(child1);
 	ASSERT_EQ(status, -1, "got child1 killed status");
+	return 0;
+}
+
+TEST(kill_with_sigkill) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		sleep(10000);
+		exit(0);
+	}
+	ASSERT_EQ(kill(child_pid, SIGKILL), 0, "sigkill ok");
+	int status = wait();
+	ASSERT_EQ(status, -1, "killed by sigkill");
+	return 0;
+}
+
+TEST(kill_with_sigstop) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		sleep(10000);
+		exit(0);
+	}
+	sleep(10);
+	ASSERT_EQ(kill(child_pid, SIGSTOP), 0, "sigstop ok");
+	sleep(10);
+
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	int found_stopped = 0;
+	for (int i = 0; i < n; i++) {
+		if (procs[i].pid == child_pid && procs[i].state == 4) {
+			found_stopped = 1;
+			break;
+		}
+	}
+	ASSERT(found_stopped, "child is stopped");
+
+	kill(child_pid, SIGKILL);
+	wait();
+	return 0;
+}
+
+TEST(kill_with_sigcont) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		sleep(10000);
+		exit(42);
+	}
+	sleep(10);
+
+	ASSERT_EQ(kill(child_pid, SIGSTOP), 0, "stop ok");
+	sleep(10);
+
+	ASSERT_EQ(kill(child_pid, SIGCONT), 0, "cont ok");
+	sleep(10);
+
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	int found_running = 0;
+	for (int i = 0; i < n; i++) {
+		if (procs[i].pid == child_pid && procs[i].state != 4) {
+			found_running = 1;
+			break;
+		}
+	}
+	ASSERT(found_running, "child resumed");
+
+	kill(child_pid, SIGKILL);
+	wait();
+	return 0;
+}
+
+TEST(signal_zero_exists) {
+	int mypid = getpid();
+	ASSERT_EQ(kill(mypid, 0), 0, "sig 0 to self ok");
+	return 0;
+}
+
+TEST(signal_zero_nonexistent) {
+	ASSERT_EQ(kill(9999, 0), -1, "sig 0 to nonexistent");
+	return 0;
+}
+
+TEST(ps_shows_stopped) {
+	int child_pid = fork();
+	if (child_pid == 0) {
+		sleep(10000);
+		exit(0);
+	}
+	sleep(10);
+	kill(child_pid, SIGSTOP);
+	sleep(10);
+
+	struct procinfo procs[8];
+	int n = getprocs(procs, 8);
+	int found = 0;
+	for (int i = 0; i < n; i++) {
+		if (procs[i].pid == child_pid) {
+			ASSERT_EQ(procs[i].state, 4, "state is STOPPED");
+			found = 1;
+			break;
+		}
+	}
+	ASSERT(found, "found stopped child");
+
+	kill(child_pid, SIGKILL);
+	wait();
 	return 0;
 }
 
@@ -335,4 +442,10 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(waitpid_negative_invalid);
 	RUN_TEST(waitpid_not_child);
 	RUN_TEST(waitpid_specific_child);
+	RUN_TEST(kill_with_sigkill);
+	RUN_TEST(kill_with_sigstop);
+	RUN_TEST(kill_with_sigcont);
+	RUN_TEST(signal_zero_exists);
+	RUN_TEST(signal_zero_nonexistent);
+	RUN_TEST(ps_shows_stopped);
 }

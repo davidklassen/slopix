@@ -10,13 +10,19 @@ int main(void) {
 		exit(1);
 	}
 
+	int shell_pid = -1;
 	for (;;) {
-		int shell_pid = fork();
-		if (shell_pid == 0) {
-			exec("/shell");
-			printf("init: failed to exec /shell\n");
-			exit(1);
+		if (shell_pid < 0) {
+			shell_pid = fork();
+			if (shell_pid == 0) {
+				exec("/shell");
+				printf("init: failed to exec /shell\n");
+				exit(1);
+			}
 		}
-		waitpid(shell_pid);
+		int pid = wait();
+		if (pid == shell_pid) {
+			shell_pid = -1;
+		}
 	}
 }

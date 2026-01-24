@@ -3,6 +3,7 @@
 
 #include "vmm.h"
 #include "exception.h"
+#include "signal.h"
 
 struct inode;
 struct file;
@@ -21,6 +22,7 @@ enum proc_state { UNUSED,
 		  RUNNABLE,
 		  RUNNING,
 		  SLEEPING,
+		  STOPPED,
 		  ZOMBIE };
 
 struct proc {
@@ -41,7 +43,7 @@ struct proc {
 
 	int exit_status;
 
-	int killed;
+	unsigned int pending;
 	char name[16];
 
 	// Filesystem support
@@ -69,6 +71,9 @@ void proc_wait(void *chan);
 void proc_wait_timeout(void *chan, unsigned long ticks);
 void proc_wakeup(void *chan);
 void proc_wakeup_timed(void);
-int proc_setkilled(int pid);
+#define proc_is_killed(p) ((p)->pending & (1 << SIGKILL))
+
+int proc_signal(int pid, int sig);
+void proc_check_signals(void);
 
 #endif
