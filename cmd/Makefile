@@ -1,110 +1,91 @@
 CROSS = aarch64-elf-
 CC = $(CROSS)gcc
 LD = $(CROSS)ld
-HOSTCC = cc
 
-CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I../libc/include
+CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T link.ld
-
-LIBC = ../libc/libc.a
-
-ALL_APPS = init shell cursor_blink echo ticker shutdown true false tests cat ls mkdir rm cp mv touch wc head grep ps kill sleep
-
-PROGS = $(addsuffix .elf,$(ALL_APPS))
 
 all: initramfs.bin
 
-$(LIBC):
-	$(MAKE) -C ../libc
-
-mkramfs:
-	$(MAKE) -C ../tools mkramfs
-	cp ../tools/mkramfs $@
-
-init.elf: init/init.o $(LIBC)
+init.elf: init/init.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-shell.elf: shell/shell.o $(LIBC)
+shell.elf: shell/shell.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-cursor_blink.elf: cursor_blink/cursor_blink.o $(LIBC)
+cursor_blink.elf: cursor_blink/cursor_blink.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-echo.elf: echo/echo.o $(LIBC)
+echo.elf: echo/echo.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-ticker.elf: ticker/ticker.o $(LIBC)
+ticker.elf: ticker/ticker.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-shutdown.elf: shutdown/shutdown.o $(LIBC)
+shutdown.elf: shutdown/shutdown.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-true.elf: true/true.o $(LIBC)
+true.elf: true/true.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-false.elf: false/false.o $(LIBC)
+false.elf: false/false.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-cat.elf: cat/cat.o $(LIBC)
+cat.elf: cat/cat.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-ls.elf: ls/ls.o $(LIBC)
+ls.elf: ls/ls.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-mkdir.elf: mkdir/mkdir.o $(LIBC)
+mkdir.elf: mkdir/mkdir.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-rm.elf: rm/rm.o $(LIBC)
+rm.elf: rm/rm.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-cp.elf: cp/cp.o $(LIBC)
+cp.elf: cp/cp.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-mv.elf: mv/mv.o $(LIBC)
+mv.elf: mv/mv.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-touch.elf: touch/touch.o $(LIBC)
+touch.elf: touch/touch.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-wc.elf: wc/wc.o $(LIBC)
+wc.elf: wc/wc.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-head.elf: head/head.o $(LIBC)
+head.elf: head/head.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-grep.elf: grep/grep.o $(LIBC)
+grep.elf: grep/grep.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-ps.elf: ps/ps.o $(LIBC)
+ps.elf: ps/ps.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-kill.elf: kill/kill.o $(LIBC)
+kill.elf: kill/kill.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-sleep.elf: sleep/sleep.o $(LIBC)
+sleep.elf: sleep/sleep.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
-TEST_OBJ = \
-	tests/tests.o \
-	tests/test_syscall.o \
-	tests/test_sched.o \
-	tests/test_memory.o \
-	tests/test_mmap.o \
-	tests/test_filesys.o \
-	tests/test_pipe.o \
-	tests/test_libc.o \
-	tests/test_devices.o
-
-tests.elf: $(TEST_OBJ) $(LIBC)
-	$(LD) $(LDFLAGS) -o $@ $(TEST_OBJ) $(LIBC)
+tests.elf:
+	$(MAKE) -C tests LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) LINK_LD=$(CURDIR)/link.ld
+	cp tests/tests.elf $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-initramfs.bin: mkramfs $(PROGS)
-	./mkramfs $@ $(PROGS)
+PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
+	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
+	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
+
+initramfs.bin: $(PROGS)
+	$(MKRAMFS) $@ $(PROGS)
 
 clean:
-	rm -f */*.o *.elf mkramfs initramfs.bin
+	rm -f */*.o *.elf initramfs.bin
+	$(MAKE) -C tests clean
 
 .PHONY: all clean
