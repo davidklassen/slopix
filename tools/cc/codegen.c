@@ -149,6 +149,17 @@ static void gen_addr(Node *node) {
 		gen_expr(node->lhs);
 		gen_addr(node->rhs);
 		return;
+	case ND_MEMBER:
+		gen_addr(node->lhs);
+		println("  add x0, x0, #%d", node->member->offset);
+		return;
+	case ND_ASSIGN:
+	case ND_COND:
+		if (node->ty->kind == TY_STRUCT || node->ty->kind == TY_UNION) {
+			gen_expr(node);
+			return;
+		}
+		break;
 	default:
 		break;
 	}
@@ -427,6 +438,21 @@ static void gen_expr(Node *node) {
 		gen_addr(node);
 		load(node->ty);
 		return;
+	case ND_MEMBER: {
+		gen_addr(node);
+		load(node->ty);
+
+		Member *mem = node->member;
+		if (mem->is_bitfield) {
+			println("  lsl x0, x0, #%d", 64 - mem->bit_width - mem->bit_offset);
+			if (mem->ty->is_unsigned) {
+				println("  lsr x0, x0, #%d", 64 - mem->bit_width);
+			} else {
+				println("  asr x0, x0, #%d", 64 - mem->bit_width);
+			}
+		}
+		return;
+	}
 	case ND_MEMZERO:
 		// Zero-initialize a local variable
 		println("  add x0, x29, #%d", node->var->offset);
@@ -438,6 +464,28 @@ static void gen_expr(Node *node) {
 		gen_addr(node->lhs);
 		push();
 		gen_expr(node->rhs);
+
+		if (node->lhs->kind == ND_MEMBER && node->lhs->member->is_bitfield) {
+			Member *mem = node->lhs->member;
+
+			println("  mov x8, x0");
+
+			println("  and x2, x0, #%ld", (1L << mem->bit_width) - 1);
+			println("  lsl x2, x2, #%d", mem->bit_offset);
+
+			println("  ldr x0, [sp]");
+			load(mem->ty);
+
+			long mask = ((1L << mem->bit_width) - 1) << mem->bit_offset;
+			println("  ldr x3, =%ld", mask);
+			println("  bic x0, x0, x3");
+			println("  orr x0, x0, x2");
+
+			store(node->ty);
+			println("  mov x0, x8");
+			return;
+		}
+
 		store(node->ty);
 		return;
 	case ND_COMMA:

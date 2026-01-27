@@ -107,13 +107,15 @@ run: clean disk.img kernel/kernel.bin
 test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
 	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
-test-chibicc: clean disk-test.img kernel/kernel-test.bin initramfs-chibicc.bin
-	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-chibicc.bin -append "init=initramfs:tests"
+test-chibicc: disk-test.img kernel/kernel-test.bin tools/cc/test/all
+	@for test in float struct union bitfield; do \
+		echo "Running $$test tests..."; \
+		cp tools/cc/test/$$test.elf tools/cc/test/tests.elf; \
+		$(MKRAMFS) initramfs-chibicc.bin tools/cc/test/tests.elf; \
+		$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-chibicc.bin -append "init=initramfs:tests" || exit 1; \
+	done
 
-initramfs-chibicc.bin: $(MKRAMFS) tools/cc/test/tests.elf
-	$(MKRAMFS) $@ tools/cc/test/tests.elf
-
-tools/cc/test/tests.elf: $(LIBC)
+tools/cc/test/all: $(LIBC)
 	$(MAKE) -C tools/cc
 	$(MAKE) -C tools/cc/test
 

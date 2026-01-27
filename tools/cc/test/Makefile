@@ -8,21 +8,20 @@ CFLAGS = -I. -I$(ROOT)/libc/include -I../include
 LIBC = $(ROOT)/libc/libc.a
 LINK_SCRIPT = $(ROOT)/cmd/link.ld
 
-# Test file - only one at a time (each has its own main)
-TESTS = float
+TESTS = float struct union bitfield
 
-OBJS = common.o $(addsuffix .o,$(TESTS))
+ELFS = $(addsuffix .elf,$(TESTS))
 
-all: tests.elf
+all: $(ELFS)
 
-tests.elf: $(OBJS) $(LIBC)
-	$(LD) -T $(LINK_SCRIPT) -o $@ $(OBJS) $(LIBC)
+%.elf: %.o common.o $(LIBC)
+	$(LD) -T $(LINK_SCRIPT) -o $@ $< common.o $(LIBC)
 
 %.o: %.c ../chibicc
 	$(CC) $(CFLAGS) -S -o $*.s $<
 	$(AS) -o $@ $*.s
 
 clean:
-	rm -f *.o *.s tests.elf
+	rm -f *.o *.s *.elf
 
 .PHONY: all clean
