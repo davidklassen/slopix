@@ -3,8 +3,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AS_DIR="$SCRIPT_DIR/.."
-AS="$AS_DIR/as"
+ROOT_DIR="$SCRIPT_DIR/../../.."
+AS="$ROOT_DIR/tools/as/as"
 CROSS=aarch64-elf-
 
 RED='\033[0;31m'
@@ -18,7 +18,7 @@ SKIP=0
 
 if [ ! -x "$AS" ]; then
     echo "Building assembler..."
-    make -C "$AS_DIR" >/dev/null
+    make -C "$ROOT_DIR/tools/as" >/dev/null
 fi
 
 run_test() {
@@ -101,7 +101,7 @@ for src in "$SCRIPT_DIR"/*.s; do
 done
 
 if [ "$unit_only" = false ]; then
-    CMD_DIR="$AS_DIR/../.."
+    CMD_DIR="$ROOT_DIR/cmd"
     for prog_dir in "$CMD_DIR"/*/; do
         prog=$(basename "$prog_dir")
         if [ "$prog" = "as" ] || [ "$prog" = "tests" ]; then

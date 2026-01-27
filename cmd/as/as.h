@@ -292,6 +292,13 @@ typedef enum {
 	COND_AL = 14,
 } CondCode;
 
+// Logical immediate encoding
+typedef struct {
+	int n;
+	int imms;
+	int immr;
+} LogicalImm;
+
 // encode.c - helper functions
 int encode_gpr(Token *tok);
 int encode_fpr(Token *tok);
@@ -306,6 +313,7 @@ int encode_imm21(int64_t val);
 int invert_cond(int cond);
 int encode_branch26(int64_t offset);
 int encode_branch19(int64_t offset);
+int encode_logical_imm(int sf, uint64_t val, LogicalImm *out);
 
 // encode.c - arithmetic
 uint32_t encode_add_reg(int sf, int rd, int rn, int rm);
@@ -324,7 +332,7 @@ uint32_t encode_msub(int sf, int rd, int rn, int rm, int ra);
 uint32_t encode_neg(int sf, int rd, int rm);
 uint32_t encode_negs(int sf, int rd, int rm);
 
-// encode.c - logical
+// encode.c - logical (register)
 uint32_t encode_and_reg(int sf, int rd, int rn, int rm);
 uint32_t encode_orr_reg(int sf, int rd, int rn, int rm);
 uint32_t encode_eor_reg(int sf, int rd, int rn, int rm);
@@ -332,6 +340,13 @@ uint32_t encode_mvn(int sf, int rd, int rm);
 uint32_t encode_bic(int sf, int rd, int rn, int rm);
 uint32_t encode_ands_reg(int sf, int rd, int rn, int rm);
 uint32_t encode_tst_reg(int sf, int rn, int rm);
+
+// encode.c - logical (immediate)
+uint32_t encode_and_imm(int sf, int rd, int rn, int n, int imms, int immr);
+uint32_t encode_orr_imm(int sf, int rd, int rn, int n, int imms, int immr);
+uint32_t encode_eor_imm(int sf, int rd, int rn, int n, int imms, int immr);
+uint32_t encode_ands_imm(int sf, int rd, int rn, int n, int imms, int immr);
+uint32_t encode_tst_imm(int sf, int rn, int n, int imms, int immr);
 
 // encode.c - shift (variable)
 uint32_t encode_lsl_reg(int sf, int rd, int rn, int rm);

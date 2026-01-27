@@ -900,9 +900,18 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_and_reg(sf, rd, rn, rm));
+		t = skip_hash(t);
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_and_reg(sf, rd, rn, rm));
+		} else {
+			uint64_t val = (uint64_t)t->val;
+			LogicalImm imm;
+			if (!encode_logical_imm(sf, val, &imm)) {
+				error_tok(t, "immediate 0x%llx not encodable as logical immediate", (unsigned long long)val);
+			}
+			emit32(encode_and_imm(sf, rd, rn, imm.n, imm.imms, imm.immr));
+		}
 		return;
 	}
 
@@ -914,9 +923,18 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_orr_reg(sf, rd, rn, rm));
+		t = skip_hash(t);
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_orr_reg(sf, rd, rn, rm));
+		} else {
+			uint64_t val = (uint64_t)t->val;
+			LogicalImm imm;
+			if (!encode_logical_imm(sf, val, &imm)) {
+				error_tok(t, "immediate 0x%llx not encodable as logical immediate", (unsigned long long)val);
+			}
+			emit32(encode_orr_imm(sf, rd, rn, imm.n, imm.imms, imm.immr));
+		}
 		return;
 	}
 
@@ -928,9 +946,18 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_eor_reg(sf, rd, rn, rm));
+		t = skip_hash(t);
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_eor_reg(sf, rd, rn, rm));
+		} else {
+			uint64_t val = (uint64_t)t->val;
+			LogicalImm imm;
+			if (!encode_logical_imm(sf, val, &imm)) {
+				error_tok(t, "immediate 0x%llx not encodable as logical immediate", (unsigned long long)val);
+			}
+			emit32(encode_eor_imm(sf, rd, rn, imm.n, imm.imms, imm.immr));
+		}
 		return;
 	}
 
@@ -967,9 +994,18 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_ands_reg(sf, rd, rn, rm));
+		t = skip_hash(t);
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_ands_reg(sf, rd, rn, rm));
+		} else {
+			uint64_t val = (uint64_t)t->val;
+			LogicalImm imm;
+			if (!encode_logical_imm(sf, val, &imm)) {
+				error_tok(t, "immediate 0x%llx not encodable as logical immediate", (unsigned long long)val);
+			}
+			emit32(encode_ands_imm(sf, rd, rn, imm.n, imm.imms, imm.immr));
+		}
 		return;
 	}
 
@@ -978,9 +1014,18 @@ static void handle_instruction(Token *tok) {
 		int sf = t->reg_width == 64 ? 1 : 0;
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_tst_reg(sf, rn, rm));
+		t = skip_hash(t);
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_tst_reg(sf, rn, rm));
+		} else {
+			uint64_t val = (uint64_t)t->val;
+			LogicalImm imm;
+			if (!encode_logical_imm(sf, val, &imm)) {
+				error_tok(t, "immediate 0x%llx not encodable as logical immediate", (unsigned long long)val);
+			}
+			emit32(encode_tst_imm(sf, rn, imm.n, imm.imms, imm.immr));
+		}
 		return;
 	}
 

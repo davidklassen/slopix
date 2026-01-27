@@ -170,6 +170,137 @@ int encode_branch19(int64_t offset) {
 	return (int)(imm & 0x7FFFF);
 }
 
+// Count trailing zeros in a 64-bit value
+static int ctz64(uint64_t val) {
+	if (val == 0) {
+		return 64;
+	}
+	int count = 0;
+	while ((val & 1) == 0) {
+		val >>= 1;
+		count++;
+	}
+	return count;
+}
+
+// Rotate right a 64-bit value by amount bits
+static uint64_t ror64(uint64_t val, int amount) {
+	amount &= 63;
+	if (amount == 0) {
+		return val;
+	}
+	return (val >> amount) | (val << (64 - amount));
+}
+
+// Encode a logical immediate value into N/imms/immr fields
+// sf: 1 for 64-bit, 0 for 32-bit
+// Returns 1 on success, 0 if not encodable
+int encode_logical_imm(int sf, uint64_t val, LogicalImm *out) {
+	int width = sf ? 64 : 32;
+
+	// For 32-bit, replicate to 64-bit for uniform handling
+	if (!sf) {
+		val &= 0xFFFFFFFF;
+		val |= val << 32;
+	}
+
+	// Cannot encode all-zeros or all-ones
+	if (val == 0 || val == ~0ULL) {
+		return 0;
+	}
+
+	// Find element size: smallest power of 2 where pattern repeats
+	int size;
+	for (size = 2; size < width; size *= 2) {
+		uint64_t mask = (1ULL << size) - 1;
+		uint64_t elem = val & mask;
+		uint64_t test = val;
+		int match = 1;
+		for (int i = 0; i < 64; i += size) {
+			if ((test & mask) != elem) {
+				match = 0;
+				break;
+			}
+			test >>= size;
+		}
+		if (match) {
+			break;
+		}
+	}
+	if (size == width && !sf) {
+		size = 64;
+	}
+
+	// Extract element
+	uint64_t mask = (size == 64) ? ~0ULL : (1ULL << size) - 1;
+	uint64_t elem = val & mask;
+
+	// Rotate element to put leading ones at MSB end
+	// Find the rotation that makes the element a contiguous run of ones at LSB
+	int rotation = ctz64(elem);
+	uint64_t rotated = ror64(elem, rotation);
+	if (size < 64) {
+		rotated &= mask;
+	}
+
+	// Count consecutive ones from bit 0
+	int ones = 0;
+	uint64_t tmp = rotated;
+	while (tmp & 1) {
+		ones++;
+		tmp >>= 1;
+	}
+
+	// After the ones, rest should be zeros
+	if ((rotated >> ones) != 0) {
+		return 0;
+	}
+
+	// Validate the encoding
+	if (ones == 0 || ones == size) {
+		return 0;
+	}
+
+	// Encode fields
+	int n, imms, immr;
+
+	if (size == 64) {
+		n = 1;
+		imms = ones - 1;
+		immr = (size - rotation) & (size - 1);
+	} else {
+		n = 0;
+		// imms encodes element size in upper bits
+		int size_bits;
+		switch (size) {
+		case 2:
+			size_bits = 0b111100;
+			break;
+		case 4:
+			size_bits = 0b111000;
+			break;
+		case 8:
+			size_bits = 0b110000;
+			break;
+		case 16:
+			size_bits = 0b100000;
+			break;
+		case 32:
+			size_bits = 0b000000;
+			break;
+		default:
+			return 0;
+		}
+		imms = size_bits | (ones - 1);
+		immr = (size - rotation) & (size - 1);
+	}
+
+	out->n = n;
+	out->imms = imms;
+	out->immr = immr;
+	return 1;
+}
+
 // ADD Xd, Xn, Xm (register form)
 // sf: 1 for 64-bit (X), 0 for 32-bit (W)
 uint32_t encode_add_reg(int sf, int rd, int rn, int rm) {
@@ -772,6 +903,43 @@ uint32_t encode_tst_reg(int sf, int rn, int rm) {
 	return encode_ands_reg(sf, 31, rn, rm);
 }
 
+// AND Xd, Xn, #imm (immediate form)
+// Opcodes: 0x92400000 (64-bit) / 0x12000000 (32-bit)
+uint32_t encode_and_imm(int sf, int rd, int rn, int n, int imms, int immr) {
+	uint32_t base = sf ? 0x92000000 : 0x12000000;
+	return base | ((uint32_t)n << 22) | ((uint32_t)immr << 16) |
+	       ((uint32_t)imms << 10) | ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// ORR Xd, Xn, #imm (immediate form)
+// Opcodes: 0xB2400000 (64-bit) / 0x32000000 (32-bit)
+uint32_t encode_orr_imm(int sf, int rd, int rn, int n, int imms, int immr) {
+	uint32_t base = sf ? 0xB2000000 : 0x32000000;
+	return base | ((uint32_t)n << 22) | ((uint32_t)immr << 16) |
+	       ((uint32_t)imms << 10) | ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// EOR Xd, Xn, #imm (immediate form)
+// Opcodes: 0xD2400000 (64-bit) / 0x52000000 (32-bit)
+uint32_t encode_eor_imm(int sf, int rd, int rn, int n, int imms, int immr) {
+	uint32_t base = sf ? 0xD2000000 : 0x52000000;
+	return base | ((uint32_t)n << 22) | ((uint32_t)immr << 16) |
+	       ((uint32_t)imms << 10) | ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// ANDS Xd, Xn, #imm (immediate form, sets flags)
+// Opcodes: 0xF2400000 (64-bit) / 0x72000000 (32-bit)
+uint32_t encode_ands_imm(int sf, int rd, int rn, int n, int imms, int immr) {
+	uint32_t base = sf ? 0xF2000000 : 0x72000000;
+	return base | ((uint32_t)n << 22) | ((uint32_t)immr << 16) |
+	       ((uint32_t)imms << 10) | ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// TST Xn, #imm (alias for ANDS XZR, Xn, #imm)
+uint32_t encode_tst_imm(int sf, int rn, int n, int imms, int immr) {
+	return encode_ands_imm(sf, 31, rn, n, imms, immr);
+}
+
 // LSL Xd, Xn, Xm (LSLV, variable shift)
 uint32_t encode_lsl_reg(int sf, int rd, int rn, int rm) {
 	uint32_t base = sf ? 0x9AC02000 : 0x1AC02000;
@@ -1316,6 +1484,17 @@ void test_encode(void) {
 	check_encoding("ORR x0, x1, x2", encode_orr_reg(1, 0, 1, 2), 0xAA020020);
 	check_encoding("EOR x0, x1, x2", encode_eor_reg(1, 0, 1, 2), 0xCA020020);
 
+	printf("\nAND/ORR/EOR/ANDS immediate:\n");
+	// 0x3FF = 1023 = 10 ones at bit 0, N=1, imms=9, immr=0
+	check_encoding("AND x0, x1, #0x3FF", encode_and_imm(1, 0, 1, 1, 9, 0), 0x92402420);
+	// 0xFF = 8 ones at bit 0, N=1, imms=7, immr=0
+	check_encoding("AND x0, x1, #0xFF", encode_and_imm(1, 0, 1, 1, 7, 0), 0x92401C20);
+	check_encoding("ORR x0, x1, #0xFF", encode_orr_imm(1, 0, 1, 1, 7, 0), 0xB2401C20);
+	check_encoding("EOR x0, x1, #0xFF", encode_eor_imm(1, 0, 1, 1, 7, 0), 0xD2401C20);
+	check_encoding("ANDS x0, x1, #0xFF", encode_ands_imm(1, 0, 1, 1, 7, 0), 0xF2401C20);
+	// 32-bit: 0xFF = 8 ones, N=0, imms=7, immr=0
+	check_encoding("AND w0, w1, #0xFF", encode_and_imm(0, 0, 1, 0, 7, 0), 0x12001C20);
+
 	printf("\nMVN/BIC:\n");
 	check_encoding("MVN x0, x1", encode_mvn(1, 0, 1), 0xAA2103E0);
 	check_encoding("MVN w0, w1", encode_mvn(0, 0, 1), 0x2A2103E0);
@@ -1499,6 +1678,24 @@ void test_encode(void) {
 	printf("  encode_branch26(-4) = 0x%X\n", encode_branch26(-4));
 	printf("  encode_branch19(12) = 0x%X\n", encode_branch19(12));
 	printf("  encode_branch19(-8) = 0x%X\n", encode_branch19(-8));
+
+	printf("\nLogical immediate encoding:\n");
+	LogicalImm imm;
+	// 0xFF = 8 ones at bit 0
+	int ok = encode_logical_imm(1, 0xFF, &imm);
+	printf("  0xFF: ok=%d n=%d imms=%d immr=%d\n", ok, imm.n, imm.imms, imm.immr);
+	// 0x3FF = 10 ones at bit 0
+	ok = encode_logical_imm(1, 0x3FF, &imm);
+	printf("  0x3FF: ok=%d n=%d imms=%d immr=%d\n", ok, imm.n, imm.imms, imm.immr);
+	// 0x5555555555555555 = alternating 01 pattern
+	ok = encode_logical_imm(1, 0x5555555555555555ULL, &imm);
+	printf("  0x5555...5555: ok=%d n=%d imms=%d immr=%d\n", ok, imm.n, imm.imms, imm.immr);
+	// All ones - not encodable
+	ok = encode_logical_imm(1, ~0ULL, &imm);
+	printf("  ~0: ok=%d (should be 0)\n", ok);
+	// All zeros - not encodable
+	ok = encode_logical_imm(1, 0, &imm);
+	printf("  0: ok=%d (should be 0)\n", ok);
 
 	printf("\n========================================\n");
 	printf("Results: %d/%d tests passed\n", test_pass, test_count);

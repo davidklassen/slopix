@@ -1,11 +1,12 @@
-CROSS = aarch64-elf-
+# Native assembler: compiled by chibicc, assembled by our cross-assembler
+# This is proper bootstrapping - the assembler assembles itself
+
 ROOT = $(dir $(lastword $(MAKEFILE_LIST)))../..
-AS_SRC = $(ROOT)/tools/as
 
-AS = $(CROSS)as
-LD = $(CROSS)ld
+AS ?= $(ROOT)/tools/as/as
+LD ?= aarch64-elf-ld
 
-CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE) -I$(AS_SRC)
+CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T ../link.ld
 
 SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
@@ -14,7 +15,7 @@ OBJS = $(SRCS:.c=.o)
 as.elf: $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBC)
 
-%.o: $(AS_SRC)/%.c $(AS_SRC)/as.h
+%.o: %.c as.h
 	$(CC) $(CFLAGS) -S -o $*.s $<
 	$(AS) -o $@ $*.s
 

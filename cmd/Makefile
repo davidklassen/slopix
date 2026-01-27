@@ -1,7 +1,6 @@
-CROSS = aarch64-elf-
 ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
-AS = $(ROOT)/tools/as/as
-LD = $(CROSS)ld
+AS ?= $(ROOT)/tools/as/as
+LD ?= aarch64-elf-ld
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T link.ld
@@ -81,7 +80,7 @@ tests.elf:
 	cp tests/tests.elf $@
 
 as.elf:
-	$(MAKE) -C as CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C as CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 	cp as/as.elf $@
 
 %.o: %.c

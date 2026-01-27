@@ -6,6 +6,8 @@ LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
 CC = $(ROOT)/tools/cc/chibicc
 CC_INCLUDE = $(ROOT)/tools/cc/include
+AS = $(ROOT)/tools/as/as
+LD = aarch64-elf-ld
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
@@ -28,8 +30,11 @@ $(LIBC): tools/cc/chibicc
 tools/cc/chibicc:
 	$(MAKE) -C tools/cc
 
-cmd: $(LIBC) tools/cc/chibicc
-	$(MAKE) -C cmd CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+$(AS):
+	$(MAKE) -C tools/as
+
+cmd: $(LIBC) tools/cc/chibicc $(AS)
+	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 
 initramfs-test.bin: $(MKRAMFS) cmd
 	$(MKRAMFS) $@ $(addprefix cmd/,$(PROGS))
