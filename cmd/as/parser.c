@@ -1298,9 +1298,20 @@ static void handle_instruction(Token *tok) {
 				emit32(encode_ldrb_uoff(rt, rn, 0));
 			} else if (t->kind == TOK_COMMA) {
 				t = t->next;
-				t = skip_hash(t);
-				int64_t imm = t->val;
-				emit32(encode_ldrb_uoff(rt, rn, imm));
+				if (t->kind == TOK_LO12) {
+					t = t->next;
+					Symbol *sym = NULL;
+					if (t->kind == TOK_IDENT) {
+						sym = symtab_add(t->str);
+					}
+					int sym_idx = sym ? symtab_get_index(sym) : -1;
+					emit_reloc(R_AARCH64_LDST8_ABS_LO12_NC, sym_idx, 0);
+					emit32(encode_ldrb_uoff(rt, rn, 0));
+				} else {
+					t = skip_hash(t);
+					int64_t imm = t->val;
+					emit32(encode_ldrb_uoff(rt, rn, imm));
+				}
 			}
 		}
 		return;
@@ -1319,9 +1330,20 @@ static void handle_instruction(Token *tok) {
 				emit32(encode_strb_uoff(rt, rn, 0));
 			} else if (t->kind == TOK_COMMA) {
 				t = t->next;
-				t = skip_hash(t);
-				int64_t imm = t->val;
-				emit32(encode_strb_uoff(rt, rn, imm));
+				if (t->kind == TOK_LO12) {
+					t = t->next;
+					Symbol *sym = NULL;
+					if (t->kind == TOK_IDENT) {
+						sym = symtab_add(t->str);
+					}
+					int sym_idx = sym ? symtab_get_index(sym) : -1;
+					emit_reloc(R_AARCH64_LDST8_ABS_LO12_NC, sym_idx, 0);
+					emit32(encode_strb_uoff(rt, rn, 0));
+				} else {
+					t = skip_hash(t);
+					int64_t imm = t->val;
+					emit32(encode_strb_uoff(rt, rn, imm));
+				}
 			}
 		}
 		return;
@@ -1340,9 +1362,20 @@ static void handle_instruction(Token *tok) {
 				emit32(encode_ldrh_uoff(rt, rn, 0));
 			} else if (t->kind == TOK_COMMA) {
 				t = t->next;
-				t = skip_hash(t);
-				int64_t imm = t->val;
-				emit32(encode_ldrh_uoff(rt, rn, imm));
+				if (t->kind == TOK_LO12) {
+					t = t->next;
+					Symbol *sym = NULL;
+					if (t->kind == TOK_IDENT) {
+						sym = symtab_add(t->str);
+					}
+					int sym_idx = sym ? symtab_get_index(sym) : -1;
+					emit_reloc(R_AARCH64_LDST16_ABS_LO12_NC, sym_idx, 0);
+					emit32(encode_ldrh_uoff(rt, rn, 0));
+				} else {
+					t = skip_hash(t);
+					int64_t imm = t->val;
+					emit32(encode_ldrh_uoff(rt, rn, imm));
+				}
 			}
 		}
 		return;
@@ -1361,9 +1394,20 @@ static void handle_instruction(Token *tok) {
 				emit32(encode_strh_uoff(rt, rn, 0));
 			} else if (t->kind == TOK_COMMA) {
 				t = t->next;
-				t = skip_hash(t);
-				int64_t imm = t->val;
-				emit32(encode_strh_uoff(rt, rn, imm));
+				if (t->kind == TOK_LO12) {
+					t = t->next;
+					Symbol *sym = NULL;
+					if (t->kind == TOK_IDENT) {
+						sym = symtab_add(t->str);
+					}
+					int sym_idx = sym ? symtab_get_index(sym) : -1;
+					emit_reloc(R_AARCH64_LDST16_ABS_LO12_NC, sym_idx, 0);
+					emit32(encode_strh_uoff(rt, rn, 0));
+				} else {
+					t = skip_hash(t);
+					int64_t imm = t->val;
+					emit32(encode_strh_uoff(rt, rn, imm));
+				}
 			}
 		}
 		return;
