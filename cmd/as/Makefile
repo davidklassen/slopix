@@ -1,7 +1,7 @@
 CC = cc
 CFLAGS = -Wall -Wextra -g -O0
 
-SRC = main.c lexer.c
+SRC = main.c lexer.c symtab.c parser.c
 OBJ = $(SRC:.c=.o)
 
 as: $(OBJ)

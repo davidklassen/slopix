@@ -174,6 +174,7 @@ static void usage(void) {
 	fprintf(stderr, "Usage: as [options] <input.s>\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -dump-tokens    Print tokens and exit\n");
+	fprintf(stderr, "  -dump-symbols   Print symbol table and exit\n");
 	fprintf(stderr, "  -o <file>       Output file\n");
 	exit(1);
 }
@@ -182,10 +183,13 @@ int main(int argc, char **argv) {
 	char *input_file = NULL;
 	char *output_file = NULL;
 	bool dump_tokens_flag = false;
+	bool dump_symbols_flag = false;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-dump-tokens") == 0) {
 			dump_tokens_flag = true;
+		} else if (strcmp(argv[i], "-dump-symbols") == 0) {
+			dump_symbols_flag = true;
 		} else if (strcmp(argv[i], "-o") == 0) {
 			if (i + 1 >= argc) {
 				usage();
@@ -216,6 +220,13 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	printf("Tokenized %s successfully\n", input_file);
+	pass1(tok);
+
+	if (dump_symbols_flag) {
+		dump_symbols();
+		return 0;
+	}
+
+	printf("Parsed %s successfully (%d symbols)\n", input_file, symtab_count());
 	return 0;
 }
