@@ -1,22 +1,24 @@
-CC = cc
-CFLAGS = -Wall -Wextra -g -O0
+CROSS = aarch64-elf-
+ROOT = $(dir $(lastword $(MAKEFILE_LIST)))../..
+AS_SRC = $(ROOT)/tools/as
 
-SRC = main.c lexer.c symtab.c parser.c encode.c section.c strtab.c reloc.c elf_write.c literal.c
-OBJ = $(SRC:.c=.o)
+AS = $(CROSS)as
+LD = $(CROSS)ld
 
-as: $(OBJ)
-	$(CC) -o $@ $(OBJ)
+CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE) -I$(AS_SRC)
+LDFLAGS = -nostdlib -T ../link.ld
 
-%.o: %.c as.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
+OBJS = $(SRCS:.c=.o)
+
+as.elf: $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBC)
+
+%.o: $(AS_SRC)/%.c $(AS_SRC)/as.h
+	$(CC) $(CFLAGS) -S -o $*.s $<
+	$(AS) -o $@ $*.s
 
 clean:
-	rm -f $(OBJ) as
+	rm -f *.o *.s as.elf
 
-test: as
-	./tests/run-tests.sh
-
-test-unit: as
-	./tests/run-tests.sh --unit-only
-
-.PHONY: clean test test-unit
+.PHONY: clean

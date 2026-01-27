@@ -1,4 +1,4 @@
-SUBDIRS = mkfs mkramfs cc
+SUBDIRS = mkfs mkramfs cc as
 
 all:
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir; done

@@ -438,6 +438,47 @@ TEST(strtok_leading_delim) {
 	return 0;
 }
 
+TEST(strcasecmp_equal) {
+	ASSERT_EQ(strcasecmp("hello", "hello"), 0, "equal lowercase");
+	ASSERT_EQ(strcasecmp("HELLO", "hello"), 0, "upper vs lower");
+	ASSERT_EQ(strcasecmp("HeLLo", "hElLO"), 0, "mixed case");
+	return 0;
+}
+
+TEST(strcasecmp_less) {
+	ASSERT(strcasecmp("abc", "ABD") < 0, "abc < ABD");
+	ASSERT(strcasecmp("ABC", "abd") < 0, "ABC < abd");
+	return 0;
+}
+
+TEST(strcasecmp_greater) {
+	ASSERT(strcasecmp("abd", "ABC") > 0, "abd > ABC");
+	ASSERT(strcasecmp("ABD", "abc") > 0, "ABD > abc");
+	return 0;
+}
+
+TEST(strcasecmp_prefix) {
+	ASSERT(strcasecmp("HELLO", "hell") > 0, "HELLO > hell");
+	ASSERT(strcasecmp("hell", "HELLO") < 0, "hell < HELLO");
+	return 0;
+}
+
+TEST(strncasecmp_equal_n) {
+	ASSERT_EQ(strncasecmp("HELLO", "help", 3), 0, "equal prefix");
+	ASSERT_EQ(strncasecmp("hello", "HELP", 3), 0, "equal prefix mixed");
+	return 0;
+}
+
+TEST(strncasecmp_diff_n) {
+	ASSERT(strncasecmp("HELLO", "help", 4) != 0, "different at 4");
+	return 0;
+}
+
+TEST(strncasecmp_zero_n) {
+	ASSERT_EQ(strncasecmp("abc", "xyz", 0), 0, "n=0 always equal");
+	return 0;
+}
+
 TEST(strtoul_decimal) {
 	ASSERT_EQ(strtoul("123", NULL, 10), 123, "decimal");
 	ASSERT_EQ(strtoul("  456", NULL, 10), 456, "leading space");
@@ -678,6 +719,13 @@ TEST_SUITE(libc) {
 	RUN_TEST(strtok_basic);
 	RUN_TEST(strtok_multiple_delims);
 	RUN_TEST(strtok_leading_delim);
+	RUN_TEST(strcasecmp_equal);
+	RUN_TEST(strcasecmp_less);
+	RUN_TEST(strcasecmp_greater);
+	RUN_TEST(strcasecmp_prefix);
+	RUN_TEST(strncasecmp_equal_n);
+	RUN_TEST(strncasecmp_diff_n);
+	RUN_TEST(strncasecmp_zero_n);
 	RUN_TEST(strtoul_decimal);
 	RUN_TEST(strtoul_hex);
 	RUN_TEST(strtoul_octal);

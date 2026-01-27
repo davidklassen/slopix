@@ -358,6 +358,125 @@ TEST(open_memstream_null_args) {
 	return 0;
 }
 
+TEST(fseek_set) {
+	FILE *f = fopen("/test_seek.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("hello world", 1, 11, f);
+	fclose(f);
+
+	f = fopen("/test_seek.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	ASSERT_EQ(fseek(f, 6, SEEK_SET), 0, "fseek set");
+	ASSERT_EQ(fgetc(f), 'w', "read after seek");
+	fclose(f);
+	unlink("/test_seek.txt");
+	return 0;
+}
+
+TEST(fseek_cur) {
+	FILE *f = fopen("/test_seek2.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("abcdefghij", 1, 10, f);
+	fclose(f);
+
+	f = fopen("/test_seek2.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	fgetc(f);
+	fgetc(f);
+	ASSERT_EQ(fseek(f, 3, SEEK_CUR), 0, "fseek cur");
+	ASSERT_EQ(fgetc(f), 'f', "read after seek cur");
+	fclose(f);
+	unlink("/test_seek2.txt");
+	return 0;
+}
+
+TEST(fseek_end) {
+	FILE *f = fopen("/test_seek3.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("0123456789", 1, 10, f);
+	fclose(f);
+
+	f = fopen("/test_seek3.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	ASSERT_EQ(fseek(f, -3, SEEK_END), 0, "fseek end");
+	ASSERT_EQ(fgetc(f), '7', "read after seek end");
+	fclose(f);
+	unlink("/test_seek3.txt");
+	return 0;
+}
+
+TEST(ftell_basic) {
+	FILE *f = fopen("/test_tell.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("hello", 1, 5, f);
+	fclose(f);
+
+	f = fopen("/test_tell.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	ASSERT_EQ(ftell(f), 0, "ftell at start");
+	fgetc(f);
+	fgetc(f);
+	ASSERT_EQ(ftell(f), 2, "ftell after 2 reads");
+	fseek(f, 0, SEEK_END);
+	ASSERT_EQ(ftell(f), 5, "ftell at end");
+	fclose(f);
+	unlink("/test_tell.txt");
+	return 0;
+}
+
+TEST(feof_not_eof) {
+	FILE *f = fopen("/test_eof.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("x", 1, 1, f);
+	fclose(f);
+
+	f = fopen("/test_eof.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	ASSERT_EQ(feof(f), 0, "not eof initially");
+	fgetc(f);
+	ASSERT_EQ(feof(f), 0, "not eof after read");
+	fclose(f);
+	unlink("/test_eof.txt");
+	return 0;
+}
+
+TEST(feof_at_eof) {
+	FILE *f = fopen("/test_eof2.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("x", 1, 1, f);
+	fclose(f);
+
+	f = fopen("/test_eof2.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	fgetc(f);
+	int c = fgetc(f);
+	ASSERT_EQ(c, EOF, "returns EOF");
+	ASSERT(feof(f) != 0, "feof set after EOF");
+	fclose(f);
+	unlink("/test_eof2.txt");
+	return 0;
+}
+
+TEST(fseek_clears_eof) {
+	FILE *f = fopen("/test_eof3.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	fwrite("ab", 1, 2, f);
+	fclose(f);
+
+	f = fopen("/test_eof3.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	fgetc(f);
+	fgetc(f);
+	fgetc(f);
+	ASSERT(feof(f) != 0, "eof set");
+	fseek(f, 0, SEEK_SET);
+	ASSERT_EQ(feof(f), 0, "fseek clears eof");
+	ASSERT_EQ(fgetc(f), 'a', "can read after fseek");
+	fclose(f);
+	unlink("/test_eof3.txt");
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -394,4 +513,11 @@ TEST_SUITE(stdio) {
 	RUN_TEST(open_memstream_grow);
 	RUN_TEST(open_memstream_chibicc_pattern);
 	RUN_TEST(open_memstream_null_args);
+	RUN_TEST(fseek_set);
+	RUN_TEST(fseek_cur);
+	RUN_TEST(fseek_end);
+	RUN_TEST(ftell_basic);
+	RUN_TEST(feof_not_eof);
+	RUN_TEST(feof_at_eof);
+	RUN_TEST(fseek_clears_eof);
 }

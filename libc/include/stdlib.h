@@ -7,10 +7,16 @@ typedef unsigned long size_t;
 #define NULL ((void *)0)
 #endif
 
+#ifdef __chibicc__
+#define __attribute__(x)
+#endif
+
 void *malloc(size_t size);
 void free(void *ptr);
 void *calloc(size_t count, size_t size);
 void *realloc(void *ptr, size_t size);
+void exit(int status) __attribute__((noreturn));
+void _exit(int status) __attribute__((noreturn));
 
 long strtol(const char *nptr, char **endptr, int base);
 unsigned long strtoul(const char *nptr, char **endptr, int base);

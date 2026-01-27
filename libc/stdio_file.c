@@ -296,6 +296,50 @@ int fclose(FILE *stream) {
 	return result;
 }
 
+int fseek(FILE *stream, long offset, int whence) {
+	if (!stream || stream->fd < 0) {
+		return -1;
+	}
+	fflush(stream);
+	if (whence == 1) {
+		long fd_pos = lseek(stream->fd, 0, 1);
+		if (fd_pos < 0) {
+			return -1;
+		}
+		long logical_pos = fd_pos - (stream->rbuf_len - stream->rbuf_pos);
+		offset = logical_pos + offset;
+		whence = 0;
+	}
+	stream->rbuf_pos = 0;
+	stream->rbuf_len = 0;
+	stream->eof = 0;
+	long pos = lseek(stream->fd, offset, whence);
+	if (pos < 0) {
+		return -1;
+	}
+	return 0;
+}
+
+long ftell(FILE *stream) {
+	if (!stream || stream->fd < 0) {
+		return -1;
+	}
+	long pos = lseek(stream->fd, 0, 1);
+	if (pos < 0) {
+		return -1;
+	}
+	pos -= stream->rbuf_len - stream->rbuf_pos;
+	pos += stream->wbuf_pos;
+	return pos;
+}
+
+int feof(FILE *stream) {
+	if (!stream) {
+		return 0;
+	}
+	return stream->eof;
+}
+
 static void reverse(char *buf, int len) {
 	int i = 0, j = len - 1;
 	while (i < j) {

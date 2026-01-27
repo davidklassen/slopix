@@ -6,6 +6,10 @@
 #define BUFSIZ 1024
 #define EOF    (-1)
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 #define _FILE_READ   0x01
 #define _FILE_WRITE  0x02
 #define _FILE_APPEND 0x04
@@ -31,6 +35,9 @@ size_t fread(void *ptr, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
 int fgetc(FILE *stream);
 int fputc(int c, FILE *stream);
+int fseek(FILE *stream, long offset, int whence);
+long ftell(FILE *stream);
+int feof(FILE *stream);
 
 int fprintf(FILE *stream, const char *fmt, ...);
 int vfprintf(FILE *stream, const char *fmt, va_list ap);

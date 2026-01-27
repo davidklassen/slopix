@@ -1,7 +1,7 @@
 CROSS = aarch64-elf-
 ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
 ifdef USE_OUR_AS
-AS = $(ROOT)/cmd/as/as
+AS = $(ROOT)/tools/as/as
 else
 AS = $(CROSS)as
 endif
@@ -12,7 +12,8 @@ LDFLAGS = -nostdlib -T link.ld
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
-	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
+	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf \
+	as.elf
 
 all: $(PROGS)
 
@@ -83,6 +84,10 @@ tests.elf:
 	$(MAKE) -C tests CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) LINK_LD=$(CURDIR)/link.ld CC_INCLUDE=$(CC_INCLUDE)
 	cp tests/tests.elf $@
 
+as.elf:
+	$(MAKE) -C as CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	cp as/as.elf $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -S -o $*.s $<
 	$(AS) -o $@ $*.s
@@ -90,5 +95,6 @@ tests.elf:
 clean:
 	rm -f */*.o */*.s *.elf
 	$(MAKE) -C tests clean
+	$(MAKE) -C as clean
 
 .PHONY: all clean
