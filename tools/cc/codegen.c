@@ -35,6 +35,16 @@ static void pop(char *reg) {
 	depth--;
 }
 
+static void pushf(void) {
+	println("  str d0, [sp, #-16]!");
+	depth++;
+}
+
+static void popf(int reg) {
+	println("  ldr d%d, [sp], #16", reg);
+	depth--;
+}
+
 // Round up `n` to the nearest multiple of `align`.
 int align_to(int n, int align) {
 	return (n + align - 1) / align * align;
@@ -58,6 +68,15 @@ static void store_gp(int r, int offset, int sz) {
 	}
 }
 
+// Store FP register to stack
+static void store_fp(int r, int offset, int sz) {
+	if (sz == 4) {
+		println("  str s%d, [x29, #%d]", r, offset);
+	} else {
+		println("  str d%d, [x29, #%d]", r, offset);
+	}
+}
+
 // Recursive helper to push args right-to-left
 static void push_args2(Node *args, bool first_pass) {
 	if (!args) {
@@ -69,22 +88,33 @@ static void push_args2(Node *args, bool first_pass) {
 		return;
 	}
 	gen_expr(args);
-	push();
+	if (is_flonum(args->ty)) {
+		pushf();
+	} else {
+		push();
+	}
 }
 
 // Push all arguments, return count of stack args (for cleanup)
 static int push_args(Node *node) {
-	int stack = 0, gp = 0;
+	int stack = 0, gp = 0, fp = 0;
 
 	// First pass: mark which args go on stack
 	for (Node *arg = node->args; arg; arg = arg->next) {
 		Type *ty = arg->ty;
-		if (is_flonum(ty) || ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
+		if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
 			continue; // Defer to later steps
 		}
-		if (gp++ >= GP_MAX) {
-			arg->pass_by_stack = true;
-			stack++;
+		if (is_flonum(ty)) {
+			if (fp++ >= FP_MAX) {
+				arg->pass_by_stack = true;
+				stack++;
+			}
+		} else {
+			if (gp++ >= GP_MAX) {
+				arg->pass_by_stack = true;
+				stack++;
+			}
 		}
 	}
 
@@ -132,6 +162,16 @@ static void load(Type *ty) {
 		return;
 	}
 
+	// Float loads
+	if (ty->kind == TY_FLOAT) {
+		println("  ldr s0, [x0]");
+		return;
+	}
+	if (ty->kind == TY_DOUBLE) {
+		println("  ldr d0, [x0]");
+		return;
+	}
+
 	// Integer loads based on size and signedness
 	if (ty->size == 1) {
 		if (ty->is_unsigned) {
@@ -158,6 +198,16 @@ static void load(Type *ty) {
 
 static void store(Type *ty) {
 	pop("x1"); // Address was pushed before evaluating RHS
+
+	// Float stores
+	if (ty->kind == TY_FLOAT) {
+		println("  str s0, [x1]");
+		return;
+	}
+	if (ty->kind == TY_DOUBLE) {
+		println("  str d0, [x1]");
+		return;
+	}
 
 	// Struct/union copy
 	if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
@@ -190,15 +240,6 @@ static void cmp_zero(Type *ty) {
 	} else {
 		println("  cmp x0, #0");
 	}
-}
-
-static void pushf(void) {
-	error("pushf not yet implemented for AArch64");
-}
-
-static void popf(int reg) {
-	(void)reg;
-	error("popf not yet implemented for AArch64");
 }
 
 enum { I8,
@@ -325,27 +366,61 @@ static void gen_expr(Node *node) {
 	case ND_NULL_EXPR:
 		return;
 	case ND_NUM:
-		if (node->val >= 0 && node->val <= 65535) {
-			println("  mov x0, #%" PRId64, node->val);
-		} else {
-			println("  ldr x0, =%" PRId64, node->val);
+		switch (node->ty->kind) {
+		case TY_FLOAT: {
+			union {
+				float f32;
+				uint32_t u32;
+			} u = {node->fval};
+			println("  mov w0, #%u", u.u32 & 0xFFFF);
+			if (u.u32 >> 16) {
+				println("  movk w0, #%u, lsl #16",
+					(u.u32 >> 16) & 0xFFFF);
+			}
+			println("  fmov s0, w0");
+			return;
 		}
-		return;
+		case TY_DOUBLE: {
+			union {
+				double f64;
+				uint64_t u64;
+			} u = {node->fval};
+			println("  ldr x0, =%" PRIu64, u.u64);
+			println("  fmov d0, x0");
+			return;
+		}
+		default:
+			if (node->val >= 0 && node->val <= 65535) {
+				println("  mov x0, #%" PRId64, node->val);
+			} else {
+				println("  ldr x0, =%" PRId64, node->val);
+			}
+			return;
+		}
 	case ND_CAST:
 		gen_expr(node->lhs);
 		cast(node->lhs->ty, node->ty);
 		return;
 	case ND_NEG:
 		gen_expr(node->lhs);
-		println("  neg x0, x0");
-		return;
+		switch (node->ty->kind) {
+		case TY_FLOAT:
+			println("  fneg s0, s0");
+			return;
+		case TY_DOUBLE:
+			println("  fneg d0, d0");
+			return;
+		default:
+			println("  neg x0, x0");
+			return;
+		}
 	case ND_BITNOT:
 		gen_expr(node->lhs);
 		println("  mvn x0, x0");
 		return;
 	case ND_NOT:
 		gen_expr(node->lhs);
-		println("  cmp x0, #0");
+		cmp_zero(node->lhs->ty);
 		println("  cset x0, eq");
 		return;
 	case ND_VAR:
@@ -428,16 +503,21 @@ static void gen_expr(Node *node) {
 		gen_expr(node->lhs);	 // Function address -> x0
 		println("  mov x9, x0"); // Save to temp register
 
-		// Pop args into x0-x7
-		int gp = 0;
+		// Pop args into registers
+		int gp = 0, fp = 0;
 		for (Node *arg = node->args; arg; arg = arg->next) {
 			Type *ty = arg->ty;
-			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
-			    ty->kind == TY_UNION) {
+			if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
 				continue;
 			}
-			if (!arg->pass_by_stack && gp < GP_MAX) {
-				pop(argreg64[gp++]);
+			if (is_flonum(ty)) {
+				if (!arg->pass_by_stack && fp < FP_MAX) {
+					popf(fp++);
+				}
+			} else {
+				if (!arg->pass_by_stack && gp < GP_MAX) {
+					pop(argreg64[gp++]);
+				}
 			}
 		}
 
@@ -464,6 +544,50 @@ static void gen_expr(Node *node) {
 	case ND_NE:
 	case ND_LT:
 	case ND_LE:
+		// Float binary operations
+		if (is_flonum(node->lhs->ty)) {
+			gen_expr(node->rhs);
+			pushf();
+			gen_expr(node->lhs);
+			popf(1); // d1 = RHS, d0 = LHS
+
+			char *s = (node->lhs->ty->kind == TY_FLOAT) ? "s" : "d";
+
+			switch (node->kind) {
+			case ND_ADD:
+				println("  fadd %s0, %s0, %s1", s, s, s);
+				return;
+			case ND_SUB:
+				println("  fsub %s0, %s0, %s1", s, s, s);
+				return;
+			case ND_MUL:
+				println("  fmul %s0, %s0, %s1", s, s, s);
+				return;
+			case ND_DIV:
+				println("  fdiv %s0, %s0, %s1", s, s, s);
+				return;
+			case ND_EQ:
+				println("  fcmp %s0, %s1", s, s);
+				println("  cset x0, eq");
+				return;
+			case ND_NE:
+				println("  fcmp %s0, %s1", s, s);
+				println("  cset x0, ne");
+				return;
+			case ND_LT:
+				println("  fcmp %s0, %s1", s, s);
+				println("  cset x0, mi");
+				return;
+			case ND_LE:
+				println("  fcmp %s0, %s1", s, s);
+				println("  cset x0, ls");
+				return;
+			default:
+				error_tok(node->tok, "invalid float operation");
+			}
+		}
+
+		// Integer binary operations
 		gen_expr(node->rhs);
 		push();
 		gen_expr(node->lhs);
@@ -661,17 +785,22 @@ static void assign_lvar_offsets(Obj *prog) {
 
 		int top = 16; // Stack params start at FP+16
 		int bottom = 0;
-		int gp = 0;
+		int gp = 0, fp = 0;
 
 		// Mark stack-passed parameters (args 9+)
 		for (Obj *var = fn->params; var; var = var->next) {
 			Type *ty = var->ty;
-			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
-			    ty->kind == TY_UNION) {
+			if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
 				continue;
 			}
-			if (gp++ < GP_MAX) {
-				continue;
+			if (is_flonum(ty)) {
+				if (fp++ < FP_MAX) {
+					continue;
+				}
+			} else {
+				if (gp++ < GP_MAX) {
+					continue;
+				}
 			}
 			top = align_to(top, 8);
 			var->offset = top;
@@ -762,17 +891,21 @@ static void emit_text(Obj *prog) {
 		}
 
 		// Copy register parameters to stack slots
-		int gp = 0;
+		int gp = 0, fp = 0;
 		for (Obj *var = fn->params; var; var = var->next) {
 			Type *ty = var->ty;
-			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
-			    ty->kind == TY_UNION) {
+			if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
 				continue;
 			}
-			if (gp >= GP_MAX) {
-				break; // Rest are on stack already
+			if (is_flonum(ty)) {
+				if (fp < FP_MAX) {
+					store_fp(fp++, var->offset, ty->size);
+				}
+			} else {
+				if (gp < GP_MAX) {
+					store_gp(gp++, var->offset, ty->size);
+				}
 			}
-			store_gp(gp++, var->offset, ty->size);
 		}
 
 		// Emit code

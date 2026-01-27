@@ -9,7 +9,7 @@ LIBC = $(ROOT)/libc/libc.a
 LINK_SCRIPT = $(ROOT)/cmd/link.ld
 
 # Test file - only one at a time (each has its own main)
-TESTS = pointer
+TESTS = float
 
 OBJS = common.o $(addsuffix .o,$(TESTS))
 
