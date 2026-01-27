@@ -29,6 +29,7 @@
 #define O_CREAT	 0x100
 #define O_TRUNC	 0x200
 #define O_APPEND 0x400
+#define O_EXCL	 0x800
 
 struct superblock {
 	unsigned int magic;

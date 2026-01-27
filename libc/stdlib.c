@@ -1,5 +1,45 @@
 #include <stdlib.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+
+static unsigned int rand_state = 1;
+
+static unsigned int simple_rand(void) {
+	rand_state = rand_state * 1103515245 + 12345;
+	return (rand_state >> 16) & 0x7fff;
+}
+
+int mkstemp(char *templ) {
+	size_t len = strlen(templ);
+	if (len < 6) {
+		return -1;
+	}
+
+	char *suffix = templ + len - 6;
+	for (int i = 0; i < 6; i++) {
+		if (suffix[i] != 'X') {
+			return -1;
+		}
+	}
+
+	static const char chars[] =
+	    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+	for (int attempt = 0; attempt < 100; attempt++) {
+		for (int i = 0; i < 6; i++) {
+			suffix[i] = chars[simple_rand() % 62];
+		}
+
+		int fd = open(templ, O_RDWR | O_CREAT | O_EXCL);
+		if (fd >= 0) {
+			return fd;
+		}
+	}
+
+	return -1;
+}
 
 unsigned long strtoul(const char *nptr, char **endptr, int base) {
 	const char *s = nptr;

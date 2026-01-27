@@ -15,4 +15,6 @@ void *realloc(void *ptr, size_t size);
 long strtol(const char *nptr, char **endptr, int base);
 unsigned long strtoul(const char *nptr, char **endptr, int base);
 
+int mkstemp(char *templ);
+
 #endif

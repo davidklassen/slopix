@@ -1,8 +1,10 @@
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <test.h>
+#include <unistd.h>
 
 TEST(strlen_empty) {
 	ASSERT_EQ(strlen(""), 0, "empty string");
@@ -525,6 +527,56 @@ TEST(strerror_negative) {
 	return 0;
 }
 
+TEST(mkstemp_basic) {
+	char templ[] = "/tmpXXXXXX";
+	int fd = mkstemp(templ);
+	ASSERT(fd >= 0, "mkstemp returns valid fd");
+	ASSERT(templ[4] != 'X', "template modified");
+	close(fd);
+	unlink(templ);
+	return 0;
+}
+
+TEST(mkstemp_write_read) {
+	char templ[] = "/tmpXXXXXX";
+	int fd = mkstemp(templ);
+	ASSERT(fd >= 0, "mkstemp returns valid fd");
+
+	write(fd, "test", 4);
+	lseek(fd, 0, SEEK_SET);
+	char buf[10] = {0};
+	read(fd, buf, 4);
+	ASSERT_EQ(strcmp(buf, "test"), 0, "file content");
+
+	close(fd);
+	unlink(templ);
+	return 0;
+}
+
+TEST(mkstemp_unique) {
+	char t1[] = "/tmpXXXXXX";
+	char t2[] = "/tmpXXXXXX";
+	int fd1 = mkstemp(t1);
+	int fd2 = mkstemp(t2);
+	ASSERT(fd1 >= 0, "first mkstemp valid");
+	ASSERT(fd2 >= 0, "second mkstemp valid");
+	ASSERT(strcmp(t1, t2) != 0, "templates are different");
+	close(fd1);
+	close(fd2);
+	unlink(t1);
+	unlink(t2);
+	return 0;
+}
+
+TEST(mkstemp_invalid_template) {
+	char short_templ[] = "/tmp";
+	ASSERT_EQ(mkstemp(short_templ), -1, "short template fails");
+
+	char no_x_templ[] = "/tmpABCDEF";
+	ASSERT_EQ(mkstemp(no_x_templ), -1, "no X template fails");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -602,4 +654,8 @@ TEST_SUITE(libc) {
 	RUN_TEST(strerror_einval);
 	RUN_TEST(strerror_unknown);
 	RUN_TEST(strerror_negative);
+	RUN_TEST(mkstemp_basic);
+	RUN_TEST(mkstemp_write_read);
+	RUN_TEST(mkstemp_unique);
+	RUN_TEST(mkstemp_invalid_template);
 }

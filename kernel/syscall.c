@@ -438,6 +438,10 @@ static long sys_open(const char *path, int flags) {
 				return -1;
 			}
 		} else {
+			if (flags & O_EXCL) {
+				fs_iput(ip);
+				return -1;
+			}
 			fs_ilock(ip);
 		}
 	} else {
