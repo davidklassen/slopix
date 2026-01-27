@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <test.h>
@@ -474,6 +475,56 @@ TEST(strtol_zero) {
 	return 0;
 }
 
+TEST(errno_initial) {
+	errno = 0;
+	ASSERT_EQ(errno, 0, "errno can be set to 0");
+	return 0;
+}
+
+TEST(errno_set) {
+	errno = ENOENT;
+	ASSERT_EQ(errno, 2, "errno set to ENOENT (2)");
+	errno = EINVAL;
+	ASSERT_EQ(errno, 22, "errno set to EINVAL (22)");
+	errno = 0;
+	return 0;
+}
+
+TEST(strerror_success) {
+	char *msg = strerror(0);
+	ASSERT_NOT_NULL(msg, "strerror(0) not null");
+	ASSERT_EQ(strcmp(msg, "Success"), 0, "strerror(0) is Success");
+	return 0;
+}
+
+TEST(strerror_enoent) {
+	char *msg = strerror(ENOENT);
+	ASSERT_NOT_NULL(msg, "strerror(ENOENT) not null");
+	ASSERT_EQ(strcmp(msg, "No such file or directory"), 0, "ENOENT message");
+	return 0;
+}
+
+TEST(strerror_einval) {
+	char *msg = strerror(EINVAL);
+	ASSERT_NOT_NULL(msg, "strerror(EINVAL) not null");
+	ASSERT_EQ(strcmp(msg, "Invalid argument"), 0, "EINVAL message");
+	return 0;
+}
+
+TEST(strerror_unknown) {
+	char *msg = strerror(999);
+	ASSERT_NOT_NULL(msg, "strerror(999) not null");
+	ASSERT_EQ(strcmp(msg, "Unknown error"), 0, "unknown returns Unknown error");
+	return 0;
+}
+
+TEST(strerror_negative) {
+	char *msg = strerror(-1);
+	ASSERT_NOT_NULL(msg, "strerror(-1) not null");
+	ASSERT_EQ(strcmp(msg, "Unknown error"), 0, "negative returns Unknown error");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -544,4 +595,11 @@ TEST_SUITE(libc) {
 	RUN_TEST(strtoul_endptr);
 	RUN_TEST(strtol_negative);
 	RUN_TEST(strtol_zero);
+	RUN_TEST(errno_initial);
+	RUN_TEST(errno_set);
+	RUN_TEST(strerror_success);
+	RUN_TEST(strerror_enoent);
+	RUN_TEST(strerror_einval);
+	RUN_TEST(strerror_unknown);
+	RUN_TEST(strerror_negative);
 }
