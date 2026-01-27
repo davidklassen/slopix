@@ -56,6 +56,47 @@ void error_tok(Token *tok, char *fmt, ...) {
 	exit(1);
 }
 
+static void vwarn_at(char *loc, char *fmt, va_list ap) {
+	char *line = loc;
+	while (current_input < line && line[-1] != '\n') {
+		line--;
+	}
+
+	char *end = loc;
+	while (*end && *end != '\n') {
+		end++;
+	}
+
+	int line_no = 1;
+	for (char *p = current_input; p < loc; p++) {
+		if (*p == '\n') {
+			line_no++;
+		}
+	}
+
+	int indent = fprintf(stderr, "%s:%d: warning: ", current_file, line_no);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "%*s%.*s\n", indent - 10, "", (int)(end - line), line);
+	fprintf(stderr, "%*s^\n", indent - 10 + (int)(loc - line), "");
+}
+
+void warn(char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	fprintf(stderr, "%s: warning: ", current_file);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+}
+
+void warn_tok(Token *tok, char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	vwarn_at(tok->loc, fmt, ap);
+	va_end(ap);
+}
+
 static char *read_stdin(void) {
 	size_t capacity = 4096;
 	size_t size = 0;

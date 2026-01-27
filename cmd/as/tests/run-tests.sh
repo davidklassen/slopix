@@ -73,6 +73,19 @@ run_test() {
     rm -rf "$tmpdir"
 }
 
+run_error_test() {
+    local src="$1"
+    local expected="$2"
+    local name=$(basename "$src" .s)
+    if ! "$AS" -o /dev/null "$src" 2>&1 | grep -q "$expected"; then
+        echo -e "${RED}FAIL${NC}: $name - expected error containing: $expected"
+        ((FAIL++))
+    else
+        echo -e "${GREEN}PASS${NC}: $name (error test)"
+        ((PASS++))
+    fi
+}
+
 unit_only=false
 if [ "$1" = "--unit-only" ]; then
     unit_only=true
@@ -99,6 +112,13 @@ if [ "$unit_only" = false ]; then
             run_test "$src"
         fi
     done
+fi
+
+if [ -d "$SCRIPT_DIR/errors" ]; then
+    echo ""
+    echo "Running error tests..."
+    run_error_test "$SCRIPT_DIR/errors/undefined_local.s" "undefined local symbol"
+    run_error_test "$SCRIPT_DIR/errors/imm12_overflow.s" "not encodable"
 fi
 
 echo ""

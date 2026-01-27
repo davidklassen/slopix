@@ -107,6 +107,7 @@ static void handle_directive(Token *tok) {
 			if (t->kind == TOK_IDENT) {
 				Symbol *sym = symtab_add(t->str);
 				symtab_set_binding(sym, STB_LOCAL);
+				sym->explicit_local = 1;
 			}
 			t = t->next;
 		}
@@ -672,6 +673,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -692,6 +696,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -712,6 +719,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_adds_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -732,6 +742,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_subs_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -1063,6 +1076,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_cmp_imm(sf, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -1080,6 +1096,9 @@ static void handle_instruction(Token *tok) {
 		} else {
 			int shift;
 			int imm12 = encode_imm12(t->val, &shift);
+			if (imm12 < 0) {
+				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			}
 			emit32(encode_cmn_imm(sf, rn, imm12, shift ? 1 : 0));
 		}
 		return;
@@ -2036,6 +2055,15 @@ static void handle_instruction(Token *tok) {
 	error_tok(tok, "unknown instruction: %s", mnemonic);
 }
 
+static void check_undefined_symbols(void) {
+	for (int i = 0; i < symtab_count(); i++) {
+		Symbol *sym = symtab_get(i);
+		if (!sym->defined && sym->explicit_local) {
+			error("undefined local symbol: '%s'", sym->name);
+		}
+	}
+}
+
 static void emit_literal_pool(void) {
 	int count = literal_pool_count();
 	if (count == 0) {
@@ -2106,4 +2134,5 @@ void pass2(Token *tok) {
 	}
 
 	emit_literal_pool();
+	check_undefined_symbols();
 }

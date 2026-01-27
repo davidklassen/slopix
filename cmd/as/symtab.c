@@ -38,6 +38,7 @@ Symbol *symtab_add(const char *name) {
 	sym->type = STT_NOTYPE;
 	sym->size = 0;
 	sym->defined = 0;
+	sym->explicit_local = 0;
 	return sym;
 }
 

@@ -59,6 +59,8 @@ extern char *current_input;
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
+void warn(char *fmt, ...);
+void warn_tok(Token *tok, char *fmt, ...);
 
 Token *tokenize(char *input);
 char *read_file(char *path);
@@ -211,6 +213,7 @@ struct Symbol {
 	int type;
 	int size;
 	int defined;
+	int explicit_local;
 };
 
 // Literal pool entry
