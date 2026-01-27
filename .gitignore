@@ -1,16 +1,14 @@
 *.o
 *.a
 *.elf
+*.s
 docsearch.db*
 .claude/
 
 tools/mkfs/mkfs
 tools/mkramfs/mkramfs
 tools/cc/chibicc
-tools/cc/*.o
 initramfs-test.bin
-initramfs-chibicc.bin
-tools/cc/test/*.s
 kernel/kernel.bin
 kernel/kernel-test.bin
 disk.img

@@ -1,8 +1,8 @@
 CROSS = aarch64-elf-
-CC = $(CROSS)gcc
+AS = $(CROSS)as
 LD = $(CROSS)ld
 
-CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I$(LIBC_INCLUDE)
+CFLAGS = -I$(LIBC_INCLUDE) -I$(CC_INCLUDE)
 LDFLAGS = -nostdlib -T link.ld
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
@@ -75,14 +75,15 @@ sleep.elf: sleep/sleep.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
 
 tests.elf:
-	$(MAKE) -C tests LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) LINK_LD=$(CURDIR)/link.ld
+	$(MAKE) -C tests CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) LINK_LD=$(CURDIR)/link.ld CC_INCLUDE=$(CC_INCLUDE)
 	cp tests/tests.elf $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -S -o $*.s $<
+	$(AS) -o $@ $*.s
 
 clean:
-	rm -f */*.o *.elf
+	rm -f */*.o */*.s *.elf
 	$(MAKE) -C tests clean
 
 .PHONY: all clean

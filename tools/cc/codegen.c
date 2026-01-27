@@ -50,30 +50,76 @@ int align_to(int n, int align) {
 	return (n + align - 1) / align * align;
 }
 
+// Load address of local variable with offset into x9
+static void load_local_addr(int offset) {
+	if (offset >= 0 && offset <= 4095) {
+		println("  add x9, x29, #%d", offset);
+	} else if (offset < 0 && offset >= -4095) {
+		println("  sub x9, x29, #%d", -offset);
+	} else if (offset >= 0) {
+		println("  mov x9, #%d", offset);
+		println("  add x9, x29, x9");
+	} else {
+		println("  mov x9, #%d", -offset);
+		println("  sub x9, x29, x9");
+	}
+}
+
 // Store GP register to stack
 static void store_gp(int r, int offset, int sz) {
+	// Use stur for small offsets, otherwise compute address
+	if (offset >= -256 && offset <= 255) {
+		switch (sz) {
+		case 1:
+			println("  sturb %s, [x29, #%d]", argreg32[r], offset);
+			return;
+		case 2:
+			println("  sturh %s, [x29, #%d]", argreg32[r], offset);
+			return;
+		case 4:
+			println("  stur %s, [x29, #%d]", argreg32[r], offset);
+			return;
+		default:
+			println("  stur %s, [x29, #%d]", argreg64[r], offset);
+			return;
+		}
+	}
+
+	// Large offset: calculate address first
+	load_local_addr(offset);
 	switch (sz) {
 	case 1:
-		println("  strb %s, [x29, #%d]", argreg32[r], offset);
+		println("  strb %s, [x9]", argreg32[r]);
 		return;
 	case 2:
-		println("  strh %s, [x29, #%d]", argreg32[r], offset);
+		println("  strh %s, [x9]", argreg32[r]);
 		return;
 	case 4:
-		println("  str %s, [x29, #%d]", argreg32[r], offset);
+		println("  str %s, [x9]", argreg32[r]);
 		return;
 	default:
-		println("  str %s, [x29, #%d]", argreg64[r], offset);
+		println("  str %s, [x9]", argreg64[r]);
 		return;
 	}
 }
 
 // Store FP register to stack
 static void store_fp(int r, int offset, int sz) {
+	if (offset >= -256 && offset <= 255) {
+		if (sz == 4) {
+			println("  stur s%d, [x29, #%d]", r, offset);
+		} else {
+			println("  stur d%d, [x29, #%d]", r, offset);
+		}
+		return;
+	}
+
+	// Large offset: calculate address first
+	load_local_addr(offset);
 	if (sz == 4) {
-		println("  str s%d, [x29, #%d]", r, offset);
+		println("  str s%d, [x9]", r);
 	} else {
-		println("  str d%d, [x29, #%d]", r, offset);
+		println("  str d%d, [x9]", r);
 	}
 }
 
@@ -132,11 +178,40 @@ static int push_args(Node *node) {
 	return stack;
 }
 
+// Add offset to x0
+static void add_offset(int offset) {
+	if (offset == 0) {
+		return;
+	}
+	if (offset > 0 && offset <= 4095) {
+		println("  add x0, x0, #%d", offset);
+	} else if (offset < 0 && offset >= -4095) {
+		println("  sub x0, x0, #%d", -offset);
+	} else if (offset > 0) {
+		println("  mov x9, #%d", offset);
+		println("  add x0, x0, x9");
+	} else {
+		println("  mov x9, #%d", -offset);
+		println("  sub x0, x0, x9");
+	}
+}
+
 static void gen_addr(Node *node) {
 	switch (node->kind) {
 	case ND_VAR:
 		if (node->var->is_local) {
-			println("  add x0, x29, #%d", node->var->offset);
+			int offset = node->var->offset;
+			if (offset >= 0 && offset <= 4095) {
+				println("  add x0, x29, #%d", offset);
+			} else if (offset < 0 && offset >= -4095) {
+				println("  sub x0, x29, #%d", -offset);
+			} else if (offset >= 0) {
+				println("  mov x0, #%d", offset);
+				println("  add x0, x29, x0");
+			} else {
+				println("  mov x0, #%d", -offset);
+				println("  sub x0, x29, x0");
+			}
 		} else {
 			println("  adrp x0, %s", node->var->name);
 			println("  add x0, x0, :lo12:%s", node->var->name);
@@ -151,7 +226,7 @@ static void gen_addr(Node *node) {
 		return;
 	case ND_MEMBER:
 		gen_addr(node->lhs);
-		println("  add x0, x0, #%d", node->member->offset);
+		add_offset(node->member->offset);
 		return;
 	case ND_ASSIGN:
 	case ND_COND:
@@ -284,9 +359,9 @@ static int getTypeId(Type *ty) {
 }
 
 // Integer sign/zero extension
-static char i32i8[] = "sxtb w0, w0";
+static char i32i8[] = "sxtb x0, w0";
 static char i32u8[] = "uxtb w0, w0";
-static char i32i16[] = "sxth w0, w0";
+static char i32i16[] = "sxth x0, w0";
 static char i32u16[] = "uxth w0, w0";
 static char i32i64[] = "sxtw x0, w0";
 static char u32i64[] = "mov w0, w0";
@@ -570,6 +645,31 @@ static void gen_expr(Node *node) {
 		}
 
 		println("  blr x9"); // Indirect call
+
+		// Sign/zero extend the return value for types smaller than 64-bit
+		// to ensure consistent comparison with 64-bit values
+		Type *ret_ty = node->ty;
+		if (ret_ty->kind != TY_VOID && !is_flonum(ret_ty)) {
+			if (ret_ty->size == 1) {
+				if (ret_ty->is_unsigned) {
+					println("  uxtb w0, w0");
+				} else {
+					println("  sxtb x0, w0");
+				}
+			} else if (ret_ty->size == 2) {
+				if (ret_ty->is_unsigned) {
+					println("  uxth w0, w0");
+				} else {
+					println("  sxth x0, w0");
+				}
+			} else if (ret_ty->size == 4) {
+				if (ret_ty->is_unsigned) {
+					println("  mov w0, w0");
+				} else {
+					println("  sxtw x0, w0");
+				}
+			}
+		}
 
 		// Clean up stack args
 		if (stack_args > 0) {

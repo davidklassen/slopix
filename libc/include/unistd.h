@@ -3,6 +3,10 @@
 
 typedef unsigned long size_t;
 
+#ifdef __chibicc__
+#define __attribute__(x)
+#endif
+
 long write(int fd, const void *buf, size_t len);
 long read(int fd, void *buf, size_t len);
 void exit(int status) __attribute__((noreturn));

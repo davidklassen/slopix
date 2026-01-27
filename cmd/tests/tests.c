@@ -8,6 +8,7 @@ extern void test_suite_filesys(void);
 extern void test_suite_pipes(void);
 extern void test_suite_libc(void);
 extern void test_suite_devices(void);
+extern void test_suite_codegen(void);
 
 int main(void) {
 	RUN_SUITE(libc);
@@ -18,6 +19,7 @@ int main(void) {
 	RUN_SUITE(filesys);
 	RUN_SUITE(pipes);
 	RUN_SUITE(devices);
+	RUN_SUITE(codegen);
 	TEST_REPORT();
 	TEST_EXIT();
 	return 0;

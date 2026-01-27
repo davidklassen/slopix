@@ -42,7 +42,7 @@ TEST(mmap_fixed) {
 
 	char *cp = (char *)p;
 	cp[0] = 0x99;
-	ASSERT_EQ(cp[0], 0x99, "can access fixed mmap'd memory");
+	ASSERT_EQ(cp[0], (char)0x99, "can access fixed mmap'd memory");
 
 	munmap(p, 4096);
 	return 0;
