@@ -56,6 +56,27 @@ void error_tok(Token *tok, char *fmt, ...) {
 	exit(1);
 }
 
+static char *read_stdin(void) {
+	size_t capacity = 4096;
+	size_t size = 0;
+	char *buf = malloc(capacity);
+
+	while (!feof(stdin)) {
+		if (size + 1024 > capacity) {
+			capacity *= 2;
+			buf = realloc(buf, capacity);
+		}
+		size_t n = fread(buf + size, 1, 1024, stdin);
+		size += n;
+	}
+
+	if (size == 0 || buf[size - 1] != '\n') {
+		buf[size++] = '\n';
+	}
+	buf[size] = '\0';
+	return buf;
+}
+
 char *read_file(char *path) {
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
@@ -171,12 +192,13 @@ void dump_tokens(Token *tok) {
 }
 
 static void usage(void) {
-	fprintf(stderr, "Usage: as [options] <input.s>\n");
+	fprintf(stderr, "Usage: as [options] [input.s]\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -dump-tokens    Print tokens and exit\n");
 	fprintf(stderr, "  -dump-symbols   Print symbol table and exit\n");
 	fprintf(stderr, "  -test-encode    Run encoding tests and exit\n");
 	fprintf(stderr, "  -o <file>       Output file\n");
+	fprintf(stderr, "  -               Read from stdin\n");
 	exit(1);
 }
 
@@ -199,6 +221,11 @@ int main(int argc, char **argv) {
 				usage();
 			}
 			output_file = argv[++i];
+		} else if (strcmp(argv[i], "-") == 0) {
+			if (input_file) {
+				error("multiple input files");
+			}
+			input_file = argv[i];
 		} else if (argv[i][0] == '-') {
 			error("unknown option: %s", argv[i]);
 		} else {
@@ -215,11 +242,15 @@ int main(int argc, char **argv) {
 	}
 
 	if (!input_file) {
-		usage();
+		input_file = "-";
 	}
 
 	current_file = input_file;
-	current_input = read_file(input_file);
+	if (strcmp(input_file, "-") == 0) {
+		current_input = read_stdin();
+	} else {
+		current_input = read_file(input_file);
+	}
 	Token *tok = tokenize(current_input);
 
 	if (dump_tokens_flag) {

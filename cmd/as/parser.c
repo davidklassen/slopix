@@ -90,16 +90,26 @@ static void handle_directive(Token *tok) {
 	}
 
 	if (strcmp(dir, ".globl") == 0 || strcmp(dir, ".global") == 0) {
-		Token *name = expect_ident(tok->next);
-		Symbol *sym = symtab_add(name->str);
-		symtab_set_binding(sym, STB_GLOBAL);
+		Token *t = tok->next;
+		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
+			if (t->kind == TOK_IDENT) {
+				Symbol *sym = symtab_add(t->str);
+				symtab_set_binding(sym, STB_GLOBAL);
+			}
+			t = t->next;
+		}
 		return;
 	}
 
 	if (strcmp(dir, ".local") == 0) {
-		Token *name = expect_ident(tok->next);
-		Symbol *sym = symtab_add(name->str);
-		symtab_set_binding(sym, STB_LOCAL);
+		Token *t = tok->next;
+		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
+			if (t->kind == TOK_IDENT) {
+				Symbol *sym = symtab_add(t->str);
+				symtab_set_binding(sym, STB_LOCAL);
+			}
+			t = t->next;
+		}
 		return;
 	}
 
@@ -485,6 +495,13 @@ static void handle_instruction(Token *tok) {
 		return;
 	}
 
+	if (strcasecmp(mnemonic, "svc") == 0) {
+		t = skip_hash(t);
+		int imm16 = (int)t->val;
+		emit32(encode_svc(imm16));
+		return;
+	}
+
 	if (strcasecmp(mnemonic, "ret") == 0) {
 		int rn = 30;
 		if (t->kind == TOK_REGISTER) {
@@ -496,10 +513,19 @@ static void handle_instruction(Token *tok) {
 
 	if (strcasecmp(mnemonic, "bl") == 0) {
 		if (t->kind == TOK_IDENT) {
-			Symbol *sym = symtab_add(t->str);
-			int sym_idx = symtab_get_index(sym);
-			emit_reloc(R_AARCH64_CALL26, sym_idx, 0);
-			emit32(encode_bl(0));
+			Symbol *sym = symtab_lookup(t->str);
+			if (sym && sym->defined && sym->section == current_section &&
+			    sym->binding == STB_LOCAL) {
+				SectionBuf *sec = current_sec();
+				int64_t offset =
+				    (int64_t)sym->value - (int64_t)(sec ? sec->size : 0);
+				emit32(encode_bl((int32_t)offset));
+			} else {
+				sym = symtab_add(t->str);
+				int sym_idx = symtab_get_index(sym);
+				emit_reloc(R_AARCH64_CALL26, sym_idx, 0);
+				emit32(encode_bl(0));
+			}
 		} else if (t->kind == TOK_NUMBER) {
 			emit32(encode_bl((int32_t)t->val));
 		}
@@ -508,10 +534,19 @@ static void handle_instruction(Token *tok) {
 
 	if (strcasecmp(mnemonic, "b") == 0) {
 		if (t->kind == TOK_IDENT) {
-			Symbol *sym = symtab_add(t->str);
-			int sym_idx = symtab_get_index(sym);
-			emit_reloc(R_AARCH64_JUMP26, sym_idx, 0);
-			emit32(encode_b(0));
+			Symbol *sym = symtab_lookup(t->str);
+			if (sym && sym->defined && sym->section == current_section &&
+			    sym->binding == STB_LOCAL) {
+				SectionBuf *sec = current_sec();
+				int64_t offset =
+				    (int64_t)sym->value - (int64_t)(sec ? sec->size : 0);
+				emit32(encode_b((int32_t)offset));
+			} else {
+				sym = symtab_add(t->str);
+				int sym_idx = symtab_get_index(sym);
+				emit_reloc(R_AARCH64_JUMP26, sym_idx, 0);
+				emit32(encode_b(0));
+			}
 		} else if (t->kind == TOK_NUMBER) {
 			emit32(encode_b((int32_t)t->val));
 		}
@@ -941,8 +976,12 @@ static void handle_instruction(Token *tok) {
 		t = expect_comma(t->next);
 		t = skip_hash(t);
 		if (t->kind == TOK_REGISTER) {
-			int rm = encode_gpr(t);
-			emit32(encode_mov_reg(sf, rd, rm));
+			if (t->reg_type == REG_SP) {
+				emit32(encode_add_imm(sf, rd, 31, 0, 0));
+			} else {
+				int rm = encode_gpr(t);
+				emit32(encode_mov_reg(sf, rd, rm));
+			}
 		} else {
 			emit32(encode_movz(sf, rd, (int)t->val, 0));
 		}
@@ -1998,12 +2037,12 @@ static void handle_instruction(Token *tok) {
 }
 
 static void emit_literal_pool(void) {
-	section_align(&text_section, 3);
-
 	int count = literal_pool_count();
 	if (count == 0) {
 		return;
 	}
+
+	section_align(&text_section, 3);
 
 	LiteralEntry **entries = calloc(count, sizeof(LiteralEntry *));
 	int idx = count - 1;

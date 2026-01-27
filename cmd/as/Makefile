@@ -13,4 +13,10 @@ as: $(OBJ)
 clean:
 	rm -f $(OBJ) as
 
-.PHONY: clean
+test: as
+	./tests/run-tests.sh
+
+test-unit: as
+	./tests/run-tests.sh --unit-only
+
+.PHONY: clean test test-unit

@@ -420,6 +420,7 @@ uint32_t encode_adr(int rd, int64_t offset);
 
 // encode.c - miscellaneous
 uint32_t encode_nop(void);
+uint32_t encode_svc(int imm16);
 
 // encode.c - floating-point
 uint32_t encode_fmov_gpr_to_fpr(int sf, int fd, int rn);

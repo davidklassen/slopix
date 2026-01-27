@@ -51,7 +51,8 @@ void elf_write(const char *filename) {
 	int nlocals = 0;
 	for (int i = 0; i < nsyms; i++) {
 		Symbol *sym = symtab_get(i);
-		if (sym->binding == STB_LOCAL) {
+		// Undefined symbols must be global for linker resolution
+		if (sym->binding == STB_LOCAL && sym->defined) {
 			nlocals++;
 		}
 	}
@@ -84,7 +85,8 @@ void elf_write(const char *filename) {
 
 	for (int i = 0; i < nsyms; i++) {
 		Symbol *sym = symtab_get(i);
-		if (sym->binding != STB_LOCAL) {
+		// Skip if not a defined local symbol
+		if (sym->binding != STB_LOCAL || !sym->defined) {
 			continue;
 		}
 		uint32_t name_off = strtab_add(&strtab, sym->name);
@@ -105,9 +107,11 @@ void elf_write(const char *filename) {
 		elf_idx++;
 	}
 
+	// Emit global symbols and undefined symbols (undefined must be global)
 	for (int i = 0; i < nsyms; i++) {
 		Symbol *sym = symtab_get(i);
-		if (sym->binding != STB_GLOBAL) {
+		// Include global symbols and undefined local symbols
+		if (sym->binding == STB_LOCAL && sym->defined) {
 			continue;
 		}
 		uint32_t name_off = strtab_add(&strtab, sym->name);

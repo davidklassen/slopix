@@ -1082,6 +1082,11 @@ uint32_t encode_str_fp_post(int ftype, int ft, int rn, int64_t imm) {
 	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
 }
 
+// SVC #imm16 (supervisor call)
+uint32_t encode_svc(int imm16) {
+	return 0xD4000001 | ((uint32_t)(imm16 & 0xFFFF) << 5);
+}
+
 static int test_count = 0;
 static int test_pass = 0;
 
