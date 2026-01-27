@@ -9,6 +9,7 @@ extern void test_suite_pipes(void);
 extern void test_suite_libc(void);
 extern void test_suite_devices(void);
 extern void test_suite_codegen(void);
+extern void test_suite_malloc(void);
 
 int main(void) {
 	RUN_SUITE(libc);
@@ -20,6 +21,7 @@ int main(void) {
 	RUN_SUITE(pipes);
 	RUN_SUITE(devices);
 	RUN_SUITE(codegen);
+	RUN_SUITE(malloc);
 	TEST_REPORT();
 	TEST_EXIT();
 	return 0;
