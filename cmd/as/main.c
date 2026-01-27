@@ -1,5 +1,7 @@
 #include "as.h"
 
+#define AS_VERSION "as (slopix) 1.0"
+
 char *current_file;
 char *current_input;
 
@@ -232,15 +234,47 @@ void dump_tokens(Token *tok) {
 	}
 }
 
-static void usage(void) {
+static void usage(int code) {
 	fprintf(stderr, "Usage: as [options] [input.s]\n");
 	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "  -o <file>       Output file (default: a.out)\n");
+	fprintf(stderr, "  -v              Verbose output\n");
+	fprintf(stderr, "  --version       Print version and exit\n");
+	fprintf(stderr, "  --help          Print this help and exit\n");
+	fprintf(stderr, "  -               Read from stdin\n");
+	fprintf(stderr, "Debug options:\n");
 	fprintf(stderr, "  -dump-tokens    Print tokens and exit\n");
 	fprintf(stderr, "  -dump-symbols   Print symbol table and exit\n");
 	fprintf(stderr, "  -test-encode    Run encoding tests and exit\n");
-	fprintf(stderr, "  -o <file>       Output file\n");
-	fprintf(stderr, "  -               Read from stdin\n");
-	exit(1);
+	exit(code);
+}
+
+static void version(void) {
+	printf("%s\n", AS_VERSION);
+	exit(0);
+}
+
+static void print_verbose_summary(const char *input, const char *output) {
+	int nsyms = symtab_count();
+	int nlocals = 0, nglobals = 0;
+	for (int i = 0; i < nsyms; i++) {
+		Symbol *sym = symtab_get(i);
+		if (sym->binding == STB_LOCAL) {
+			nlocals++;
+		} else {
+			nglobals++;
+		}
+	}
+
+	int text_relocs = reloc_count(SECTION_TEXT);
+	int data_relocs = reloc_count(SECTION_DATA);
+
+	fprintf(stderr, "%s -> %s\n", input, output);
+	fprintf(stderr, "  .text:  %zu bytes\n", text_section.size);
+	fprintf(stderr, "  .data:  %zu bytes\n", data_section.size);
+	fprintf(stderr, "  .bss:   %zu bytes\n", bss_size);
+	fprintf(stderr, "  symbols: %d (%d local, %d global)\n", nsyms, nlocals, nglobals);
+	fprintf(stderr, "  relocations: %d (.text: %d, .data: %d)\n", text_relocs + data_relocs, text_relocs, data_relocs);
 }
 
 int main(int argc, char **argv) {
@@ -249,6 +283,7 @@ int main(int argc, char **argv) {
 	bool dump_tokens_flag = false;
 	bool dump_symbols_flag = false;
 	bool test_encode_flag = false;
+	bool verbose_flag = false;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-dump-tokens") == 0) {
@@ -259,9 +294,15 @@ int main(int argc, char **argv) {
 			test_encode_flag = true;
 		} else if (strcmp(argv[i], "-o") == 0) {
 			if (i + 1 >= argc) {
-				usage();
+				usage(1);
 			}
 			output_file = argv[++i];
+		} else if (strcmp(argv[i], "-v") == 0) {
+			verbose_flag = true;
+		} else if (strcmp(argv[i], "--version") == 0) {
+			version();
+		} else if (strcmp(argv[i], "--help") == 0) {
+			usage(0);
 		} else if (strcmp(argv[i], "-") == 0) {
 			if (input_file) {
 				error("multiple input files");
@@ -310,6 +351,10 @@ int main(int argc, char **argv) {
 
 	const char *outfile = output_file ? output_file : "a.out";
 	elf_write(outfile);
+
+	if (verbose_flag) {
+		print_verbose_summary(input_file, outfile);
+	}
 
 	return 0;
 }

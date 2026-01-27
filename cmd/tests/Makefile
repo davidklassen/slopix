@@ -1,5 +1,10 @@
 CROSS = aarch64-elf-
+ROOT = $(dir $(lastword $(MAKEFILE_LIST)))../..
+ifdef USE_OUR_AS
+AS = $(ROOT)/cmd/as/as
+else
 AS = $(CROSS)as
+endif
 LD = $(CROSS)ld
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
