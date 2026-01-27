@@ -17,5 +17,9 @@ char *strchr(const char *s, int c);
 char *strstr(const char *haystack, const char *needle);
 int atoi(const char *s);
 int itoa(int n, char *buf);
+char *strdup(const char *s);
+char *strndup(const char *s, size_t n);
+char *strrchr(const char *s, int c);
+char *strtok(char *str, const char *delim);
 
 #endif

@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 #include <test.h>
 
@@ -262,6 +263,91 @@ TEST(isalpha_not) {
 	return 0;
 }
 
+TEST(strdup_basic) {
+	char *s = strdup("hello");
+	ASSERT_NOT_NULL(s, "strdup returned NULL");
+	ASSERT_EQ(strcmp(s, "hello"), 0, "content matches");
+	free(s);
+	return 0;
+}
+
+TEST(strdup_empty) {
+	char *s = strdup("");
+	ASSERT_NOT_NULL(s, "strdup empty");
+	ASSERT_EQ(strlen(s), 0, "empty string");
+	free(s);
+	return 0;
+}
+
+TEST(strndup_basic) {
+	char *s = strndup("hello world", 5);
+	ASSERT_NOT_NULL(s, "strndup returned NULL");
+	ASSERT_EQ(strcmp(s, "hello"), 0, "truncated at 5");
+	free(s);
+	return 0;
+}
+
+TEST(strndup_longer) {
+	char *s = strndup("hi", 10);
+	ASSERT_NOT_NULL(s, "strndup returned NULL");
+	ASSERT_EQ(strcmp(s, "hi"), 0, "full string when n > len");
+	free(s);
+	return 0;
+}
+
+TEST(strrchr_found) {
+	const char *s = "/path/to/file.txt";
+	char *p = strrchr(s, '/');
+	ASSERT_NOT_NULL(p, "found /");
+	ASSERT_EQ(strcmp(p, "/file.txt"), 0, "last slash");
+	return 0;
+}
+
+TEST(strrchr_not_found) {
+	ASSERT_NULL(strrchr("hello", 'x'), "x not found");
+	return 0;
+}
+
+TEST(strrchr_null_terminator) {
+	const char *s = "hello";
+	char *p = strrchr(s, '\0');
+	ASSERT_NOT_NULL(p, "found null");
+	ASSERT_EQ(*p, '\0', "points to null");
+	return 0;
+}
+
+TEST(strtok_basic) {
+	char buf[] = "a,b,c";
+	char *tok = strtok(buf, ",");
+	ASSERT_NOT_NULL(tok, "first token");
+	ASSERT_EQ(strcmp(tok, "a"), 0, "first is a");
+	tok = strtok(0, ",");
+	ASSERT_NOT_NULL(tok, "second token");
+	ASSERT_EQ(strcmp(tok, "b"), 0, "second is b");
+	tok = strtok(0, ",");
+	ASSERT_NOT_NULL(tok, "third token");
+	ASSERT_EQ(strcmp(tok, "c"), 0, "third is c");
+	tok = strtok(0, ",");
+	ASSERT_NULL(tok, "no more tokens");
+	return 0;
+}
+
+TEST(strtok_multiple_delims) {
+	char buf[] = "a,,b";
+	char *tok = strtok(buf, ",");
+	ASSERT_EQ(strcmp(tok, "a"), 0, "first is a");
+	tok = strtok(0, ",");
+	ASSERT_EQ(strcmp(tok, "b"), 0, "skips empty");
+	return 0;
+}
+
+TEST(strtok_leading_delim) {
+	char buf[] = ",a,b";
+	char *tok = strtok(buf, ",");
+	ASSERT_EQ(strcmp(tok, "a"), 0, "skips leading");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -304,4 +390,14 @@ TEST_SUITE(libc) {
 	RUN_TEST(isalpha_lower);
 	RUN_TEST(isalpha_upper);
 	RUN_TEST(isalpha_not);
+	RUN_TEST(strdup_basic);
+	RUN_TEST(strdup_empty);
+	RUN_TEST(strndup_basic);
+	RUN_TEST(strndup_longer);
+	RUN_TEST(strrchr_found);
+	RUN_TEST(strrchr_not_found);
+	RUN_TEST(strrchr_null_terminator);
+	RUN_TEST(strtok_basic);
+	RUN_TEST(strtok_multiple_delims);
+	RUN_TEST(strtok_leading_delim);
 }

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 size_t strlen(const char *s) {
@@ -176,4 +177,75 @@ int itoa(int n, char *buf) {
 	}
 	buf[len] = '\0';
 	return len;
+}
+
+char *strrchr(const char *s, int c) {
+	const char *last = 0;
+	while (*s) {
+		if (*s == (char)c) {
+			last = s;
+		}
+		s++;
+	}
+	if (c == '\0') {
+		return (char *)s;
+	}
+	return (char *)last;
+}
+
+char *strdup(const char *s) {
+	size_t len = strlen(s) + 1;
+	char *dup = malloc(len);
+	if (dup) {
+		memcpy(dup, s, len);
+	}
+	return dup;
+}
+
+char *strndup(const char *s, size_t n) {
+	size_t len = strlen(s);
+	if (len > n) {
+		len = n;
+	}
+	char *dup = malloc(len + 1);
+	if (dup) {
+		memcpy(dup, s, len);
+		dup[len] = '\0';
+	}
+	return dup;
+}
+
+static char *strtok_state;
+
+char *strtok(char *str, const char *delim) {
+	if (str) {
+		strtok_state = str;
+	}
+	if (!strtok_state) {
+		return 0;
+	}
+
+	while (*strtok_state && strchr(delim, *strtok_state)) {
+		strtok_state++;
+	}
+
+	if (*strtok_state == '\0') {
+		strtok_state = 0;
+		return 0;
+	}
+
+	char *token_start = strtok_state;
+
+	while (*strtok_state && !strchr(delim, *strtok_state)) {
+		strtok_state++;
+	}
+
+	if (*strtok_state) {
+		*strtok_state = '\0';
+		strtok_state++;
+	} else {
+		strtok_state = 0;
+	}
+
+	return token_start;
 }
