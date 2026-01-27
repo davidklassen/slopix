@@ -65,14 +65,13 @@ static bool take_arg(char *arg) {
 }
 
 static void add_default_include_paths(char *argv0) {
-	// We expect that chibicc-specific include files are installed
-	// to ./include relative to argv[0].
-	strarray_push(&include_paths, format("%s/include", dirname(strdup(argv0))));
+	char *dir = dirname(strdup(argv0));
 
-	// Add standard include paths.
-	strarray_push(&include_paths, "/usr/local/include");
-	strarray_push(&include_paths, "/usr/include/x86_64-linux-gnu");
-	strarray_push(&include_paths, "/usr/include");
+	// Slopix libc headers (tools/cc/../../libc/include)
+	strarray_push(&include_paths, format("%s/../../libc/include", dir));
+
+	// chibicc's bundled headers (tools/cc/include)
+	strarray_push(&include_paths, format("%s/include", dir));
 
 	// Keep a copy of the standard include paths for -MMD option.
 	for (int i = 0; i < include_paths.len; i++) {
@@ -619,19 +618,8 @@ static void cc1(void) {
 }
 
 static void assemble(char *input, char *output) {
-	char *cmd[] = {"as", "-c", input, "-o", output, NULL};
+	char *cmd[] = {"aarch64-elf-as", input, "-o", output, NULL};
 	run_subprocess(cmd);
-}
-
-static char *find_file(char *pattern) {
-	char *path = NULL;
-	glob_t buf = {};
-	glob(pattern, 0, NULL, &buf);
-	if (buf.gl_pathc > 0) {
-		path = strdup(buf.gl_pathv[buf.gl_pathc - 1]);
-	}
-	globfree(&buf);
-	return path;
 }
 
 // Returns true if a given file exists.
@@ -640,101 +628,8 @@ bool file_exists(char *path) {
 	return !stat(path, &st);
 }
 
-static char *find_libpath(void) {
-	if (file_exists("/usr/lib/x86_64-linux-gnu/crti.o")) {
-		return "/usr/lib/x86_64-linux-gnu";
-	}
-	if (file_exists("/usr/lib64/crti.o")) {
-		return "/usr/lib64";
-	}
-	error("library path is not found");
-}
-
-static char *find_gcc_libpath(void) {
-	char *paths[] = {
-	    "/usr/lib/gcc/x86_64-linux-gnu/*/crtbegin.o",
-	    "/usr/lib/gcc/x86_64-pc-linux-gnu/*/crtbegin.o", // For Gentoo
-	    "/usr/lib/gcc/x86_64-redhat-linux/*/crtbegin.o", // For Fedora
-	};
-
-	for (int i = 0; i < sizeof(paths) / sizeof(*paths); i++) {
-		char *path = find_file(paths[i]);
-		if (path) {
-			return dirname(path);
-		}
-	}
-
-	error("gcc library path is not found");
-}
-
 static void run_linker(StringArray *inputs, char *output) {
-	StringArray arr = {};
-
-	strarray_push(&arr, "ld");
-	strarray_push(&arr, "-o");
-	strarray_push(&arr, output);
-	strarray_push(&arr, "-m");
-	strarray_push(&arr, "elf_x86_64");
-
-	char *libpath = find_libpath();
-	char *gcc_libpath = find_gcc_libpath();
-
-	if (opt_shared) {
-		strarray_push(&arr, format("%s/crti.o", libpath));
-		strarray_push(&arr, format("%s/crtbeginS.o", gcc_libpath));
-	} else {
-		strarray_push(&arr, format("%s/crt1.o", libpath));
-		strarray_push(&arr, format("%s/crti.o", libpath));
-		strarray_push(&arr, format("%s/crtbegin.o", gcc_libpath));
-	}
-
-	strarray_push(&arr, format("-L%s", gcc_libpath));
-	strarray_push(&arr, "-L/usr/lib/x86_64-linux-gnu");
-	strarray_push(&arr, "-L/usr/lib64");
-	strarray_push(&arr, "-L/lib64");
-	strarray_push(&arr, "-L/usr/lib/x86_64-linux-gnu");
-	strarray_push(&arr, "-L/usr/lib/x86_64-pc-linux-gnu");
-	strarray_push(&arr, "-L/usr/lib/x86_64-redhat-linux");
-	strarray_push(&arr, "-L/usr/lib");
-	strarray_push(&arr, "-L/lib");
-
-	if (!opt_static) {
-		strarray_push(&arr, "-dynamic-linker");
-		strarray_push(&arr, "/lib64/ld-linux-x86-64.so.2");
-	}
-
-	for (int i = 0; i < ld_extra_args.len; i++) {
-		strarray_push(&arr, ld_extra_args.data[i]);
-	}
-
-	for (int i = 0; i < inputs->len; i++) {
-		strarray_push(&arr, inputs->data[i]);
-	}
-
-	if (opt_static) {
-		strarray_push(&arr, "--start-group");
-		strarray_push(&arr, "-lgcc");
-		strarray_push(&arr, "-lgcc_eh");
-		strarray_push(&arr, "-lc");
-		strarray_push(&arr, "--end-group");
-	} else {
-		strarray_push(&arr, "-lc");
-		strarray_push(&arr, "-lgcc");
-		strarray_push(&arr, "--as-needed");
-		strarray_push(&arr, "-lgcc_s");
-		strarray_push(&arr, "--no-as-needed");
-	}
-
-	if (opt_shared) {
-		strarray_push(&arr, format("%s/crtendS.o", gcc_libpath));
-	} else {
-		strarray_push(&arr, format("%s/crtend.o", gcc_libpath));
-	}
-
-	strarray_push(&arr, format("%s/crtn.o", libpath));
-	strarray_push(&arr, NULL);
-
-	run_subprocess(arr.data);
+	error("linking not supported: use Slopix build system");
 }
 
 static FileType get_file_type(char *filename) {
