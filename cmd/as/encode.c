@@ -895,6 +895,193 @@ uint32_t encode_nop(void) {
 	return 0xD503201F;
 }
 
+// FMOV Dd, Xn or FMOV Sd, Wn (GPR to FP register)
+// sf=1: 64-bit (X to D), sf=0: 32-bit (W to S)
+uint32_t encode_fmov_gpr_to_fpr(int sf, int fd, int rn) {
+	uint32_t base = sf ? 0x9E670000 : 0x1E270000;
+	return base | ((uint32_t)rn << 5) | (uint32_t)fd;
+}
+
+// FADD Dd, Dn, Dm or FADD Sd, Sn, Sm
+// ftype=1: double, ftype=0: single
+uint32_t encode_fadd(int ftype, int fd, int fn, int fm) {
+	uint32_t base = ftype ? 0x1E602800 : 0x1E202800;
+	return base | ((uint32_t)fm << 16) | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FSUB Dd, Dn, Dm or FSUB Sd, Sn, Sm
+uint32_t encode_fsub(int ftype, int fd, int fn, int fm) {
+	uint32_t base = ftype ? 0x1E603800 : 0x1E203800;
+	return base | ((uint32_t)fm << 16) | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FMUL Dd, Dn, Dm or FMUL Sd, Sn, Sm
+uint32_t encode_fmul(int ftype, int fd, int fn, int fm) {
+	uint32_t base = ftype ? 0x1E600800 : 0x1E200800;
+	return base | ((uint32_t)fm << 16) | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FDIV Dd, Dn, Dm or FDIV Sd, Sn, Sm
+uint32_t encode_fdiv(int ftype, int fd, int fn, int fm) {
+	uint32_t base = ftype ? 0x1E601800 : 0x1E201800;
+	return base | ((uint32_t)fm << 16) | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FNEG Dd, Dn or FNEG Sd, Sn
+uint32_t encode_fneg(int ftype, int fd, int fn) {
+	uint32_t base = ftype ? 0x1E614000 : 0x1E214000;
+	return base | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FCMP Dn, Dm or FCMP Sn, Sm (register)
+uint32_t encode_fcmp_reg(int ftype, int fn, int fm) {
+	uint32_t base = ftype ? 0x1E602000 : 0x1E202000;
+	return base | ((uint32_t)fm << 16) | ((uint32_t)fn << 5);
+}
+
+// FCMP Dn, #0.0 or FCMP Sn, #0.0 (zero)
+uint32_t encode_fcmp_zero(int ftype, int fn) {
+	uint32_t base = ftype ? 0x1E602008 : 0x1E202008;
+	return base | ((uint32_t)fn << 5);
+}
+
+// SCVTF Dd, Xn / SCVTF Sd, Xn / SCVTF Dd, Wn / SCVTF Sd, Wn
+// sf: 1 for X register, 0 for W register
+// ftype: 1 for D register, 0 for S register
+uint32_t encode_scvtf(int sf, int ftype, int fd, int rn) {
+	uint32_t base;
+	if (sf && ftype) {
+		base = 0x9E620000;
+	} else if (!sf && ftype) {
+		base = 0x1E620000;
+	} else if (sf && !ftype) {
+		base = 0x9E220000;
+	} else {
+		base = 0x1E220000;
+	}
+	return base | ((uint32_t)rn << 5) | (uint32_t)fd;
+}
+
+// UCVTF Dd, Xn / UCVTF Sd, Xn / UCVTF Dd, Wn / UCVTF Sd, Wn
+uint32_t encode_ucvtf(int sf, int ftype, int fd, int rn) {
+	uint32_t base;
+	if (sf && ftype) {
+		base = 0x9E630000;
+	} else if (!sf && ftype) {
+		base = 0x1E630000;
+	} else if (sf && !ftype) {
+		base = 0x9E230000;
+	} else {
+		base = 0x1E230000;
+	}
+	return base | ((uint32_t)rn << 5) | (uint32_t)fd;
+}
+
+// FCVTZS Xd, Dn / FCVTZS Xd, Sn / FCVTZS Wd, Dn / FCVTZS Wd, Sn
+// sf: 1 for X register, 0 for W register
+// ftype: 1 for D register, 0 for S register
+uint32_t encode_fcvtzs(int sf, int ftype, int rd, int fn) {
+	uint32_t base;
+	if (sf && ftype) {
+		base = 0x9E780000;
+	} else if (!sf && ftype) {
+		base = 0x1E780000;
+	} else if (sf && !ftype) {
+		base = 0x9E380000;
+	} else {
+		base = 0x1E380000;
+	}
+	return base | ((uint32_t)fn << 5) | (uint32_t)rd;
+}
+
+// FCVTZU Xd, Dn / FCVTZU Xd, Sn / FCVTZU Wd, Dn / FCVTZU Wd, Sn
+uint32_t encode_fcvtzu(int sf, int ftype, int rd, int fn) {
+	uint32_t base;
+	if (sf && ftype) {
+		base = 0x9E790000;
+	} else if (!sf && ftype) {
+		base = 0x1E790000;
+	} else if (sf && !ftype) {
+		base = 0x9E390000;
+	} else {
+		base = 0x1E390000;
+	}
+	return base | ((uint32_t)fn << 5) | (uint32_t)rd;
+}
+
+// FCVT Dd, Sn (single to double)
+uint32_t encode_fcvt_d_s(int fd, int fn) {
+	return 0x1E22C000 | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// FCVT Sd, Dn (double to single)
+uint32_t encode_fcvt_s_d(int fd, int fn) {
+	return 0x1E624000 | ((uint32_t)fn << 5) | (uint32_t)fd;
+}
+
+// LDR Dt, [Xn, #imm] or LDR St, [Xn, #imm] (unsigned offset)
+// ftype=1: double (scale=3), ftype=0: single (scale=2)
+uint32_t encode_ldr_fp_uoff(int ftype, int ft, int rn, int64_t imm) {
+	int scale = ftype ? 3 : 2;
+	int imm12 = encode_imm12_unsigned(imm, scale);
+	if (imm12 < 0) {
+		error("FP load offset out of range or misaligned: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFD400000 : 0xBD400000;
+	return base | ((uint32_t)imm12 << 10) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// STR Dt, [Xn, #imm] or STR St, [Xn, #imm] (unsigned offset)
+uint32_t encode_str_fp_uoff(int ftype, int ft, int rn, int64_t imm) {
+	int scale = ftype ? 3 : 2;
+	int imm12 = encode_imm12_unsigned(imm, scale);
+	if (imm12 < 0) {
+		error("FP store offset out of range or misaligned: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFD000000 : 0xBD000000;
+	return base | ((uint32_t)imm12 << 10) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// LDR Dt, [Xn, #imm]! or LDR St, [Xn, #imm]! (pre-index)
+uint32_t encode_ldr_fp_pre(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("FP pre-index offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC400C00 : 0xBC400C00;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// STR Dt, [Xn, #imm]! or STR St, [Xn, #imm]! (pre-index)
+uint32_t encode_str_fp_pre(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("FP pre-index offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC000C00 : 0xBC000C00;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// LDR Dt, [Xn], #imm or LDR St, [Xn], #imm (post-index)
+uint32_t encode_ldr_fp_post(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("FP post-index offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC400400 : 0xBC400400;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// STR Dt, [Xn], #imm or STR St, [Xn], #imm (post-index)
+uint32_t encode_str_fp_post(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("FP post-index offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC000400 : 0xBC000400;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
 static int test_count = 0;
 static int test_pass = 0;
 
@@ -1132,6 +1319,95 @@ void test_encode(void) {
 
 	printf("\nNOP:\n");
 	check_encoding("NOP", encode_nop(), 0xD503201F);
+
+	printf("\nFMOV (GPR to FP):\n");
+	check_encoding("FMOV d0, x0", encode_fmov_gpr_to_fpr(1, 0, 0), 0x9E670000);
+	check_encoding("FMOV d1, x2", encode_fmov_gpr_to_fpr(1, 1, 2), 0x9E670041);
+	check_encoding("FMOV s0, w0", encode_fmov_gpr_to_fpr(0, 0, 0), 0x1E270000);
+	check_encoding("FMOV s3, w4", encode_fmov_gpr_to_fpr(0, 3, 4), 0x1E270083);
+
+	printf("\nFP Arithmetic (double):\n");
+	check_encoding("FADD d0, d0, d1", encode_fadd(1, 0, 0, 1), 0x1E612800);
+	check_encoding("FADD d2, d3, d4", encode_fadd(1, 2, 3, 4), 0x1E642862);
+	check_encoding("FSUB d0, d0, d1", encode_fsub(1, 0, 0, 1), 0x1E613800);
+	check_encoding("FMUL d0, d0, d1", encode_fmul(1, 0, 0, 1), 0x1E610800);
+	check_encoding("FDIV d0, d0, d1", encode_fdiv(1, 0, 0, 1), 0x1E611800);
+	check_encoding("FNEG d0, d0", encode_fneg(1, 0, 0), 0x1E614000);
+	check_encoding("FNEG d1, d2", encode_fneg(1, 1, 2), 0x1E614041);
+
+	printf("\nFP Arithmetic (single):\n");
+	check_encoding("FADD s0, s0, s1", encode_fadd(0, 0, 0, 1), 0x1E212800);
+	check_encoding("FSUB s0, s0, s1", encode_fsub(0, 0, 0, 1), 0x1E213800);
+	check_encoding("FMUL s0, s0, s1", encode_fmul(0, 0, 0, 1), 0x1E210800);
+	check_encoding("FDIV s0, s0, s1", encode_fdiv(0, 0, 0, 1), 0x1E211800);
+	check_encoding("FNEG s0, s0", encode_fneg(0, 0, 0), 0x1E214000);
+
+	printf("\nFCMP:\n");
+	check_encoding("FCMP d0, d1", encode_fcmp_reg(1, 0, 1), 0x1E612000);
+	check_encoding("FCMP d2, d3", encode_fcmp_reg(1, 2, 3), 0x1E632040);
+	check_encoding("FCMP d0, #0.0", encode_fcmp_zero(1, 0), 0x1E602008);
+	check_encoding("FCMP d5, #0.0", encode_fcmp_zero(1, 5), 0x1E6020A8);
+	check_encoding("FCMP s0, s1", encode_fcmp_reg(0, 0, 1), 0x1E212000);
+	check_encoding("FCMP s0, #0.0", encode_fcmp_zero(0, 0), 0x1E202008);
+
+	printf("\nSCVTF (signed int to FP):\n");
+	check_encoding("SCVTF d0, x0", encode_scvtf(1, 1, 0, 0), 0x9E620000);
+	check_encoding("SCVTF d1, x2", encode_scvtf(1, 1, 1, 2), 0x9E620041);
+	check_encoding("SCVTF d0, w0", encode_scvtf(0, 1, 0, 0), 0x1E620000);
+	check_encoding("SCVTF s0, x0", encode_scvtf(1, 0, 0, 0), 0x9E220000);
+	check_encoding("SCVTF s0, w0", encode_scvtf(0, 0, 0, 0), 0x1E220000);
+
+	printf("\nUCVTF (unsigned int to FP):\n");
+	check_encoding("UCVTF d0, x0", encode_ucvtf(1, 1, 0, 0), 0x9E630000);
+	check_encoding("UCVTF d0, w0", encode_ucvtf(0, 1, 0, 0), 0x1E630000);
+	check_encoding("UCVTF s0, x0", encode_ucvtf(1, 0, 0, 0), 0x9E230000);
+	check_encoding("UCVTF s0, w0", encode_ucvtf(0, 0, 0, 0), 0x1E230000);
+
+	printf("\nFCVTZS (FP to signed int, truncate toward zero):\n");
+	check_encoding("FCVTZS x0, d0", encode_fcvtzs(1, 1, 0, 0), 0x9E780000);
+	check_encoding("FCVTZS x1, d2", encode_fcvtzs(1, 1, 1, 2), 0x9E780041);
+	check_encoding("FCVTZS w0, d0", encode_fcvtzs(0, 1, 0, 0), 0x1E780000);
+	check_encoding("FCVTZS x0, s0", encode_fcvtzs(1, 0, 0, 0), 0x9E380000);
+	check_encoding("FCVTZS w0, s0", encode_fcvtzs(0, 0, 0, 0), 0x1E380000);
+
+	printf("\nFCVTZU (FP to unsigned int, truncate toward zero):\n");
+	check_encoding("FCVTZU x0, d0", encode_fcvtzu(1, 1, 0, 0), 0x9E790000);
+	check_encoding("FCVTZU w0, d0", encode_fcvtzu(0, 1, 0, 0), 0x1E790000);
+	check_encoding("FCVTZU x0, s0", encode_fcvtzu(1, 0, 0, 0), 0x9E390000);
+	check_encoding("FCVTZU w0, s0", encode_fcvtzu(0, 0, 0, 0), 0x1E390000);
+
+	printf("\nFCVT (precision conversion):\n");
+	check_encoding("FCVT d0, s0", encode_fcvt_d_s(0, 0), 0x1E22C000);
+	check_encoding("FCVT d1, s2", encode_fcvt_d_s(1, 2), 0x1E22C041);
+	check_encoding("FCVT s0, d0", encode_fcvt_s_d(0, 0), 0x1E624000);
+	check_encoding("FCVT s3, d4", encode_fcvt_s_d(3, 4), 0x1E624083);
+
+	printf("\nFP Load unsigned offset:\n");
+	check_encoding("LDR d0, [x0]", encode_ldr_fp_uoff(1, 0, 0, 0), 0xFD400000);
+	check_encoding("LDR d0, [x1, #8]", encode_ldr_fp_uoff(1, 0, 1, 8), 0xFD400420);
+	check_encoding("LDR d0, [x1, #32760]", encode_ldr_fp_uoff(1, 0, 1, 32760), 0xFD7FFC20);
+	check_encoding("LDR s0, [x0]", encode_ldr_fp_uoff(0, 0, 0, 0), 0xBD400000);
+	check_encoding("LDR s0, [x1, #4]", encode_ldr_fp_uoff(0, 0, 1, 4), 0xBD400420);
+
+	printf("\nFP Store unsigned offset:\n");
+	check_encoding("STR d0, [x0]", encode_str_fp_uoff(1, 0, 0, 0), 0xFD000000);
+	check_encoding("STR d0, [x1, #16]", encode_str_fp_uoff(1, 0, 1, 16), 0xFD000820);
+	check_encoding("STR s0, [x0]", encode_str_fp_uoff(0, 0, 0, 0), 0xBD000000);
+	check_encoding("STR s0, [x1, #8]", encode_str_fp_uoff(0, 0, 1, 8), 0xBD000820);
+
+	printf("\nFP Load/Store pre-index:\n");
+	check_encoding("LDR d0, [x1, #16]!", encode_ldr_fp_pre(1, 0, 1, 16), 0xFC410C20);
+	check_encoding("LDR d0, [x1, #-16]!", encode_ldr_fp_pre(1, 0, 1, -16), 0xFC5F0C20);
+	check_encoding("STR d0, [sp, #-16]!", encode_str_fp_pre(1, 0, 31, -16), 0xFC1F0FE0);
+	check_encoding("LDR s0, [x1, #8]!", encode_ldr_fp_pre(0, 0, 1, 8), 0xBC408C20);
+	check_encoding("STR s0, [x1, #-8]!", encode_str_fp_pre(0, 0, 1, -8), 0xBC1F8C20);
+
+	printf("\nFP Load/Store post-index:\n");
+	check_encoding("LDR d0, [x1], #16", encode_ldr_fp_post(1, 0, 1, 16), 0xFC410420);
+	check_encoding("LDR d0, [x1], #-16", encode_ldr_fp_post(1, 0, 1, -16), 0xFC5F0420);
+	check_encoding("STR d0, [x1], #8", encode_str_fp_post(1, 0, 1, 8), 0xFC008420);
+	check_encoding("LDR s0, [x1], #4", encode_ldr_fp_post(0, 0, 1, 4), 0xBC404420);
+	check_encoding("STR s0, [x1], #-4", encode_str_fp_post(0, 0, 1, -4), 0xBC1FC420);
 
 	printf("\nCondition code parsing:\n");
 	printf("  encode_cond(\"eq\") = %d (expected 0)\n", encode_cond("eq"));

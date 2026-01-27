@@ -260,6 +260,28 @@ uint32_t encode_adr(int rd, int64_t offset);
 // encode.c - miscellaneous
 uint32_t encode_nop(void);
 
+// encode.c - floating-point
+uint32_t encode_fmov_gpr_to_fpr(int sf, int fd, int rn);
+uint32_t encode_fadd(int ftype, int fd, int fn, int fm);
+uint32_t encode_fsub(int ftype, int fd, int fn, int fm);
+uint32_t encode_fmul(int ftype, int fd, int fn, int fm);
+uint32_t encode_fdiv(int ftype, int fd, int fn, int fm);
+uint32_t encode_fneg(int ftype, int fd, int fn);
+uint32_t encode_fcmp_reg(int ftype, int fn, int fm);
+uint32_t encode_fcmp_zero(int ftype, int fn);
+uint32_t encode_scvtf(int sf, int ftype, int fd, int rn);
+uint32_t encode_ucvtf(int sf, int ftype, int fd, int rn);
+uint32_t encode_fcvtzs(int sf, int ftype, int rd, int fn);
+uint32_t encode_fcvtzu(int sf, int ftype, int rd, int fn);
+uint32_t encode_fcvt_d_s(int fd, int fn);
+uint32_t encode_fcvt_s_d(int fd, int fn);
+uint32_t encode_ldr_fp_uoff(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_str_fp_uoff(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_ldr_fp_pre(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_str_fp_pre(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_ldr_fp_post(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_str_fp_post(int ftype, int ft, int rn, int64_t imm);
+
 void test_encode(void);
 
 #endif
