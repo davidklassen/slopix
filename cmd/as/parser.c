@@ -5,6 +5,7 @@ static int current_section;
 static uint64_t lc_text;
 static uint64_t lc_data;
 static uint64_t lc_bss;
+static uint64_t literal_pool_base;
 
 static uint64_t *current_lc(void) {
 	switch (current_section) {
@@ -40,6 +41,25 @@ static Token *skip_to_newline(Token *tok) {
 		tok = tok->next;
 	}
 	return tok;
+}
+
+static bool is_ldr_literal(Token *tok) {
+	if (tok->kind != TOK_IDENT) {
+		return false;
+	}
+	if (strcasecmp(tok->str, "ldr") != 0) {
+		return false;
+	}
+	Token *t = tok->next;
+	if (t->kind != TOK_REGISTER) {
+		return false;
+	}
+	t = t->next;
+	if (t->kind != TOK_COMMA) {
+		return false;
+	}
+	t = t->next;
+	return t->kind == TOK_EQUALS;
 }
 
 static Token *expect_ident(Token *tok) {
@@ -181,6 +201,7 @@ static void handle_directive(Token *tok) {
 
 void pass1(Token *tok) {
 	symtab_init();
+	literal_pool_init();
 	current_section = SECTION_TEXT;
 	lc_text = 0;
 	lc_data = 0;
@@ -211,6 +232,24 @@ void pass1(Token *tok) {
 			continue;
 		}
 
+		if (is_ldr_literal(tok)) {
+			Token *t = tok->next;
+			t = t->next;
+			t = t->next;
+			t = t->next;
+			if (t->kind == TOK_NUMBER) {
+				literal_pool_add_value((uint64_t)t->val);
+			} else if (t->kind == TOK_IDENT) {
+				literal_pool_add_symbol(t->str);
+			}
+			advance_lc(4);
+			tok = skip_to_newline(tok);
+			if (tok->kind == TOK_NEWLINE) {
+				tok = tok->next;
+			}
+			continue;
+		}
+
 		if (tok->kind == TOK_IDENT) {
 			advance_lc(4);
 			tok = skip_to_newline(tok);
@@ -222,6 +261,11 @@ void pass1(Token *tok) {
 
 		tok = tok->next;
 	}
+
+	uint64_t alignment = 8;
+	lc_text = (lc_text + alignment - 1) & ~(alignment - 1);
+	literal_pool_base = lc_text;
+	lc_text += literal_pool_size();
 }
 
 static const char *section_name(int section) {
@@ -1139,6 +1183,23 @@ static void handle_instruction(Token *tok) {
 		int ftype = t->reg_width == 64 ? 1 : 0;
 		t = expect_comma(t->next);
 
+		if (t->kind == TOK_EQUALS) {
+			t = t->next;
+			LiteralEntry *entry = NULL;
+			if (t->kind == TOK_NUMBER) {
+				entry = literal_pool_add_value((uint64_t)t->val);
+			} else if (t->kind == TOK_IDENT) {
+				entry = literal_pool_add_symbol(t->str);
+			}
+			SectionBuf *sec = current_sec();
+			int64_t current_pc = sec ? (int64_t)sec->size : 0;
+			int64_t pool_entry_addr =
+			    (int64_t)literal_pool_base + (int64_t)entry->pool_offset;
+			int64_t offset = pool_entry_addr - current_pc;
+			emit32(encode_ldr_literal(sf, rt, offset));
+			return;
+		}
+
 		if (t->kind == TOK_LBRACKET) {
 			t = t->next;
 			expect_register(t);
@@ -1918,6 +1979,35 @@ static void handle_instruction(Token *tok) {
 	error_tok(tok, "unknown instruction: %s", mnemonic);
 }
 
+static void emit_literal_pool(void) {
+	section_align(&text_section, 3);
+
+	int count = literal_pool_count();
+	if (count == 0) {
+		return;
+	}
+
+	LiteralEntry **entries = calloc(count, sizeof(LiteralEntry *));
+	int idx = count - 1;
+	for (LiteralEntry *e = literal_pool_get_list(); e; e = e->next) {
+		entries[idx--] = e;
+	}
+
+	for (int i = 0; i < count; i++) {
+		LiteralEntry *e = entries[i];
+		if (e->symbol) {
+			Symbol *sym = symtab_add(e->symbol);
+			int sym_idx = symtab_get_index(sym);
+			reloc_add(SECTION_TEXT, text_section.size, R_AARCH64_ABS64, sym_idx, 0);
+			section_emit64(&text_section, 0);
+		} else {
+			section_emit64(&text_section, e->value);
+		}
+	}
+
+	free(entries);
+}
+
 void pass2(Token *tok) {
 	section_init(&text_section);
 	section_init(&data_section);
@@ -1957,4 +2047,6 @@ void pass2(Token *tok) {
 
 		tok = tok->next;
 	}
+
+	emit_literal_pool();
 }

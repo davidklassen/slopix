@@ -213,6 +213,15 @@ struct Symbol {
 	int defined;
 };
 
+// Literal pool entry
+typedef struct LiteralEntry LiteralEntry;
+struct LiteralEntry {
+	uint64_t value;
+	char *symbol;
+	uint64_t pool_offset;
+	LiteralEntry *next;
+};
+
 // symtab.c
 void symtab_init(void);
 Symbol *symtab_lookup(const char *name);
@@ -222,6 +231,14 @@ void symtab_set_type(Symbol *sym, int type);
 int symtab_count(void);
 Symbol *symtab_get(int index);
 int symtab_get_index(Symbol *sym);
+
+// literal.c
+void literal_pool_init(void);
+LiteralEntry *literal_pool_add_value(uint64_t value);
+LiteralEntry *literal_pool_add_symbol(const char *name);
+int literal_pool_count(void);
+uint64_t literal_pool_size(void);
+LiteralEntry *literal_pool_get_list(void);
 
 // parser.c
 void pass1(Token *tok);
