@@ -8,8 +8,8 @@ CFLAGS = -I. -I$(ROOT)/libc/include -I../include
 LIBC = $(ROOT)/libc/libc.a
 LINK_SCRIPT = $(ROOT)/cmd/link.ld
 
-# Test files - add as features are implemented
-TESTS = function
+# Test file - only one at a time (each has its own main)
+TESTS = pointer
 
 OBJS = common.o $(addsuffix .o,$(TESTS))
 

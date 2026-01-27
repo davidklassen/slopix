@@ -572,23 +572,34 @@ static void emit_data(Obj *prog) {
 			continue;
 		}
 
-		// Stub: global variables not yet implemented
-		// For simple programs this won't be reached
 		if (var->is_static) {
 			println("  .local %s", var->name);
 		} else {
 			println("  .globl %s", var->name);
 		}
 
-		println("  .data");
+		if (var->init_data) {
+			println("  .data");
+		} else {
+			println("  .bss");
+		}
+
 		println("  .type %s, %%object", var->name);
 		println("  .size %s, %d", var->name, var->ty->size);
 		println("  .align %d", var->align);
 		println("%s:", var->name);
 
 		if (var->init_data) {
-			for (int i = 0; i < var->ty->size; i++) {
-				println("  .byte %d", var->init_data[i]);
+			Relocation *rel = var->rel;
+			int pos = 0;
+			while (pos < var->ty->size) {
+				if (rel && rel->offset == pos) {
+					println("  .xword %s%+ld", *rel->label, rel->addend);
+					rel = rel->next;
+					pos += 8;
+				} else {
+					println("  .byte %d", var->init_data[pos++]);
+				}
 			}
 		} else {
 			println("  .zero %d", var->ty->size);
