@@ -11,6 +11,7 @@ extern void test_suite_devices(void);
 extern void test_suite_codegen(void);
 extern void test_suite_malloc(void);
 extern void test_suite_stdio(void);
+extern void test_suite_libgen(void);
 
 int main(void) {
 	RUN_SUITE(libc);
@@ -24,6 +25,7 @@ int main(void) {
 	RUN_SUITE(codegen);
 	RUN_SUITE(malloc);
 	RUN_SUITE(stdio);
+	RUN_SUITE(libgen);
 	TEST_REPORT();
 	TEST_EXIT();
 	return 0;
