@@ -113,6 +113,9 @@ static char *read_stdin(void) {
 		size += n;
 	}
 
+	if (size + 2 > capacity) {
+		buf = realloc(buf, size + 2);
+	}
 	if (size == 0 || buf[size - 1] != '\n') {
 		buf[size++] = '\n';
 	}

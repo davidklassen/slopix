@@ -178,6 +178,14 @@ static void handle_directive(Token *tok) {
 		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
 			if (t->kind == TOK_NUMBER || t->kind == TOK_IDENT) {
 				advance_lc(8);
+				t = t->next;
+				if (t->kind == TOK_PLUS || t->kind == TOK_MINUS) {
+					t = t->next;
+					if (t->kind == TOK_NUMBER) {
+						t = t->next;
+					}
+				}
+				continue;
 			}
 			t = t->next;
 		}
@@ -672,11 +680,20 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_add_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int imm12 = encode_imm12(t->val, &shift);
-			if (imm12 < 0) {
-				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			int64_t val = t->val;
+			if (val < 0) {
+				int imm12 = encode_imm12(-val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
+			} else {
+				int imm12 = encode_imm12(val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
-			emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
 	}
@@ -695,11 +712,20 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_sub_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int imm12 = encode_imm12(t->val, &shift);
-			if (imm12 < 0) {
-				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			int64_t val = t->val;
+			if (val < 0) {
+				int imm12 = encode_imm12(-val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
+			} else {
+				int imm12 = encode_imm12(val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
-			emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
 	}
@@ -718,11 +744,20 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_adds_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int imm12 = encode_imm12(t->val, &shift);
-			if (imm12 < 0) {
-				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			int64_t val = t->val;
+			if (val < 0) {
+				int imm12 = encode_imm12(-val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_subs_imm(sf, rd, rn, imm12, shift ? 1 : 0));
+			} else {
+				int imm12 = encode_imm12(val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_adds_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
-			emit32(encode_adds_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
 	}
@@ -741,11 +776,20 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_subs_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int imm12 = encode_imm12(t->val, &shift);
-			if (imm12 < 0) {
-				error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+			int64_t val = t->val;
+			if (val < 0) {
+				int imm12 = encode_imm12(-val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_adds_imm(sf, rd, rn, imm12, shift ? 1 : 0));
+			} else {
+				int imm12 = encode_imm12(val, &shift);
+				if (imm12 < 0) {
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+				}
+				emit32(encode_subs_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
-			emit32(encode_subs_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 		}
 		return;
 	}
@@ -996,7 +1040,12 @@ static void handle_instruction(Token *tok) {
 				emit32(encode_mov_reg(sf, rd, rm));
 			}
 		} else {
-			emit32(encode_movz(sf, rd, (int)t->val, 0));
+			int64_t val = t->val;
+			if (val < 0 && val >= -65536) {
+				emit32(encode_movn(sf, rd, (int)(~val), 0));
+			} else {
+				emit32(encode_movz(sf, rd, (int)val, 0));
+			}
 		}
 		return;
 	}
@@ -1705,8 +1754,9 @@ static void handle_instruction(Token *tok) {
 
 	if (strcasecmp(mnemonic, "stur") == 0) {
 		expect_register(t);
-		int sf = t->reg_width == 64 ? 1 : 0;
-		int rt = encode_gpr(t);
+		int ftype = t->reg_width == 64 ? 1 : 0;
+		int rt = t->reg_type == REG_FP ? encode_fpr(t) : encode_gpr(t);
+		int is_fp = t->reg_type == REG_FP;
 		t = expect_comma(t->next);
 		if (t->kind == TOK_LBRACKET) {
 			t = t->next;
@@ -1719,15 +1769,20 @@ static void handle_instruction(Token *tok) {
 				t = skip_hash(t);
 				imm = t->val;
 			}
-			emit32(encode_stur(sf, rt, rn, imm));
+			if (is_fp) {
+				emit32(encode_stur_fp(ftype, rt, rn, imm));
+			} else {
+				emit32(encode_stur(ftype, rt, rn, imm));
+			}
 		}
 		return;
 	}
 
 	if (strcasecmp(mnemonic, "ldur") == 0) {
 		expect_register(t);
-		int sf = t->reg_width == 64 ? 1 : 0;
-		int rt = encode_gpr(t);
+		int ftype = t->reg_width == 64 ? 1 : 0;
+		int rt = t->reg_type == REG_FP ? encode_fpr(t) : encode_gpr(t);
+		int is_fp = t->reg_type == REG_FP;
 		t = expect_comma(t->next);
 		if (t->kind == TOK_LBRACKET) {
 			t = t->next;
@@ -1740,7 +1795,11 @@ static void handle_instruction(Token *tok) {
 				t = skip_hash(t);
 				imm = t->val;
 			}
-			emit32(encode_ldur(sf, rt, rn, imm));
+			if (is_fp) {
+				emit32(encode_ldur_fp(ftype, rt, rn, imm));
+			} else {
+				emit32(encode_ldur(ftype, rt, rn, imm));
+			}
 		}
 		return;
 	}
@@ -2096,7 +2155,7 @@ static void emit_literal_pool(void) {
 void pass2(Token *tok) {
 	section_init(&text_section);
 	section_init(&data_section);
-	bss_size = 0;
+	bss_size = lc_bss;
 	reloc_init();
 
 	current_section = SECTION_TEXT;

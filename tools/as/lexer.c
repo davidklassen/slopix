@@ -45,7 +45,7 @@ static Token *read_register(char *p, int line_no) {
 	int num = 0;
 	RegType type = REG_GP;
 
-	if (startswith(p, "sp")) {
+	if (startswith(p, "sp") && !is_ident2(p[2])) {
 		Token *tok = new_token(TOK_REGISTER, start, p + 2, line_no);
 		tok->reg_num = 31;
 		tok->reg_width = 64;
@@ -53,7 +53,7 @@ static Token *read_register(char *p, int line_no) {
 		return tok;
 	}
 
-	if (startswith(p, "xzr")) {
+	if (startswith(p, "xzr") && !is_ident2(p[3])) {
 		Token *tok = new_token(TOK_REGISTER, start, p + 3, line_no);
 		tok->reg_num = 31;
 		tok->reg_width = 64;
@@ -61,7 +61,7 @@ static Token *read_register(char *p, int line_no) {
 		return tok;
 	}
 
-	if (startswith(p, "wzr")) {
+	if (startswith(p, "wzr") && !is_ident2(p[3])) {
 		Token *tok = new_token(TOK_REGISTER, start, p + 3, line_no);
 		tok->reg_num = 31;
 		tok->reg_width = 32;

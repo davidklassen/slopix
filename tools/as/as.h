@@ -135,46 +135,46 @@ typedef struct {
 } Elf64_Rela;
 
 // ELF identification
-#define ELFMAG0 0x7f
-#define ELFMAG1 'E'
-#define ELFMAG2 'L'
-#define ELFMAG3 'F'
-#define ELFCLASS64 2
+#define ELFMAG0	    0x7f
+#define ELFMAG1	    'E'
+#define ELFMAG2	    'L'
+#define ELFMAG3	    'F'
+#define ELFCLASS64  2
 #define ELFDATA2LSB 1
-#define EV_CURRENT 1
-#define ET_REL 1
-#define EM_AARCH64 183
+#define EV_CURRENT  1
+#define ET_REL	    1
+#define EM_AARCH64  183
 
 // Section types
-#define SHT_NULL 0
+#define SHT_NULL     0
 #define SHT_PROGBITS 1
-#define SHT_SYMTAB 2
-#define SHT_STRTAB 3
-#define SHT_RELA 4
-#define SHT_NOBITS 8
+#define SHT_SYMTAB   2
+#define SHT_STRTAB   3
+#define SHT_RELA     4
+#define SHT_NOBITS   8
 
 // Section flags
-#define SHF_WRITE (1 << 0)
-#define SHF_ALLOC (1 << 1)
+#define SHF_WRITE     (1 << 0)
+#define SHF_ALLOC     (1 << 1)
 #define SHF_EXECINSTR (1 << 2)
 #define SHF_INFO_LINK (1 << 6)
 
 // Special section indices
 #define SHN_UNDEF 0
-#define SHN_ABS 0xfff1
+#define SHN_ABS	  0xfff1
 
 // Macros
 #define ELF64_ST_INFO(bind, type) (((bind) << 4) | ((type) & 0xf))
-#define ELF64_R_INFO(sym, type) (((uint64_t)(sym) << 32) | (type))
+#define ELF64_R_INFO(sym, type)	  (((uint64_t)(sym) << 32) | (type))
 
 // AArch64 relocations
-#define R_AARCH64_NONE 0
-#define R_AARCH64_ABS64 257
-#define R_AARCH64_ADR_PREL_PG_HI21 275
-#define R_AARCH64_ADD_ABS_LO12_NC 277
-#define R_AARCH64_LDST8_ABS_LO12_NC 278
-#define R_AARCH64_JUMP26 282
-#define R_AARCH64_CALL26 283
+#define R_AARCH64_NONE		     0
+#define R_AARCH64_ABS64		     257
+#define R_AARCH64_ADR_PREL_PG_HI21   275
+#define R_AARCH64_ADD_ABS_LO12_NC    277
+#define R_AARCH64_LDST8_ABS_LO12_NC  278
+#define R_AARCH64_JUMP26	     282
+#define R_AARCH64_CALL26	     283
 #define R_AARCH64_LDST16_ABS_LO12_NC 284
 #define R_AARCH64_LDST32_ABS_LO12_NC 285
 #define R_AARCH64_LDST64_ABS_LO12_NC 286
@@ -396,6 +396,8 @@ uint32_t encode_str_post(int sf, int rt, int rn, int64_t imm);
 // encode.c - load/store unscaled
 uint32_t encode_stur(int sf, int rt, int rn, int64_t imm);
 uint32_t encode_ldur(int sf, int rt, int rn, int64_t imm);
+uint32_t encode_stur_fp(int ftype, int ft, int rn, int64_t imm);
+uint32_t encode_ldur_fp(int ftype, int ft, int rn, int64_t imm);
 uint32_t encode_sturb(int rt, int rn, int64_t imm);
 uint32_t encode_ldurb(int rt, int rn, int64_t imm);
 uint32_t encode_sturh(int rt, int rn, int64_t imm);

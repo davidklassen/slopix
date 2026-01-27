@@ -464,6 +464,26 @@ uint32_t encode_ldur(int sf, int rt, int rn, int64_t imm) {
 	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)rt;
 }
 
+// STUR Dt/St, [Xn, #imm] (unscaled FP store)
+uint32_t encode_stur_fp(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("unscaled offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC000000 : 0xBC000000;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
+// LDUR Dt/St, [Xn, #imm] (unscaled FP load)
+uint32_t encode_ldur_fp(int ftype, int ft, int rn, int64_t imm) {
+	int imm9 = encode_imm9(imm);
+	if (imm9 < 0) {
+		error("unscaled offset out of range: %lld", (long long)imm);
+	}
+	uint32_t base = ftype ? 0xFC400000 : 0xBC400000;
+	return base | ((uint32_t)imm9 << 12) | ((uint32_t)rn << 5) | (uint32_t)ft;
+}
+
 // STURB Wt, [Xn, #imm] (unscaled byte store)
 uint32_t encode_sturb(int rt, int rn, int64_t imm) {
 	int imm9 = encode_imm9(imm);
