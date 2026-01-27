@@ -109,4 +109,51 @@ Symbol *symtab_get(int index);
 void pass1(Token *tok);
 void dump_symbols(void);
 
+// Condition codes for conditional branches
+typedef enum {
+	COND_EQ = 0,
+	COND_NE = 1,
+	COND_CS = 2,
+	COND_CC = 3,
+	COND_MI = 4,
+	COND_PL = 5,
+	COND_VS = 6,
+	COND_VC = 7,
+	COND_HI = 8,
+	COND_LS = 9,
+	COND_GE = 10,
+	COND_LT = 11,
+	COND_GT = 12,
+	COND_LE = 13,
+	COND_AL = 14,
+} CondCode;
+
+// encode.c
+int encode_gpr(Token *tok);
+int encode_fpr(Token *tok);
+int encode_cond(const char *cond_str);
+
+int encode_imm12(int64_t val, int *shift);
+int encode_imm16(int64_t val);
+int encode_branch26(int64_t offset);
+int encode_branch19(int64_t offset);
+
+uint32_t encode_add_reg(int sf, int rd, int rn, int rm);
+uint32_t encode_add_imm(int sf, int rd, int rn, int imm12, int shift);
+uint32_t encode_sub_reg(int sf, int rd, int rn, int rm);
+uint32_t encode_sub_imm(int sf, int rd, int rn, int imm12, int shift);
+uint32_t encode_mov_reg(int sf, int rd, int rm);
+uint32_t encode_movz(int sf, int rd, int imm16, int hw);
+uint32_t encode_movk(int sf, int rd, int imm16, int hw);
+uint32_t encode_movn(int sf, int rd, int imm16, int hw);
+uint32_t encode_b(int32_t offset);
+uint32_t encode_bl(int32_t offset);
+uint32_t encode_bcond(int cond, int32_t offset);
+uint32_t encode_cbz(int sf, int rt, int32_t offset);
+uint32_t encode_cbnz(int sf, int rt, int32_t offset);
+uint32_t encode_ret(int rn);
+uint32_t encode_blr(int rn);
+
+void test_encode(void);
+
 #endif
