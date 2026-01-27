@@ -181,8 +181,15 @@ static void store(Type *ty) {
 }
 
 static void cmp_zero(Type *ty) {
-	(void)ty;
-	println("  cmp x0, #0");
+	if (is_flonum(ty)) {
+		if (ty->kind == TY_FLOAT) {
+			println("  fcmp s0, #0.0");
+		} else {
+			println("  fcmp d0, #0.0");
+		}
+	} else {
+		println("  cmp x0, #0");
+	}
 }
 
 static void pushf(void) {
@@ -194,10 +201,121 @@ static void popf(int reg) {
 	error("popf not yet implemented for AArch64");
 }
 
+enum { I8,
+       I16,
+       I32,
+       I64,
+       U8,
+       U16,
+       U32,
+       U64,
+       F32,
+       F64 };
+
+static int getTypeId(Type *ty) {
+	switch (ty->kind) {
+	case TY_CHAR:
+		return ty->is_unsigned ? U8 : I8;
+	case TY_SHORT:
+		return ty->is_unsigned ? U16 : I16;
+	case TY_INT:
+		return ty->is_unsigned ? U32 : I32;
+	case TY_LONG:
+		return ty->is_unsigned ? U64 : I64;
+	case TY_FLOAT:
+		return F32;
+	case TY_DOUBLE:
+		return F64;
+	default:
+		return U64;
+	}
+}
+
+// Integer sign/zero extension
+static char i32i8[] = "sxtb w0, w0";
+static char i32u8[] = "uxtb w0, w0";
+static char i32i16[] = "sxth w0, w0";
+static char i32u16[] = "uxth w0, w0";
+static char i32i64[] = "sxtw x0, w0";
+static char u32i64[] = "mov w0, w0";
+static char i64i32[] = "sxtw x0, w0";
+static char i64u32[] = "mov w0, w0";
+
+// Integer to float
+static char i32f32[] = "scvtf s0, w0";
+static char i32f64[] = "scvtf d0, w0";
+static char i64f32[] = "scvtf s0, x0";
+static char i64f64[] = "scvtf d0, x0";
+static char u32f32[] = "ucvtf s0, w0";
+static char u32f64[] = "ucvtf d0, w0";
+static char u64f32[] = "ucvtf s0, x0";
+static char u64f64[] = "ucvtf d0, x0";
+
+// Float to integer (with narrowing for small types)
+static char f32i8[] = "fcvtzs w0, s0\n  sxtb w0, w0";
+static char f32u8[] = "fcvtzs w0, s0\n  uxtb w0, w0";
+static char f32i16[] = "fcvtzs w0, s0\n  sxth w0, w0";
+static char f32u16[] = "fcvtzs w0, s0\n  uxth w0, w0";
+static char f32i32[] = "fcvtzs w0, s0";
+static char f32u32[] = "fcvtzu w0, s0";
+static char f32i64[] = "fcvtzs x0, s0";
+static char f32u64[] = "fcvtzu x0, s0";
+
+static char f64i8[] = "fcvtzs w0, d0\n  sxtb w0, w0";
+static char f64u8[] = "fcvtzs w0, d0\n  uxtb w0, w0";
+static char f64i16[] = "fcvtzs w0, d0\n  sxth w0, w0";
+static char f64u16[] = "fcvtzs w0, d0\n  uxth w0, w0";
+static char f64i32[] = "fcvtzs w0, d0";
+static char f64u32[] = "fcvtzu w0, d0";
+static char f64i64[] = "fcvtzs x0, d0";
+static char f64u64[] = "fcvtzu x0, d0";
+
+// Float precision
+static char f32f64[] = "fcvt d0, s0";
+static char f64f32[] = "fcvt s0, d0";
+
+// clang-format off
+static char *cast_table[][10] = {
+	// to:   I8      I16     I32      I64     U8      U16     U32      U64     F32     F64
+	// I8
+	{NULL,   NULL,   NULL,    i32i64, i32u8,  NULL,   NULL,    i32i64, i32f32, i32f64},
+	// I16
+	{i32i8,  NULL,   NULL,    i32i64, i32u8,  i32u16, NULL,    i32i64, i32f32, i32f64},
+	// I32
+	{i32i8,  i32i16, NULL,    i32i64, i32u8,  i32u16, i64u32,  i32i64, i32f32, i32f64},
+	// I64
+	{i32i8,  i32i16, i64i32,  NULL,   i32u8,  i32u16, i64u32,  NULL,   i64f32, i64f64},
+	// U8
+	{i32i8,  NULL,   NULL,    u32i64, NULL,   NULL,   NULL,    u32i64, i32f32, i32f64},
+	// U16
+	{i32i8,  i32i16, NULL,    u32i64, i32u8,  NULL,   NULL,    u32i64, i32f32, i32f64},
+	// U32
+	{i32i8,  i32i16, NULL,    u32i64, i32u8,  i32u16, NULL,    u32i64, u32f32, u32f64},
+	// U64
+	{i32i8,  i32i16, i64i32,  NULL,   i32u8,  i32u16, i64u32,  NULL,   u64f32, u64f64},
+	// F32
+	{f32i8,  f32i16, f32i32, f32i64, f32u8,  f32u16, f32u32, f32u64, NULL,   f32f64},
+	// F64
+	{f64i8,  f64i16, f64i32, f64i64, f64u8,  f64u16, f64u32, f64u64, f64f32, NULL},
+};
+// clang-format on
+
 static void cast(Type *from, Type *to) {
-	(void)from;
-	(void)to;
-	error("cast not yet implemented for AArch64");
+	if (to->kind == TY_VOID) {
+		return;
+	}
+
+	if (to->kind == TY_BOOL) {
+		cmp_zero(from);
+		println("  cset w0, ne");
+		return;
+	}
+
+	int t1 = getTypeId(from);
+	int t2 = getTypeId(to);
+	if (cast_table[t1][t2]) {
+		println("  %s", cast_table[t1][t2]);
+	}
 }
 
 static void gen_expr(Node *node) {
@@ -215,7 +333,7 @@ static void gen_expr(Node *node) {
 		return;
 	case ND_CAST:
 		gen_expr(node->lhs);
-		// For now, ignore casts - stub implementation
+		cast(node->lhs->ty, node->ty);
 		return;
 	case ND_NEG:
 		gen_expr(node->lhs);
@@ -390,7 +508,7 @@ static void gen_expr(Node *node) {
 			println("  lsl x0, x0, x1");
 			break;
 		case ND_SHR:
-			if (node->lhs->ty->is_unsigned) {
+			if (node->ty->is_unsigned) {
 				println("  lsr x0, x0, x1");
 			} else {
 				println("  asr x0, x0, x1");
@@ -406,11 +524,19 @@ static void gen_expr(Node *node) {
 			break;
 		case ND_LT:
 			println("  cmp x0, x1");
-			println("  cset x0, lt");
+			if (node->lhs->ty->is_unsigned) {
+				println("  cset x0, lo");
+			} else {
+				println("  cset x0, lt");
+			}
 			break;
 		case ND_LE:
 			println("  cmp x0, x1");
-			println("  cset x0, le");
+			if (node->lhs->ty->is_unsigned) {
+				println("  cset x0, ls");
+			} else {
+				println("  cset x0, le");
+			}
 			break;
 		default:
 			break;
