@@ -426,15 +426,33 @@ static void handle_directive_p2(Token *tok) {
 				if (sec) {
 					section_emit64(sec, (uint64_t)t->val);
 				}
+				t = t->next;
 			} else if (t->kind == TOK_IDENT) {
 				Symbol *sym = symtab_add(t->str);
 				int sym_idx = symtab_get_index(sym);
+				int64_t addend = 0;
+
+				t = t->next;
+
+				// Parse addend: +NUMBER or negative NUMBER
+				if (t->kind == TOK_PLUS) {
+					t = t->next;
+					if (t->kind == TOK_NUMBER) {
+						addend = t->val;
+						t = t->next;
+					}
+				} else if (t->kind == TOK_NUMBER && t->val < 0) {
+					addend = t->val;
+					t = t->next;
+				}
+
 				if (sec) {
-					reloc_add(current_section, sec->size, R_AARCH64_ABS64, sym_idx, 0);
+					reloc_add(current_section, sec->size, R_AARCH64_ABS64, sym_idx, addend);
 					section_emit64(sec, 0);
 				}
+			} else {
+				t = t->next;
 			}
-			t = t->next;
 		}
 		return;
 	}
