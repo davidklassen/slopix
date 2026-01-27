@@ -5,7 +5,7 @@ AR = $(CROSS)ar
 CFLAGS = -I$(CC_INCLUDE) -Iinclude
 ASFLAGS = -g -mcpu=cortex-a57
 
-OBJ = crt0.o syscall.o stdio.o stdio_file.o string.o ctype.o test.o malloc.o stdlib.o errno.o libgen.o
+OBJ = crt0.o syscall.o stdio.o stdio_file.o string.o ctype.o test.o malloc.o stdlib.o errno.o libgen.o time.o
 
 all: libc.a
 

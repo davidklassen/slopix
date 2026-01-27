@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <test.h>
+#include <time.h>
 #include <unistd.h>
 
 TEST(strlen_empty) {
@@ -585,6 +586,34 @@ TEST(atexit_register) {
 	return 0;
 }
 
+TEST(time_returns_zero) {
+	ASSERT_EQ(time(0), 0, "time returns 0");
+	return 0;
+}
+
+TEST(time_sets_tloc) {
+	time_t t = 99;
+	time(&t);
+	ASSERT_EQ(t, 0, "time sets tloc to 0");
+	return 0;
+}
+
+TEST(localtime_returns_valid) {
+	time_t t = 0;
+	struct tm *tm = localtime(&t);
+	ASSERT_NOT_NULL(tm, "localtime returns non-null");
+	return 0;
+}
+
+TEST(localtime_zeroed) {
+	time_t t = 0;
+	struct tm *tm = localtime(&t);
+	ASSERT_EQ(tm->tm_sec, 0, "tm_sec is 0");
+	ASSERT_EQ(tm->tm_min, 0, "tm_min is 0");
+	ASSERT_EQ(tm->tm_hour, 0, "tm_hour is 0");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -667,4 +696,8 @@ TEST_SUITE(libc) {
 	RUN_TEST(mkstemp_unique);
 	RUN_TEST(mkstemp_invalid_template);
 	RUN_TEST(atexit_register);
+	RUN_TEST(time_returns_zero);
+	RUN_TEST(time_sets_tloc);
+	RUN_TEST(localtime_returns_valid);
+	RUN_TEST(localtime_zeroed);
 }
