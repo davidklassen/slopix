@@ -8,6 +8,7 @@ docsearch.db*
 tools/mkfs/mkfs
 tools/mkramfs/mkramfs
 tools/cc/chibicc
+cmd/as/as
 initramfs-test.bin
 kernel/kernel.bin
 kernel/kernel-test.bin
