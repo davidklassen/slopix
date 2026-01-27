@@ -348,6 +348,46 @@ TEST(strtok_leading_delim) {
 	return 0;
 }
 
+TEST(strtoul_decimal) {
+	ASSERT_EQ(strtoul("123", NULL, 10), 123, "decimal");
+	ASSERT_EQ(strtoul("  456", NULL, 10), 456, "leading space");
+	ASSERT_EQ(strtoul("+789", NULL, 10), 789, "plus sign");
+	return 0;
+}
+
+TEST(strtoul_hex) {
+	ASSERT_EQ(strtoul("0xff", NULL, 0), 255, "auto hex lowercase");
+	ASSERT_EQ(strtoul("0XFF", NULL, 0), 255, "auto hex uppercase");
+	ASSERT_EQ(strtoul("ff", NULL, 16), 255, "explicit hex no prefix");
+	ASSERT_EQ(strtoul("0xff", NULL, 16), 255, "explicit hex with prefix");
+	return 0;
+}
+
+TEST(strtoul_octal) {
+	ASSERT_EQ(strtoul("0777", NULL, 0), 511, "auto octal");
+	ASSERT_EQ(strtoul("777", NULL, 8), 511, "explicit octal");
+	return 0;
+}
+
+TEST(strtoul_endptr) {
+	char *end;
+	ASSERT_EQ(strtoul("123abc", &end, 10), 123, "value");
+	ASSERT_EQ(*end, 'a', "endptr points to first non-digit");
+	return 0;
+}
+
+TEST(strtol_negative) {
+	ASSERT_EQ(strtol("-42", NULL, 10), -42, "negative decimal");
+	ASSERT_EQ(strtol("  -100", NULL, 10), -100, "negative with space");
+	return 0;
+}
+
+TEST(strtol_zero) {
+	ASSERT_EQ(strtol("0", NULL, 10), 0, "zero");
+	ASSERT_EQ(strtol("0x0", NULL, 0), 0, "hex zero");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -400,4 +440,10 @@ TEST_SUITE(libc) {
 	RUN_TEST(strtok_basic);
 	RUN_TEST(strtok_multiple_delims);
 	RUN_TEST(strtok_leading_delim);
+	RUN_TEST(strtoul_decimal);
+	RUN_TEST(strtoul_hex);
+	RUN_TEST(strtoul_octal);
+	RUN_TEST(strtoul_endptr);
+	RUN_TEST(strtol_negative);
+	RUN_TEST(strtol_zero);
 }

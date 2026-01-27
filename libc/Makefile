@@ -5,7 +5,7 @@ AR = $(CROSS)ar
 CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -Iinclude
 ASFLAGS = -g -mcpu=cortex-a57
 
-OBJ = crt0.o syscall.o stdio.o string.o ctype.o test.o malloc.o
+OBJ = crt0.o syscall.o stdio.o string.o ctype.o test.o malloc.o stdlib.o
 
 all: libc.a
 
