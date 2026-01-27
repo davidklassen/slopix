@@ -59,3 +59,10 @@ Symbol *symtab_get(int index) {
 	}
 	return &symbols[index];
 }
+
+int symtab_get_index(Symbol *sym) {
+	if (!sym) {
+		return -1;
+	}
+	return (int)(sym - symbols);
+}

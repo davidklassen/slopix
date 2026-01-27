@@ -83,6 +83,123 @@ enum {
 	STT_NOTYPE = 0,
 	STT_OBJECT = 1,
 	STT_FUNC = 2,
+	STT_SECTION = 3,
+};
+
+// ELF64 structures
+typedef struct {
+	unsigned char e_ident[16];
+	uint16_t e_type;
+	uint16_t e_machine;
+	uint32_t e_version;
+	uint64_t e_entry;
+	uint64_t e_phoff;
+	uint64_t e_shoff;
+	uint32_t e_flags;
+	uint16_t e_ehsize;
+	uint16_t e_phentsize;
+	uint16_t e_phnum;
+	uint16_t e_shentsize;
+	uint16_t e_shnum;
+	uint16_t e_shstrndx;
+} Elf64_Ehdr;
+
+typedef struct {
+	uint32_t sh_name;
+	uint32_t sh_type;
+	uint64_t sh_flags;
+	uint64_t sh_addr;
+	uint64_t sh_offset;
+	uint64_t sh_size;
+	uint32_t sh_link;
+	uint32_t sh_info;
+	uint64_t sh_addralign;
+	uint64_t sh_entsize;
+} Elf64_Shdr;
+
+typedef struct {
+	uint32_t st_name;
+	uint8_t st_info;
+	uint8_t st_other;
+	uint16_t st_shndx;
+	uint64_t st_value;
+	uint64_t st_size;
+} Elf64_Sym;
+
+typedef struct {
+	uint64_t r_offset;
+	uint64_t r_info;
+	int64_t r_addend;
+} Elf64_Rela;
+
+// ELF identification
+#define ELFMAG0 0x7f
+#define ELFMAG1 'E'
+#define ELFMAG2 'L'
+#define ELFMAG3 'F'
+#define ELFCLASS64 2
+#define ELFDATA2LSB 1
+#define EV_CURRENT 1
+#define ET_REL 1
+#define EM_AARCH64 183
+
+// Section types
+#define SHT_NULL 0
+#define SHT_PROGBITS 1
+#define SHT_SYMTAB 2
+#define SHT_STRTAB 3
+#define SHT_RELA 4
+#define SHT_NOBITS 8
+
+// Section flags
+#define SHF_WRITE (1 << 0)
+#define SHF_ALLOC (1 << 1)
+#define SHF_EXECINSTR (1 << 2)
+#define SHF_INFO_LINK (1 << 6)
+
+// Special section indices
+#define SHN_UNDEF 0
+#define SHN_ABS 0xfff1
+
+// Macros
+#define ELF64_ST_INFO(bind, type) (((bind) << 4) | ((type) & 0xf))
+#define ELF64_R_INFO(sym, type) (((uint64_t)(sym) << 32) | (type))
+
+// AArch64 relocations
+#define R_AARCH64_NONE 0
+#define R_AARCH64_ABS64 257
+#define R_AARCH64_ADR_PREL_PG_HI21 275
+#define R_AARCH64_ADD_ABS_LO12_NC 277
+#define R_AARCH64_LDST8_ABS_LO12_NC 278
+#define R_AARCH64_JUMP26 282
+#define R_AARCH64_CALL26 283
+#define R_AARCH64_LDST16_ABS_LO12_NC 284
+#define R_AARCH64_LDST32_ABS_LO12_NC 285
+#define R_AARCH64_LDST64_ABS_LO12_NC 286
+
+// Section buffer
+typedef struct {
+	uint8_t *data;
+	size_t size;
+	size_t capacity;
+} SectionBuf;
+
+// String table
+typedef struct {
+	char *data;
+	size_t size;
+	size_t capacity;
+} StringTable;
+
+// Relocation entry
+typedef struct Reloc Reloc;
+struct Reloc {
+	int section;
+	uint64_t offset;
+	int type;
+	int symbol_idx;
+	int64_t addend;
+	Reloc *next;
 };
 
 typedef struct Symbol Symbol;
@@ -104,10 +221,37 @@ void symtab_set_binding(Symbol *sym, int binding);
 void symtab_set_type(Symbol *sym, int type);
 int symtab_count(void);
 Symbol *symtab_get(int index);
+int symtab_get_index(Symbol *sym);
 
 // parser.c
 void pass1(Token *tok);
+void pass2(Token *tok);
 void dump_symbols(void);
+
+// section.c
+extern SectionBuf text_section;
+extern SectionBuf data_section;
+extern size_t bss_size;
+
+void section_init(SectionBuf *sec);
+void section_emit8(SectionBuf *sec, uint8_t val);
+void section_emit32(SectionBuf *sec, uint32_t val);
+void section_emit64(SectionBuf *sec, uint64_t val);
+void section_align(SectionBuf *sec, int power);
+void section_emit_zeros(SectionBuf *sec, size_t count);
+
+// strtab.c
+void strtab_init(StringTable *st);
+uint32_t strtab_add(StringTable *st, const char *str);
+
+// reloc.c
+void reloc_init(void);
+void reloc_add(int section, uint64_t offset, int type, int sym_idx, int64_t addend);
+int reloc_count(int section);
+Reloc *reloc_get_list(int section);
+
+// elf_write.c
+void elf_write(const char *filename);
 
 // Condition codes for conditional branches
 typedef enum {

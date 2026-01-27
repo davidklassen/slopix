@@ -218,8 +218,6 @@ int main(int argc, char **argv) {
 		usage();
 	}
 
-	(void)output_file;
-
 	current_file = input_file;
 	current_input = read_file(input_file);
 	Token *tok = tokenize(current_input);
@@ -236,6 +234,10 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	printf("Parsed %s successfully (%d symbols)\n", input_file, symtab_count());
+	pass2(tok);
+
+	const char *outfile = output_file ? output_file : "a.out";
+	elf_write(outfile);
+
 	return 0;
 }

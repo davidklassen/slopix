@@ -1,7 +1,7 @@
 CC = cc
 CFLAGS = -Wall -Wextra -g -O0
 
-SRC = main.c lexer.c symtab.c parser.c encode.c
+SRC = main.c lexer.c symtab.c parser.c encode.c section.c strtab.c reloc.c elf_write.c
 OBJ = $(SRC:.c=.o)
 
 as: $(OBJ)
