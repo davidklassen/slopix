@@ -1,7 +1,7 @@
 AS = aarch64-elf-as
 LD = aarch64-elf-ld
 
-CFLAGS = -I$(LIBC_INCLUDE) -I$(CC_INCLUDE)
+CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T $(LINK_LD)
 
 OBJ = tests.o test_syscall.o test_sched.o test_memory.o test_mmap.o \

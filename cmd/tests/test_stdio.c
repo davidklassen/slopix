@@ -173,6 +173,118 @@ TEST(fwrite_buffer_boundary) {
 	return 0;
 }
 
+TEST(snprintf_basic) {
+	char buf[20];
+	int n = snprintf(buf, sizeof(buf), "%d + %d = %d", 2, 3, 5);
+	ASSERT_EQ(strcmp(buf, "2 + 3 = 5"), 0, "snprintf content");
+	ASSERT_EQ(n, 9, "snprintf returns length");
+	return 0;
+}
+
+TEST(snprintf_truncate) {
+	char buf[10];
+	int n = snprintf(buf, sizeof(buf), "hello world");
+	ASSERT_EQ(n, 11, "snprintf returns full length");
+	ASSERT_EQ(strcmp(buf, "hello wor"), 0, "snprintf truncates");
+	return 0;
+}
+
+TEST(sprintf_hex) {
+	char buf[20];
+	sprintf(buf, "%x %X", 255, 255);
+	ASSERT_EQ(strcmp(buf, "ff FF"), 0, "sprintf hex");
+	return 0;
+}
+
+TEST(sprintf_pointer) {
+	char buf[32];
+	void *p = (void *)0x12345678;
+	sprintf(buf, "%p", p);
+	ASSERT(strstr(buf, "12345678") != 0, "sprintf pointer");
+	return 0;
+}
+
+TEST(sprintf_width) {
+	char buf[32];
+	sprintf(buf, "%5d", 42);
+	ASSERT_EQ(strcmp(buf, "   42"), 0, "sprintf width");
+	return 0;
+}
+
+TEST(sprintf_zero_pad) {
+	char buf[32];
+	sprintf(buf, "%08x", 0x1234);
+	ASSERT_EQ(strcmp(buf, "00001234"), 0, "sprintf zero pad");
+	return 0;
+}
+
+TEST(sprintf_string) {
+	char buf[32];
+	sprintf(buf, "hello %s", "world");
+	ASSERT_EQ(strcmp(buf, "hello world"), 0, "sprintf string");
+	return 0;
+}
+
+TEST(sprintf_char) {
+	char buf[32];
+	sprintf(buf, "%c%c%c", 'a', 'b', 'c');
+	ASSERT_EQ(strcmp(buf, "abc"), 0, "sprintf char");
+	return 0;
+}
+
+TEST(sprintf_percent) {
+	char buf[32];
+	sprintf(buf, "100%%");
+	ASSERT_EQ(strcmp(buf, "100%"), 0, "sprintf percent");
+	return 0;
+}
+
+TEST(sprintf_negative) {
+	char buf[32];
+	sprintf(buf, "%d", -42);
+	ASSERT_EQ(strcmp(buf, "-42"), 0, "sprintf negative");
+	return 0;
+}
+
+TEST(sprintf_unsigned) {
+	char buf[32];
+	sprintf(buf, "%u", 4294967295U);
+	ASSERT_EQ(strcmp(buf, "4294967295"), 0, "sprintf unsigned");
+	return 0;
+}
+
+TEST(sprintf_long) {
+	char buf[32];
+	sprintf(buf, "%ld", -1234567890L);
+	ASSERT_EQ(strcmp(buf, "-1234567890"), 0, "sprintf long");
+	return 0;
+}
+
+TEST(sprintf_null_string) {
+	char buf[32];
+	sprintf(buf, "%s", (char *)0);
+	ASSERT_EQ(strcmp(buf, "(null)"), 0, "sprintf null string");
+	return 0;
+}
+
+TEST(fprintf_basic) {
+	FILE *f = fopen("/test_fprintf.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	int n = fprintf(f, "num=%d str=%s\n", 42, "hello");
+	ASSERT(n > 0, "fprintf returns positive");
+	fclose(f);
+
+	f = fopen("/test_fprintf.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	char buf[50];
+	memset(buf, 0, sizeof(buf));
+	fread(buf, 1, sizeof(buf) - 1, f);
+	ASSERT_EQ(strcmp(buf, "num=42 str=hello\n"), 0, "fprintf content");
+	fclose(f);
+	unlink("/test_fprintf.txt");
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -190,4 +302,18 @@ TEST_SUITE(stdio) {
 	RUN_TEST(fflush_write);
 	RUN_TEST(fread_partial);
 	RUN_TEST(fwrite_buffer_boundary);
+	RUN_TEST(snprintf_basic);
+	RUN_TEST(snprintf_truncate);
+	RUN_TEST(sprintf_hex);
+	RUN_TEST(sprintf_pointer);
+	RUN_TEST(sprintf_width);
+	RUN_TEST(sprintf_zero_pad);
+	RUN_TEST(sprintf_string);
+	RUN_TEST(sprintf_char);
+	RUN_TEST(sprintf_percent);
+	RUN_TEST(sprintf_negative);
+	RUN_TEST(sprintf_unsigned);
+	RUN_TEST(sprintf_long);
+	RUN_TEST(sprintf_null_string);
+	RUN_TEST(fprintf_basic);
 }

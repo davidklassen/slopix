@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdarg.h>
 
 struct _FILE {
 	int fd;
@@ -266,5 +267,550 @@ int fclose(FILE *stream) {
 	if (stream != stdin && stream != stdout && stream != stderr) {
 		free(stream);
 	}
+	return result;
+}
+
+static void reverse(char *buf, int len) {
+	int i = 0, j = len - 1;
+	while (i < j) {
+		char tmp = buf[i];
+		buf[i] = buf[j];
+		buf[j] = tmp;
+		i++;
+		j--;
+	}
+}
+
+static int format_int(char *buf, long val, int is_signed) {
+	int neg = 0;
+	unsigned long uval;
+	int len = 0;
+
+	if (is_signed && val < 0) {
+		neg = 1;
+		uval = -(unsigned long)val;
+	} else {
+		uval = val;
+	}
+
+	if (uval == 0) {
+		buf[len++] = '0';
+		return len;
+	}
+
+	while (uval > 0) {
+		buf[len++] = '0' + (uval % 10);
+		uval /= 10;
+	}
+
+	if (neg) {
+		buf[len++] = '-';
+	}
+
+	reverse(buf, len);
+	return len;
+}
+
+static int format_hex(char *buf, unsigned long val, int width, int upper) {
+	const char *hex = upper ? "0123456789ABCDEF" : "0123456789abcdef";
+	int len = 0;
+	int digits = 0;
+
+	if (val == 0 && width == 0) {
+		buf[len++] = '0';
+		return len;
+	}
+
+	unsigned long tmp = val;
+	while (tmp > 0 || digits < width) {
+		buf[len++] = hex[tmp & 0xf];
+		tmp >>= 4;
+		digits++;
+		if (digits >= width && tmp == 0) {
+			break;
+		}
+	}
+
+	reverse(buf, len);
+	return len;
+}
+
+int vfprintf(FILE *stream, const char *fmt, va_list ap) {
+	if (!stream || !fmt) {
+		return -1;
+	}
+
+	int count = 0;
+	char numbuf[32];
+
+	while (*fmt) {
+		if (*fmt != '%') {
+			if (fputc(*fmt, stream) == EOF) {
+				return -1;
+			}
+			count++;
+			fmt++;
+			continue;
+		}
+		fmt++;
+
+		int zero_pad = 0;
+		if (*fmt == '0') {
+			zero_pad = 1;
+			fmt++;
+		}
+
+		int width = 0;
+		while (*fmt >= '0' && *fmt <= '9') {
+			width = width * 10 + (*fmt - '0');
+			fmt++;
+		}
+
+		int is_long = 0;
+		if (*fmt == 'l') {
+			is_long = 1;
+			fmt++;
+		}
+		if (*fmt == 'l') {
+			is_long = 2;
+			fmt++;
+		}
+
+		switch (*fmt) {
+		case 'd':
+		case 'i': {
+			long val;
+			if (is_long) {
+				val = va_arg(ap, long);
+			} else {
+				val = va_arg(ap, int);
+			}
+			int len = format_int(numbuf, val, 1);
+			int pad = width - len;
+			if (pad > 0 && !zero_pad) {
+				while (pad-- > 0) {
+					if (fputc(' ', stream) == EOF) {
+						return -1;
+					}
+					count++;
+				}
+			}
+			if (pad > 0 && zero_pad) {
+				int neg = (val < 0);
+				if (neg) {
+					if (fputc('-', stream) == EOF) {
+						return -1;
+					}
+					count++;
+					len--;
+					pad = width - len - 1;
+				}
+				while (pad-- > 0) {
+					if (fputc('0', stream) == EOF) {
+						return -1;
+					}
+					count++;
+				}
+				for (int i = neg ? 1 : 0; i < len + (neg ? 1 : 0); i++) {
+					if (fputc(numbuf[i], stream) == EOF) {
+						return -1;
+					}
+					count++;
+				}
+			} else {
+				for (int i = 0; i < len; i++) {
+					if (fputc(numbuf[i], stream) == EOF) {
+						return -1;
+					}
+					count++;
+				}
+			}
+			break;
+		}
+		case 'u': {
+			unsigned long val;
+			if (is_long) {
+				val = va_arg(ap, unsigned long);
+			} else {
+				val = va_arg(ap, unsigned int);
+			}
+			int len = format_int(numbuf, (long)val, 0);
+			int pad = width - len;
+			char pad_char = zero_pad ? '0' : ' ';
+			while (pad-- > 0) {
+				if (fputc(pad_char, stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			for (int i = 0; i < len; i++) {
+				if (fputc(numbuf[i], stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			break;
+		}
+		case 'x':
+		case 'X': {
+			unsigned long val;
+			if (is_long) {
+				val = va_arg(ap, unsigned long);
+			} else {
+				val = va_arg(ap, unsigned int);
+			}
+			int upper = (*fmt == 'X');
+			int len = format_hex(numbuf, val, 0, upper);
+			int pad = width - len;
+			char pad_char = zero_pad ? '0' : ' ';
+			while (pad-- > 0) {
+				if (fputc(pad_char, stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			for (int i = 0; i < len; i++) {
+				if (fputc(numbuf[i], stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			break;
+		}
+		case 'p': {
+			unsigned long ptr = (unsigned long)va_arg(ap, void *);
+			if (fputc('0', stream) == EOF) {
+				return -1;
+			}
+			count++;
+			if (fputc('x', stream) == EOF) {
+				return -1;
+			}
+			count++;
+			int len = format_hex(numbuf, ptr, 16, 0);
+			for (int i = 0; i < len; i++) {
+				if (fputc(numbuf[i], stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			break;
+		}
+		case 's': {
+			const char *s = va_arg(ap, const char *);
+			if (!s) {
+				s = "(null)";
+			}
+			int slen = 0;
+			const char *p = s;
+			while (*p++) {
+				slen++;
+			}
+			int pad = width - slen;
+			while (pad-- > 0) {
+				if (fputc(' ', stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			while (*s) {
+				if (fputc(*s++, stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			break;
+		}
+		case 'c': {
+			int c = va_arg(ap, int);
+			if (fputc(c, stream) == EOF) {
+				return -1;
+			}
+			count++;
+			break;
+		}
+		case '%':
+			if (fputc('%', stream) == EOF) {
+				return -1;
+			}
+			count++;
+			break;
+		default:
+			if (fputc('%', stream) == EOF) {
+				return -1;
+			}
+			count++;
+			if (*fmt) {
+				if (fputc(*fmt, stream) == EOF) {
+					return -1;
+				}
+				count++;
+			}
+			break;
+		}
+		if (*fmt) {
+			fmt++;
+		}
+	}
+
+	return count;
+}
+
+int fprintf(FILE *stream, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int result = vfprintf(stream, fmt, ap);
+	va_end(ap);
+	return result;
+}
+
+int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
+	if (!fmt) {
+		return -1;
+	}
+	if (!str || size == 0) {
+		str = 0;
+		size = 0;
+	}
+
+	int count = 0;
+	char numbuf[32];
+
+	while (*fmt) {
+		if (*fmt != '%') {
+			if (str && (size_t)count < size - 1) {
+				str[count] = *fmt;
+			}
+			count++;
+			fmt++;
+			continue;
+		}
+		fmt++;
+
+		int zero_pad = 0;
+		if (*fmt == '0') {
+			zero_pad = 1;
+			fmt++;
+		}
+
+		int width = 0;
+		while (*fmt >= '0' && *fmt <= '9') {
+			width = width * 10 + (*fmt - '0');
+			fmt++;
+		}
+
+		int is_long = 0;
+		if (*fmt == 'l') {
+			is_long = 1;
+			fmt++;
+		}
+		if (*fmt == 'l') {
+			is_long = 2;
+			fmt++;
+		}
+
+		switch (*fmt) {
+		case 'd':
+		case 'i': {
+			long val;
+			if (is_long) {
+				val = va_arg(ap, long);
+			} else {
+				val = va_arg(ap, int);
+			}
+			int len = format_int(numbuf, val, 1);
+			int pad = width - len;
+			if (pad > 0 && !zero_pad) {
+				while (pad-- > 0) {
+					if (str && (size_t)count < size - 1) {
+						str[count] = ' ';
+					}
+					count++;
+				}
+			}
+			if (pad > 0 && zero_pad) {
+				int neg = (val < 0);
+				if (neg) {
+					if (str && (size_t)count < size - 1) {
+						str[count] = '-';
+					}
+					count++;
+					len--;
+					pad = width - len - 1;
+				}
+				while (pad-- > 0) {
+					if (str && (size_t)count < size - 1) {
+						str[count] = '0';
+					}
+					count++;
+				}
+				for (int i = neg ? 1 : 0; i < len + (neg ? 1 : 0); i++) {
+					if (str && (size_t)count < size - 1) {
+						str[count] = numbuf[i];
+					}
+					count++;
+				}
+			} else {
+				for (int i = 0; i < len; i++) {
+					if (str && (size_t)count < size - 1) {
+						str[count] = numbuf[i];
+					}
+					count++;
+				}
+			}
+			break;
+		}
+		case 'u': {
+			unsigned long val;
+			if (is_long) {
+				val = va_arg(ap, unsigned long);
+			} else {
+				val = va_arg(ap, unsigned int);
+			}
+			int len = format_int(numbuf, (long)val, 0);
+			int pad = width - len;
+			char pad_char = zero_pad ? '0' : ' ';
+			while (pad-- > 0) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = pad_char;
+				}
+				count++;
+			}
+			for (int i = 0; i < len; i++) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = numbuf[i];
+				}
+				count++;
+			}
+			break;
+		}
+		case 'x':
+		case 'X': {
+			unsigned long val;
+			if (is_long) {
+				val = va_arg(ap, unsigned long);
+			} else {
+				val = va_arg(ap, unsigned int);
+			}
+			int upper = (*fmt == 'X');
+			int len = format_hex(numbuf, val, 0, upper);
+			int pad = width - len;
+			char pad_char = zero_pad ? '0' : ' ';
+			while (pad-- > 0) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = pad_char;
+				}
+				count++;
+			}
+			for (int i = 0; i < len; i++) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = numbuf[i];
+				}
+				count++;
+			}
+			break;
+		}
+		case 'p': {
+			unsigned long ptr = (unsigned long)va_arg(ap, void *);
+			if (str && (size_t)count < size - 1) {
+				str[count] = '0';
+			}
+			count++;
+			if (str && (size_t)count < size - 1) {
+				str[count] = 'x';
+			}
+			count++;
+			int len = format_hex(numbuf, ptr, 16, 0);
+			for (int i = 0; i < len; i++) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = numbuf[i];
+				}
+				count++;
+			}
+			break;
+		}
+		case 's': {
+			const char *s = va_arg(ap, const char *);
+			if (!s) {
+				s = "(null)";
+			}
+			int slen = 0;
+			const char *p = s;
+			while (*p++) {
+				slen++;
+			}
+			int pad = width - slen;
+			while (pad-- > 0) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = ' ';
+				}
+				count++;
+			}
+			while (*s) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = *s;
+				}
+				s++;
+				count++;
+			}
+			break;
+		}
+		case 'c': {
+			int c = va_arg(ap, int);
+			if (str && (size_t)count < size - 1) {
+				str[count] = c;
+			}
+			count++;
+			break;
+		}
+		case '%':
+			if (str && (size_t)count < size - 1) {
+				str[count] = '%';
+			}
+			count++;
+			break;
+		default:
+			if (str && (size_t)count < size - 1) {
+				str[count] = '%';
+			}
+			count++;
+			if (*fmt) {
+				if (str && (size_t)count < size - 1) {
+					str[count] = *fmt;
+				}
+				count++;
+			}
+			break;
+		}
+		if (*fmt) {
+			fmt++;
+		}
+	}
+
+	if (str && size > 0) {
+		size_t term_pos = (size_t)count < size - 1 ? (size_t)count : size - 1;
+		str[term_pos] = '\0';
+	}
+
+	return count;
+}
+
+int snprintf(char *str, size_t size, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int result = vsnprintf(str, size, fmt, ap);
+	va_end(ap);
+	return result;
+}
+
+int vsprintf(char *str, const char *fmt, va_list ap) {
+	return vsnprintf(str, (size_t)-1, fmt, ap);
+}
+
+int sprintf(char *str, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int result = vsprintf(str, fmt, ap);
+	va_end(ap);
 	return result;
 }

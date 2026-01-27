@@ -2,7 +2,7 @@ CROSS = aarch64-elf-
 AS = $(CROSS)as
 LD = $(CROSS)ld
 
-CFLAGS = -I$(LIBC_INCLUDE) -I$(CC_INCLUDE)
+CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T link.ld
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \

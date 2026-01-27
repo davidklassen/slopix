@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -57,14 +58,13 @@ static void print_str_width(const char *s, int width) {
 }
 
 int printf(const char *fmt, ...) {
-	__builtin_va_list ap;
-	__builtin_va_start(ap, fmt);
+	va_list ap;
+	va_start(ap, fmt);
 
 	int count = 0;
 	while (*fmt) {
 		if (*fmt == '%' && *(fmt + 1)) {
 			fmt++;
-			// Parse width specifier
 			int width = 0;
 			while (*fmt >= '0' && *fmt <= '9') {
 				width = width * 10 + (*fmt - '0');
@@ -73,13 +73,13 @@ int printf(const char *fmt, ...) {
 			switch (*fmt) {
 			case 'd':
 				if (width > 0) {
-					print_int_width(__builtin_va_arg(ap, int), width);
+					print_int_width(va_arg(ap, int), width);
 				} else {
-					print_int(__builtin_va_arg(ap, int));
+					print_int(va_arg(ap, int));
 				}
 				break;
 			case 's': {
-				const char *s = __builtin_va_arg(ap, const char *);
+				const char *s = va_arg(ap, const char *);
 				if (width > 0) {
 					print_str_width(s, width);
 				} else if (s) {
@@ -88,10 +88,10 @@ int printf(const char *fmt, ...) {
 				break;
 			}
 			case 'x':
-				print_hex(__builtin_va_arg(ap, unsigned int));
+				print_hex(va_arg(ap, unsigned int));
 				break;
 			case 'c': {
-				char c = __builtin_va_arg(ap, int);
+				char c = va_arg(ap, int);
 				write(1, &c, 1);
 				count++;
 				break;
@@ -112,6 +112,6 @@ int printf(const char *fmt, ...) {
 		fmt++;
 	}
 
-	__builtin_va_end(ap);
+	va_end(ap);
 	return count;
 }

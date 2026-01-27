@@ -1,6 +1,8 @@
 #ifndef STDIO_H
 #define STDIO_H
 
+#include <stdarg.h>
+
 #define BUFSIZ 1024
 #define EOF    (-1)
 
@@ -29,5 +31,12 @@ size_t fread(void *ptr, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
 int fgetc(FILE *stream);
 int fputc(int c, FILE *stream);
+
+int fprintf(FILE *stream, const char *fmt, ...);
+int vfprintf(FILE *stream, const char *fmt, va_list ap);
+int sprintf(char *str, const char *fmt, ...);
+int snprintf(char *str, size_t size, const char *fmt, ...);
+int vsprintf(char *str, const char *fmt, va_list ap);
+int vsnprintf(char *str, size_t size, const char *fmt, va_list ap);
 
 #endif
