@@ -13,7 +13,7 @@ PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
 	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
 
-.PHONY: all clean run test tidy cmd
+.PHONY: all clean run test test-chibicc tidy cmd
 
 all: kernel/kernel.bin
 
@@ -107,12 +107,23 @@ run: clean disk.img kernel/kernel.bin
 test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
 	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
+test-chibicc: clean disk-test.img kernel/kernel-test.bin initramfs-chibicc.bin
+	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-chibicc.bin -append "init=initramfs:tests"
+
+initramfs-chibicc.bin: $(MKRAMFS) tools/cc/test/tests.elf
+	$(MKRAMFS) $@ tools/cc/test/tests.elf
+
+tools/cc/test/tests.elf: $(LIBC)
+	$(MAKE) -C tools/cc
+	$(MAKE) -C tools/cc/test
+
 clean:
 	$(MAKE) -C tools clean
 	$(MAKE) -C libc clean
 	$(MAKE) -C cmd clean
 	$(MAKE) -C kernel clean
-	rm -f disk.img disk-test.img initramfs-test.bin
+	-$(MAKE) -C tools/cc/test clean
+	rm -f disk.img disk-test.img initramfs-test.bin initramfs-chibicc.bin
 
 tidy:
 	clang-format -i kernel/*.c kernel/*.h kernel/tests/*.c kernel/tests/*.h
@@ -120,3 +131,4 @@ tidy:
 	clang-format -i cmd/*/*.c
 	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
 	clang-format -i tools/cc/*.c tools/cc/*.h tools/cc/include/*.h
+	clang-format -i tools/cc/test/*.c tools/cc/test/*.h
