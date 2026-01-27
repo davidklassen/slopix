@@ -263,6 +263,92 @@ TEST(isalpha_not) {
 	return 0;
 }
 
+TEST(ispunct_symbols) {
+	ASSERT(ispunct('!'), "! is punct");
+	ASSERT(ispunct('.'), ". is punct");
+	ASSERT(ispunct('@'), "@ is punct");
+	ASSERT(ispunct('['), "[ is punct");
+	ASSERT(ispunct('~'), "~ is punct");
+	return 0;
+}
+
+TEST(ispunct_not) {
+	ASSERT(!ispunct('a'), "a not punct");
+	ASSERT(!ispunct('0'), "0 not punct");
+	ASSERT(!ispunct(' '), "space not punct");
+	return 0;
+}
+
+TEST(isalnum_alpha) {
+	ASSERT(isalnum('a'), "a is alnum");
+	ASSERT(isalnum('Z'), "Z is alnum");
+	return 0;
+}
+
+TEST(isalnum_digit) {
+	ASSERT(isalnum('0'), "0 is alnum");
+	ASSERT(isalnum('9'), "9 is alnum");
+	return 0;
+}
+
+TEST(isalnum_not) {
+	ASSERT(!isalnum(' '), "space not alnum");
+	ASSERT(!isalnum('!'), "! not alnum");
+	return 0;
+}
+
+TEST(isxdigit_digits) {
+	ASSERT(isxdigit('0'), "0 is xdigit");
+	ASSERT(isxdigit('9'), "9 is xdigit");
+	return 0;
+}
+
+TEST(isxdigit_hex) {
+	ASSERT(isxdigit('a'), "a is xdigit");
+	ASSERT(isxdigit('f'), "f is xdigit");
+	ASSERT(isxdigit('A'), "A is xdigit");
+	ASSERT(isxdigit('F'), "F is xdigit");
+	return 0;
+}
+
+TEST(isxdigit_not) {
+	ASSERT(!isxdigit('g'), "g not xdigit");
+	ASSERT(!isxdigit('G'), "G not xdigit");
+	return 0;
+}
+
+TEST(isupper_test) {
+	ASSERT(isupper('A'), "A is upper");
+	ASSERT(isupper('Z'), "Z is upper");
+	ASSERT(!isupper('a'), "a not upper");
+	ASSERT(!isupper('0'), "0 not upper");
+	return 0;
+}
+
+TEST(islower_test) {
+	ASSERT(islower('a'), "a is lower");
+	ASSERT(islower('z'), "z is lower");
+	ASSERT(!islower('A'), "A not lower");
+	ASSERT(!islower('0'), "0 not lower");
+	return 0;
+}
+
+TEST(tolower_test) {
+	ASSERT_EQ(tolower('A'), 'a', "A -> a");
+	ASSERT_EQ(tolower('Z'), 'z', "Z -> z");
+	ASSERT_EQ(tolower('a'), 'a', "a unchanged");
+	ASSERT_EQ(tolower('0'), '0', "0 unchanged");
+	return 0;
+}
+
+TEST(toupper_test) {
+	ASSERT_EQ(toupper('a'), 'A', "a -> A");
+	ASSERT_EQ(toupper('z'), 'Z', "z -> Z");
+	ASSERT_EQ(toupper('A'), 'A', "A unchanged");
+	ASSERT_EQ(toupper('0'), '0', "0 unchanged");
+	return 0;
+}
+
 TEST(strdup_basic) {
 	char *s = strdup("hello");
 	ASSERT_NOT_NULL(s, "strdup returned NULL");
@@ -430,6 +516,18 @@ TEST_SUITE(libc) {
 	RUN_TEST(isalpha_lower);
 	RUN_TEST(isalpha_upper);
 	RUN_TEST(isalpha_not);
+	RUN_TEST(ispunct_symbols);
+	RUN_TEST(ispunct_not);
+	RUN_TEST(isalnum_alpha);
+	RUN_TEST(isalnum_digit);
+	RUN_TEST(isalnum_not);
+	RUN_TEST(isxdigit_digits);
+	RUN_TEST(isxdigit_hex);
+	RUN_TEST(isxdigit_not);
+	RUN_TEST(isupper_test);
+	RUN_TEST(islower_test);
+	RUN_TEST(tolower_test);
+	RUN_TEST(toupper_test);
 	RUN_TEST(strdup_basic);
 	RUN_TEST(strdup_empty);
 	RUN_TEST(strndup_basic);
