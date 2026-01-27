@@ -1073,6 +1073,73 @@ static void emit_text(Obj *prog) {
 			}
 		}
 
+		// Handle variadic functions: save all registers and initialize __va_area__
+		if (fn->ty->is_variadic && fn->va_area) {
+			// Layout in __va_area__ (224 bytes total):
+			//   [0-31]    va_list struct (32 bytes)
+			//   [32-159]  FP save area: d0-d7 (8 * 16 = 128 bytes)
+			//   [160-223] GP save area: x0-x7 (8 * 8 = 64 bytes)
+			int va_struct = fn->va_area->offset;
+			int vr_base = va_struct + 32;
+			int gr_base = vr_base + 128;
+
+			// Save all 8 FP registers (d0-d7)
+			for (int i = 0; i < 8; i++) {
+				store_fp(i, vr_base + i * 16, 8);
+			}
+
+			// Save all 8 GP registers (x0-x7)
+			for (int i = 0; i < 8; i++) {
+				store_gp(i, gr_base + i * 8, 8);
+			}
+
+			// Count named GP and FP parameters to compute offsets
+			int named_gp = 0, named_fp = 0;
+			for (Obj *var = fn->params; var; var = var->next) {
+				if (is_flonum(var->ty)) {
+					if (named_fp < 8) {
+						named_fp++;
+					}
+				} else {
+					if (named_gp < 8) {
+						named_gp++;
+					}
+				}
+			}
+
+			// Initialize __va_area__ struct fields
+			// Use x10 as temp since store_gp/load_local_addr use x9
+
+			// __stack: address of first stack argument (at fp+16)
+			println("  add x10, x29, #16");
+			load_local_addr(va_struct);
+			println("  str x10, [x9]");
+
+			// __gr_top: end of GP save area
+			load_local_addr(gr_base + 64);
+			println("  mov x10, x9");
+			load_local_addr(va_struct + 8);
+			println("  str x10, [x9]");
+
+			// __vr_top: end of FP save area
+			load_local_addr(vr_base + 128);
+			println("  mov x10, x9");
+			load_local_addr(va_struct + 16);
+			println("  str x10, [x9]");
+
+			// __gr_offs: negative offset (skip named GP params)
+			int gr_offs = -(8 - named_gp) * 8;
+			println("  mov w10, #%d", gr_offs);
+			load_local_addr(va_struct + 24);
+			println("  str w10, [x9]");
+
+			// __vr_offs: negative offset (skip named FP params)
+			int vr_offs = -(8 - named_fp) * 16;
+			println("  mov w10, #%d", vr_offs);
+			load_local_addr(va_struct + 28);
+			println("  str w10, [x9]");
+		}
+
 		// Emit code
 		gen_stmt(fn->body);
 		assert(depth == 0);

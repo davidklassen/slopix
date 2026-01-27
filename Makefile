@@ -22,8 +22,8 @@ all: kernel/kernel.bin
 $(MKFS) $(MKRAMFS):
 	$(MAKE) -C tools
 
-$(LIBC):
-	$(MAKE) -C libc
+$(LIBC): tools/cc/chibicc
+	$(MAKE) -C libc CC=$(CC) CC_INCLUDE=$(CC_INCLUDE)
 
 tools/cc/chibicc:
 	$(MAKE) -C tools/cc

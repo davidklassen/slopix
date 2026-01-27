@@ -1,5 +1,6 @@
-AS = aarch64-elf-as
-LD = aarch64-elf-ld
+CROSS = aarch64-elf-
+AS = $(CROSS)as
+LD = $(CROSS)ld
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 LDFLAGS = -nostdlib -T $(LINK_LD)
