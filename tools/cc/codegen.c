@@ -91,6 +91,103 @@ static void gen_expr(Node *node) {
 		gen_expr(node->lhs);
 		// For now, ignore casts - stub implementation
 		return;
+	case ND_NEG:
+		gen_expr(node->lhs);
+		println("  neg x0, x0");
+		return;
+	case ND_BITNOT:
+		gen_expr(node->lhs);
+		println("  mvn x0, x0");
+		return;
+	case ND_NOT:
+		gen_expr(node->lhs);
+		println("  cmp x0, #0");
+		println("  cset x0, eq");
+		return;
+	case ND_ADD:
+	case ND_SUB:
+	case ND_MUL:
+	case ND_DIV:
+	case ND_MOD:
+	case ND_BITAND:
+	case ND_BITOR:
+	case ND_BITXOR:
+	case ND_SHL:
+	case ND_SHR:
+	case ND_EQ:
+	case ND_NE:
+	case ND_LT:
+	case ND_LE:
+		gen_expr(node->rhs);
+		push();
+		gen_expr(node->lhs);
+		pop("x1");
+		// x0 = LHS, x1 = RHS
+
+		switch (node->kind) {
+		case ND_ADD:
+			println("  add x0, x0, x1");
+			break;
+		case ND_SUB:
+			println("  sub x0, x0, x1");
+			break;
+		case ND_MUL:
+			println("  mul x0, x0, x1");
+			break;
+		case ND_DIV:
+			if (node->ty->is_unsigned) {
+				println("  udiv x0, x0, x1");
+			} else {
+				println("  sdiv x0, x0, x1");
+			}
+			break;
+		case ND_MOD:
+			if (node->ty->is_unsigned) {
+				println("  udiv x2, x0, x1");
+			} else {
+				println("  sdiv x2, x0, x1");
+			}
+			println("  msub x0, x2, x1, x0");
+			break;
+		case ND_BITAND:
+			println("  and x0, x0, x1");
+			break;
+		case ND_BITOR:
+			println("  orr x0, x0, x1");
+			break;
+		case ND_BITXOR:
+			println("  eor x0, x0, x1");
+			break;
+		case ND_SHL:
+			println("  lsl x0, x0, x1");
+			break;
+		case ND_SHR:
+			if (node->lhs->ty->is_unsigned) {
+				println("  lsr x0, x0, x1");
+			} else {
+				println("  asr x0, x0, x1");
+			}
+			break;
+		case ND_EQ:
+			println("  cmp x0, x1");
+			println("  cset x0, eq");
+			break;
+		case ND_NE:
+			println("  cmp x0, x1");
+			println("  cset x0, ne");
+			break;
+		case ND_LT:
+			println("  cmp x0, x1");
+			println("  cset x0, lt");
+			break;
+		case ND_LE:
+			println("  cmp x0, x1");
+			println("  cset x0, le");
+			break;
+		default:
+			break;
+		}
+		return;
 	default:
 		break;
 	}
