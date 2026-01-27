@@ -646,6 +646,22 @@ TEST(bitfield_sizeof) {
 	return 0;
 }
 
+TEST(large_stack_frame) {
+	// Stack arrays totaling ~3KB to fit within 4KB user stack limit
+	// Compiler handles stack frames > 4095 bytes with register-based adjustment
+	char buf1[1500];
+	char buf2[1500];
+	buf1[0] = 'A';
+	buf1[1499] = 'B';
+	buf2[0] = 'C';
+	buf2[1499] = 'D';
+	ASSERT_EQ(buf1[0], 'A', "large stack buf1[0]");
+	ASSERT_EQ(buf1[1499], 'B', "large stack buf1[1499]");
+	ASSERT_EQ(buf2[0], 'C', "large stack buf2[0]");
+	ASSERT_EQ(buf2[1499], 'D', "large stack buf2[1499]");
+	return 0;
+}
+
 TEST_SUITE(codegen) {
 	// Arithmetic (from arith.c)
 	RUN_TEST(arithmetic_basic);
@@ -702,4 +718,6 @@ TEST_SUITE(codegen) {
 	RUN_TEST(bitfield_global);
 	RUN_TEST(bitfield_incr);
 	RUN_TEST(bitfield_sizeof);
+	// Large stack frames
+	RUN_TEST(large_stack_frame);
 }

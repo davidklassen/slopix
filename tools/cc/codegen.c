@@ -50,6 +50,18 @@ int align_to(int n, int align) {
 	return (n + align - 1) / align * align;
 }
 
+// Load an unsigned constant into register (handles values > 65535)
+static void load_const(char *reg, unsigned int val) {
+	if (val <= 65535) {
+		println("  mov %s, #%u", reg, val);
+	} else {
+		println("  movz %s, #%u", reg, val & 0xffff);
+		if (val > 65535) {
+			println("  movk %s, #%u, lsl #16", reg, (val >> 16) & 0xffff);
+		}
+	}
+}
+
 // Load address of local variable with offset into x9
 static void load_local_addr(int offset) {
 	if (offset >= 0 && offset <= 4095) {
@@ -57,10 +69,10 @@ static void load_local_addr(int offset) {
 	} else if (offset < 0 && offset >= -4095) {
 		println("  sub x9, x29, #%d", -offset);
 	} else if (offset >= 0) {
-		println("  mov x9, #%d", offset);
+		load_const("x9", offset);
 		println("  add x9, x29, x9");
 	} else {
-		println("  mov x9, #%d", -offset);
+		load_const("x9", -offset);
 		println("  sub x9, x29, x9");
 	}
 }
@@ -206,10 +218,10 @@ static void gen_addr(Node *node) {
 			} else if (offset < 0 && offset >= -4095) {
 				println("  sub x0, x29, #%d", -offset);
 			} else if (offset >= 0) {
-				println("  mov x0, #%d", offset);
+				load_const("x0", offset);
 				println("  add x0, x29, x0");
 			} else {
-				println("  mov x0, #%d", -offset);
+				load_const("x0", -offset);
 				println("  sub x0, x29, x0");
 			}
 		} else {
@@ -1035,7 +1047,12 @@ static void emit_text(Obj *prog) {
 		println("  stp x29, x30, [sp, #-16]!");
 		println("  mov x29, sp");
 		if (fn->stack_size > 0) {
-			println("  sub sp, sp, #%d", fn->stack_size);
+			if (fn->stack_size <= 4095) {
+				println("  sub sp, sp, #%d", fn->stack_size);
+			} else {
+				load_const("x9", fn->stack_size);
+				println("  sub sp, sp, x9");
+			}
 		}
 
 		// Copy register parameters to stack slots
@@ -1068,7 +1085,12 @@ static void emit_text(Obj *prog) {
 		// Epilogue
 		println(".L.return.%s:", fn->name);
 		if (fn->stack_size > 0) {
-			println("  add sp, sp, #%d", fn->stack_size);
+			if (fn->stack_size <= 4095) {
+				println("  add sp, sp, #%d", fn->stack_size);
+			} else {
+				load_const("x9", fn->stack_size);
+				println("  add sp, sp, x9");
+			}
 		}
 		println("  ldp x29, x30, [sp], #16");
 		println("  ret");

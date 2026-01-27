@@ -16,8 +16,18 @@ extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
 
+typedef unsigned long size_t;
+
 int puts(const char *s);
 int printf(const char *fmt, ...);
 int fileno(FILE *stream);
+
+FILE *fopen(const char *path, const char *mode);
+int fclose(FILE *stream);
+int fflush(FILE *stream);
+size_t fread(void *ptr, size_t size, size_t count, FILE *stream);
+size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
+int fgetc(FILE *stream);
+int fputc(int c, FILE *stream);
 
 #endif
