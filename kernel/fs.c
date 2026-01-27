@@ -82,7 +82,7 @@ void fs_ilock(struct inode *ip) {
 			ip->minor = dip->minor;
 			ip->nlink = dip->nlink;
 			ip->size = dip->size;
-			for (int i = 0; i < NDIRECT + 1; i++) {
+			for (int i = 0; i < NDIRECT + 2; i++) {
 				ip->addrs[i] = dip->addrs[i];
 			}
 			bio_release(bp);
@@ -185,8 +185,8 @@ unsigned int fs_bmap(struct inode *ip, unsigned int bn) {
 		}
 		return addr;
 	}
-
 	bn -= NDIRECT;
+
 	if (bn < NINDIRECT) {
 		if ((addr = ip->addrs[NDIRECT]) == 0) {
 			addr = balloc(ip->dev);
@@ -207,6 +207,53 @@ unsigned int fs_bmap(struct inode *ip, unsigned int bn) {
 				return 0;
 			}
 			a[bn] = addr;
+			bio_write(bp);
+		}
+		bio_release(bp);
+		return addr;
+	}
+	bn -= NINDIRECT;
+
+	if (bn < NDINDIRECT) {
+		if ((addr = ip->addrs[NDIRECT + 1]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				return 0;
+			}
+			ip->addrs[NDIRECT + 1] = addr;
+		}
+
+		struct buf *bp = bio_read(ip->dev, addr);
+		if (!bp) {
+			return 0;
+		}
+		unsigned int *a = (unsigned int *)bp->data;
+		unsigned int idx1 = bn / NINDIRECT;
+		unsigned int idx2 = bn % NINDIRECT;
+
+		if ((addr = a[idx1]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				bio_release(bp);
+				return 0;
+			}
+			a[idx1] = addr;
+			bio_write(bp);
+		}
+		bio_release(bp);
+
+		bp = bio_read(ip->dev, addr);
+		if (!bp) {
+			return 0;
+		}
+		a = (unsigned int *)bp->data;
+		if ((addr = a[idx2]) == 0) {
+			addr = balloc(ip->dev);
+			if (addr == 0) {
+				bio_release(bp);
+				return 0;
+			}
+			a[idx2] = addr;
 			bio_write(bp);
 		}
 		bio_release(bp);
@@ -330,6 +377,31 @@ void fs_itrunc(struct inode *ip) {
 		}
 		bfree(ip->dev, ip->addrs[NDIRECT]);
 		ip->addrs[NDIRECT] = 0;
+	}
+
+	if (ip->addrs[NDIRECT + 1]) {
+		struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT + 1]);
+		if (bp) {
+			unsigned int *a = (unsigned int *)bp->data;
+			for (unsigned int i = 0; i < NINDIRECT; i++) {
+				if (a[i]) {
+					struct buf *bp2 = bio_read(ip->dev, a[i]);
+					if (bp2) {
+						unsigned int *a2 = (unsigned int *)bp2->data;
+						for (unsigned int j = 0; j < NINDIRECT; j++) {
+							if (a2[j]) {
+								bfree(ip->dev, a2[j]);
+							}
+						}
+						bio_release(bp2);
+					}
+					bfree(ip->dev, a[i]);
+				}
+			}
+			bio_release(bp);
+		}
+		bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+		ip->addrs[NDIRECT + 1] = 0;
 	}
 
 	ip->size = 0;

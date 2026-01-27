@@ -70,6 +70,7 @@ disk.img: $(MKFS) cmd
 		cmd/ps.elf:/bin/ps \
 		cmd/kill.elf:/bin/kill \
 		cmd/sleep.elf:/bin/sleep \
+		cmd/as.elf:/bin/as \
 		cmd/cat/cat.c:/src/cat.c \
 		cmd/cp/cp.c:/src/cp.c \
 		cmd/echo/echo.c:/src/echo.c \
@@ -96,7 +97,7 @@ disk.img: $(MKFS) cmd
 		libc/include/unistd.h:/src/libc/unistd.h
 
 disk-test.img: $(MKFS) cmd
-	$(MKFS) $@ -s 1024 \
+	$(MKFS) $@ -s 2048 \
 		:dir:/dev \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \

@@ -4,9 +4,10 @@
 #define ROOTINO 1
 #define BSIZE	1024
 
-#define NDIRECT	  12
-#define NINDIRECT (BSIZE / sizeof(unsigned int))
-#define MAXFILE	  (NDIRECT + NINDIRECT)
+#define NDIRECT	   11
+#define NINDIRECT  (BSIZE / sizeof(unsigned int))
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE	   (NDIRECT + NINDIRECT + NDINDIRECT)
 
 #define DIRSIZ	14
 #define FSMAGIC 0x10203040
@@ -46,7 +47,7 @@ struct dinode {
 	unsigned short minor;
 	unsigned short nlink;
 	unsigned int size;
-	unsigned int addrs[NDIRECT + 1];
+	unsigned int addrs[NDIRECT + 2];
 };
 
 struct dirent {
@@ -68,7 +69,7 @@ struct inode {
 	unsigned short minor;
 	unsigned short nlink;
 	unsigned int size;
-	unsigned int addrs[NDIRECT + 1];
+	unsigned int addrs[NDIRECT + 2];
 };
 
 struct stat {

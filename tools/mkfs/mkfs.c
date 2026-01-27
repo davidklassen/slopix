@@ -9,9 +9,10 @@
 #define ROOTINO 1
 #define BSIZE	1024
 
-#define NDIRECT	  12
-#define NINDIRECT (BSIZE / sizeof(uint32_t))
-#define MAXFILE	  (NDIRECT + NINDIRECT)
+#define NDIRECT	   11
+#define NINDIRECT  (BSIZE / sizeof(uint32_t))
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE	   (NDIRECT + NINDIRECT + NDINDIRECT)
 
 #define DIRSIZ	14
 #define FSMAGIC 0x10203040
@@ -37,7 +38,7 @@ struct dinode {
 	uint16_t minor;
 	uint16_t nlink;
 	uint32_t size;
-	uint32_t addrs[NDIRECT + 1];
+	uint32_t addrs[NDIRECT + 2];
 };
 
 struct dirent {
@@ -123,6 +124,7 @@ static void iappend(uint32_t inum, void *data, uint32_t n) {
 	uint32_t off, fbn, n1;
 	char buf[BSIZE];
 	uint32_t indirect[NINDIRECT];
+	uint32_t dindirect[NINDIRECT];
 	uint32_t x;
 
 	rinode(inum, &din);
@@ -137,7 +139,7 @@ static void iappend(uint32_t inum, void *data, uint32_t n) {
 				din.addrs[fbn] = freeblock++;
 			}
 			x = din.addrs[fbn];
-		} else {
+		} else if (fbn < NDIRECT + NINDIRECT) {
 			if (din.addrs[NDIRECT] == 0) {
 				din.addrs[NDIRECT] = freeblock++;
 				memset(indirect, 0, sizeof(indirect));
@@ -149,6 +151,31 @@ static void iappend(uint32_t inum, void *data, uint32_t n) {
 				wsect(din.addrs[NDIRECT], indirect);
 			}
 			x = indirect[fbn - NDIRECT];
+		} else {
+			uint32_t bn2 = fbn - NDIRECT - NINDIRECT;
+			uint32_t idx1 = bn2 / NINDIRECT;
+			uint32_t idx2 = bn2 % NINDIRECT;
+
+			if (din.addrs[NDIRECT + 1] == 0) {
+				din.addrs[NDIRECT + 1] = freeblock++;
+				memset(dindirect, 0, sizeof(dindirect));
+				wsect(din.addrs[NDIRECT + 1], dindirect);
+			}
+			rsect(din.addrs[NDIRECT + 1], dindirect);
+
+			if (dindirect[idx1] == 0) {
+				dindirect[idx1] = freeblock++;
+				wsect(din.addrs[NDIRECT + 1], dindirect);
+				memset(indirect, 0, sizeof(indirect));
+				wsect(dindirect[idx1], indirect);
+			}
+			rsect(dindirect[idx1], indirect);
+
+			if (indirect[idx2] == 0) {
+				indirect[idx2] = freeblock++;
+				wsect(dindirect[idx1], indirect);
+			}
+			x = indirect[idx2];
 		}
 
 		n1 = BSIZE - (off % BSIZE);

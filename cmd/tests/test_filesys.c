@@ -236,6 +236,60 @@ TEST(dup_shares_offset) {
 	return 0;
 }
 
+TEST(large_file_write) {
+	int fd = open("/largefile", O_CREAT | O_WRONLY | O_TRUNC);
+	ASSERT(fd >= 0, "open returns valid fd");
+
+	char buf[1024];
+	for (int i = 0; i < 1024; i++) {
+		buf[i] = (char)(i & 0xff);
+	}
+
+	int target_size = 300 * 1024;
+	int written = 0;
+	while (written < target_size) {
+		int n = write(fd, buf, 1024);
+		ASSERT(n > 0, "write succeeds");
+		written += n;
+	}
+
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT(st.size >= target_size, "file size >= 300KB");
+	close(fd);
+	return 0;
+}
+
+TEST(large_file_read) {
+	int fd = open("/largefile", O_RDONLY);
+	ASSERT(fd >= 0, "open returns valid fd");
+
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT(st.size >= 300 * 1024, "file is large enough");
+
+	char buf[1024];
+	int total = 0;
+	int n;
+	while ((n = read(fd, buf, 1024)) > 0) {
+		for (int i = 0; i < n; i++) {
+			ASSERT_EQ(buf[i], (char)((total + i) & 0xff), "data correct");
+		}
+		total += n;
+	}
+
+	ASSERT_EQ(total, st.size, "read entire file");
+	close(fd);
+	return 0;
+}
+
+TEST(large_file_unlink) {
+	ASSERT_EQ(unlink("/largefile"), 0, "unlink succeeds");
+	int fd = open("/largefile", O_RDONLY);
+	ASSERT_EQ(fd, -1, "file gone after unlink");
+	return 0;
+}
+
 TEST_SUITE(filesys) {
 	RUN_TEST(open_file);
 	RUN_TEST(open_nonexistent);
@@ -256,4 +310,7 @@ TEST_SUITE(filesys) {
 	RUN_TEST(mkdir_duplicate);
 	RUN_TEST(fork_shares_offset);
 	RUN_TEST(dup_shares_offset);
+	RUN_TEST(large_file_write);
+	RUN_TEST(large_file_read);
+	RUN_TEST(large_file_unlink);
 }
