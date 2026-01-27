@@ -47,6 +47,32 @@ static FILE *file_alloc(void) {
 	return f;
 }
 
+FILE *open_memstream(char **ptr, size_t *sizeloc) {
+	if (!ptr || !sizeloc) {
+		return NULL;
+	}
+	FILE *f = file_alloc();
+	if (!f) {
+		return NULL;
+	}
+	size_t initial_size = 64;
+	f->wbuf = malloc(initial_size);
+	if (!f->wbuf) {
+		free(f);
+		return NULL;
+	}
+	f->flags = _FILE_WRITE;
+	f->wbuf_size = initial_size;
+	f->wbuf_pos = 0;
+	f->wbuf[0] = '\0';
+	f->is_memstream = 1;
+	f->memstream_ptr = ptr;
+	f->memstream_size = sizeloc;
+	*ptr = f->wbuf;
+	*sizeloc = 0;
+	return f;
+}
+
 int fflush(FILE *stream) {
 	if (!stream || !(stream->flags & _FILE_WRITE)) {
 		return 0;

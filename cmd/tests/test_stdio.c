@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <test.h>
@@ -285,6 +286,78 @@ TEST(fprintf_basic) {
 	return 0;
 }
 
+TEST(open_memstream_basic) {
+	char *buf;
+	size_t buflen;
+	FILE *f = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(f, "open_memstream succeeded");
+	fputc('H', f);
+	fputc('i', f);
+	fflush(f);
+	ASSERT_EQ((int)buflen, 2, "buflen is 2");
+	ASSERT_EQ(buf[0], 'H', "first char is H");
+	ASSERT_EQ(buf[1], 'i', "second char is i");
+	ASSERT_EQ(buf[2], '\0', "null terminated");
+	fclose(f);
+	free(buf);
+	return 0;
+}
+
+TEST(open_memstream_fprintf) {
+	char *buf;
+	size_t buflen;
+	FILE *f = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(f, "open_memstream");
+	fprintf(f, "hello %s!", "world");
+	fclose(f);
+	ASSERT_EQ(strcmp(buf, "hello world!"), 0, "fprintf content");
+	ASSERT_EQ((int)buflen, 12, "buflen");
+	free(buf);
+	return 0;
+}
+
+TEST(open_memstream_grow) {
+	char *buf;
+	size_t buflen;
+	FILE *f = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(f, "open_memstream");
+	for (int i = 0; i < 100; i++) {
+		fputc('x', f);
+	}
+	fclose(f);
+	ASSERT_EQ((int)buflen, 100, "buflen is 100");
+	ASSERT_EQ(buf[99], 'x', "last char is x");
+	ASSERT_EQ(buf[100], '\0', "null terminated");
+	free(buf);
+	return 0;
+}
+
+TEST(open_memstream_chibicc_pattern) {
+	char *buf;
+	size_t buflen;
+	FILE *out = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(out, "open_memstream");
+	fprintf(out, "  mov x0, #%d\n", 42);
+	fprintf(out, "  ret\n");
+	fclose(out);
+	ASSERT(strstr(buf, "mov x0, #42") != 0, "contains mov");
+	ASSERT(strstr(buf, "ret") != 0, "contains ret");
+	free(buf);
+	return 0;
+}
+
+TEST(open_memstream_null_args) {
+	FILE *f1 = open_memstream(NULL, NULL);
+	ASSERT_NULL(f1, "NULL ptr rejected");
+	char *buf;
+	FILE *f2 = open_memstream(&buf, NULL);
+	ASSERT_NULL(f2, "NULL sizeloc rejected");
+	size_t size;
+	FILE *f3 = open_memstream(NULL, &size);
+	ASSERT_NULL(f3, "NULL ptr rejected 2");
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -316,4 +389,9 @@ TEST_SUITE(stdio) {
 	RUN_TEST(sprintf_long);
 	RUN_TEST(sprintf_null_string);
 	RUN_TEST(fprintf_basic);
+	RUN_TEST(open_memstream_basic);
+	RUN_TEST(open_memstream_fprintf);
+	RUN_TEST(open_memstream_grow);
+	RUN_TEST(open_memstream_chibicc_pattern);
+	RUN_TEST(open_memstream_null_args);
 }

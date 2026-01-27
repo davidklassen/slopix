@@ -39,4 +39,6 @@ int snprintf(char *str, size_t size, const char *fmt, ...);
 int vsprintf(char *str, const char *fmt, va_list ap);
 int vsnprintf(char *str, size_t size, const char *fmt, va_list ap);
 
+FILE *open_memstream(char **ptr, size_t *sizeloc);
+
 #endif
