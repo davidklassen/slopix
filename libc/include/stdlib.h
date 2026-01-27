@@ -17,4 +17,6 @@ unsigned long strtoul(const char *nptr, char **endptr, int base);
 
 int mkstemp(char *templ);
 
+int atexit(void (*func)(void));
+
 #endif

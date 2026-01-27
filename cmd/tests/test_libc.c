@@ -577,6 +577,14 @@ TEST(mkstemp_invalid_template) {
 	return 0;
 }
 
+static void dummy_handler(void) {
+}
+
+TEST(atexit_register) {
+	ASSERT_EQ(atexit(dummy_handler), 0, "atexit returns 0");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -658,4 +666,5 @@ TEST_SUITE(libc) {
 	RUN_TEST(mkstemp_write_read);
 	RUN_TEST(mkstemp_unique);
 	RUN_TEST(mkstemp_invalid_template);
+	RUN_TEST(atexit_register);
 }
