@@ -790,6 +790,33 @@ uint32_t encode_asr_reg(int sf, int rd, int rn, int rm) {
 	return base | ((uint32_t)rm << 16) | ((uint32_t)rn << 5) | (uint32_t)rd;
 }
 
+// LSL Xd, Xn, #shift (alias for UBFM Xd, Xn, #(-shift MOD 64), #(63-shift))
+// sf: 1 for 64-bit, 0 for 32-bit
+uint32_t encode_lsl_imm(int sf, int rd, int rn, int shift) {
+	int width = sf ? 64 : 32;
+	int immr = (-shift) & (width - 1);
+	int imms = width - 1 - shift;
+	uint32_t base = sf ? 0xD3400000 : 0x53000000;
+	return base | ((uint32_t)immr << 16) | ((uint32_t)imms << 10) |
+	       ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// LSR Xd, Xn, #shift (alias for UBFM Xd, Xn, #shift, #63)
+uint32_t encode_lsr_imm(int sf, int rd, int rn, int shift) {
+	int imms = sf ? 63 : 31;
+	uint32_t base = sf ? 0xD3400000 : 0x53000000;
+	return base | ((uint32_t)shift << 16) | ((uint32_t)imms << 10) |
+	       ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
+// ASR Xd, Xn, #shift (alias for SBFM Xd, Xn, #shift, #63)
+uint32_t encode_asr_imm(int sf, int rd, int rn, int shift) {
+	int imms = sf ? 63 : 31;
+	uint32_t base = sf ? 0x93400000 : 0x13000000;
+	return base | ((uint32_t)shift << 16) | ((uint32_t)imms << 10) |
+	       ((uint32_t)rn << 5) | (uint32_t)rd;
+}
+
 // CMP Xn, Xm (alias for SUBS XZR, Xn, Xm)
 uint32_t encode_cmp_reg(int sf, int rn, int rm) {
 	return encode_subs_reg(sf, 31, rn, rm);
@@ -1303,6 +1330,14 @@ void test_encode(void) {
 	check_encoding("LSL w0, w1, w2", encode_lsl_reg(0, 0, 1, 2), 0x1AC22020);
 	check_encoding("LSR x0, x1, x2", encode_lsr_reg(1, 0, 1, 2), 0x9AC22420);
 	check_encoding("ASR x0, x1, x2", encode_asr_reg(1, 0, 1, 2), 0x9AC22820);
+
+	printf("\nLSL/LSR/ASR immediate:\n");
+	check_encoding("LSL x0, x1, #5", encode_lsl_imm(1, 0, 1, 5), 0xD37BE820);
+	check_encoding("LSL w0, w1, #5", encode_lsl_imm(0, 0, 1, 5), 0x531B6820);
+	check_encoding("LSR x0, x1, #5", encode_lsr_imm(1, 0, 1, 5), 0xD345FC20);
+	check_encoding("LSR w0, w1, #5", encode_lsr_imm(0, 0, 1, 5), 0x53057C20);
+	check_encoding("ASR x0, x1, #5", encode_asr_imm(1, 0, 1, 5), 0x9345FC20);
+	check_encoding("ASR w0, w1, #5", encode_asr_imm(0, 0, 1, 5), 0x13057C20);
 
 	printf("\nCMP/CMN:\n");
 	check_encoding("CMP x0, x1", encode_cmp_reg(1, 0, 1), 0xEB01001F);

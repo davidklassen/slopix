@@ -338,6 +338,11 @@ uint32_t encode_lsl_reg(int sf, int rd, int rn, int rm);
 uint32_t encode_lsr_reg(int sf, int rd, int rn, int rm);
 uint32_t encode_asr_reg(int sf, int rd, int rn, int rm);
 
+// encode.c - shift (immediate)
+uint32_t encode_lsl_imm(int sf, int rd, int rn, int shift);
+uint32_t encode_lsr_imm(int sf, int rd, int rn, int shift);
+uint32_t encode_asr_imm(int sf, int rd, int rn, int shift);
+
 // encode.c - move
 uint32_t encode_mov_reg(int sf, int rd, int rm);
 uint32_t encode_movz(int sf, int rd, int imm16, int hw);

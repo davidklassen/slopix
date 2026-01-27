@@ -190,15 +190,16 @@ TEST_SUITE(virtio_intr) {
 
 static unsigned char error_test_buf[512];
 
-// Sector 3000 is beyond disk capacity (2048 sectors = 1MB test image)
+// Sector 5000 is beyond disk capacity (4096 sectors = 2MB test image)
+// (mkfs uses 1024-byte blocks, so 2048 blocks = 4096 512-byte sectors)
 TEST(virtio_read_bad_sector) {
-	int ret = virtio_disk_read(3000, error_test_buf);
+	int ret = virtio_disk_read(5000, error_test_buf);
 	ASSERT(ret < 0, "Reading invalid sector should fail");
 	return 0;
 }
 
 TEST(virtio_status_check) {
-	int ret = virtio_disk_read(3000, error_test_buf);
+	int ret = virtio_disk_read(5000, error_test_buf);
 	ASSERT_EQ(ret, VIRTIO_E_IOERR, "Invalid sector should return IOERR");
 	return 0;
 }

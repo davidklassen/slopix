@@ -992,9 +992,14 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_lsl_reg(sf, rd, rn, rm));
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_lsl_reg(sf, rd, rn, rm));
+		} else {
+			t = skip_hash(t);
+			int shift = (int)t->val;
+			emit32(encode_lsl_imm(sf, rd, rn, shift));
+		}
 		return;
 	}
 
@@ -1006,9 +1011,14 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_lsr_reg(sf, rd, rn, rm));
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_lsr_reg(sf, rd, rn, rm));
+		} else {
+			t = skip_hash(t);
+			int shift = (int)t->val;
+			emit32(encode_lsr_imm(sf, rd, rn, shift));
+		}
 		return;
 	}
 
@@ -1020,9 +1030,14 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rn = encode_gpr(t);
 		t = expect_comma(t->next);
-		expect_register(t);
-		int rm = encode_gpr(t);
-		emit32(encode_asr_reg(sf, rd, rn, rm));
+		if (t->kind == TOK_REGISTER) {
+			int rm = encode_gpr(t);
+			emit32(encode_asr_reg(sf, rd, rn, rm));
+		} else {
+			t = skip_hash(t);
+			int shift = (int)t->val;
+			emit32(encode_asr_imm(sf, rd, rn, shift));
+		}
 		return;
 	}
 
