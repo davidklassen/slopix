@@ -1,7 +1,7 @@
 ROOT = $(CURDIR)
 
-MKFS = $(ROOT)/tools/mkfs
-MKRAMFS = $(ROOT)/tools/mkramfs
+MKFS = $(ROOT)/tools/mkfs/mkfs
+MKRAMFS = $(ROOT)/tools/mkramfs/mkramfs
 LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
 
@@ -118,4 +118,5 @@ tidy:
 	clang-format -i kernel/*.c kernel/*.h kernel/tests/*.c kernel/tests/*.h
 	clang-format -i libc/*.c libc/include/*.h
 	clang-format -i cmd/*/*.c
-	clang-format -i tools/*.c
+	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
+	clang-format -i tools/cc/*.c tools/cc/*.h tools/cc/include/*.h

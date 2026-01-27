@@ -4,8 +4,10 @@
 docsearch.db*
 .claude/
 
-tools/mkfs
-tools/mkramfs
+tools/mkfs/mkfs
+tools/mkramfs/mkramfs
+tools/cc/chibicc
+tools/cc/*.o
 initramfs-test.bin
 kernel/kernel.bin
 kernel/kernel-test.bin

@@ -1,15 +1,9 @@
-HOSTCC = cc
-CFLAGS = -Wall -Wextra -Werror -O2
+SUBDIRS = mkfs mkramfs cc
 
-all: mkfs mkramfs
-
-mkfs: mkfs.c
-	$(HOSTCC) $(CFLAGS) -o $@ $<
-
-mkramfs: mkramfs.c
-	$(HOSTCC) $(CFLAGS) -o $@ $<
+all:
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir; done
 
 clean:
-	rm -f mkfs mkramfs
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
 .PHONY: all clean
