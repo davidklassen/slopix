@@ -8,11 +8,10 @@ CFLAGS = -I. -I$(ROOT)/libc/include -I../include
 LIBC = $(ROOT)/libc/libc.a
 LINK_SCRIPT = $(ROOT)/cmd/link.ld
 
-# Test files - empty initially, add as features are implemented
-TESTS =
+# Test files - add as features are implemented
+TESTS = function
 
-OBJS = tests.o $(addsuffix .o,$(TESTS))
-# Add common.o once function calls work: OBJS = tests.o common.o $(...)
+OBJS = common.o $(addsuffix .o,$(TESTS))
 
 all: tests.elf
 

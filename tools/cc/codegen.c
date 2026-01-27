@@ -40,13 +40,76 @@ int align_to(int n, int align) {
 	return (n + align - 1) / align * align;
 }
 
+// Store GP register to stack
+static void store_gp(int r, int offset, int sz) {
+	switch (sz) {
+	case 1:
+		println("  strb %s, [x29, #%d]", argreg32[r], offset);
+		return;
+	case 2:
+		println("  strh %s, [x29, #%d]", argreg32[r], offset);
+		return;
+	case 4:
+		println("  str %s, [x29, #%d]", argreg32[r], offset);
+		return;
+	default:
+		println("  str %s, [x29, #%d]", argreg64[r], offset);
+		return;
+	}
+}
+
+// Recursive helper to push args right-to-left
+static void push_args2(Node *args, bool first_pass) {
+	if (!args) {
+		return;
+	}
+	push_args2(args->next, first_pass);
+	if ((first_pass && !args->pass_by_stack) ||
+	    (!first_pass && args->pass_by_stack)) {
+		return;
+	}
+	gen_expr(args);
+	push();
+}
+
+// Push all arguments, return count of stack args (for cleanup)
+static int push_args(Node *node) {
+	int stack = 0, gp = 0;
+
+	// First pass: mark which args go on stack
+	for (Node *arg = node->args; arg; arg = arg->next) {
+		Type *ty = arg->ty;
+		if (is_flonum(ty) || ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
+			continue; // Defer to later steps
+		}
+		if (gp++ >= GP_MAX) {
+			arg->pass_by_stack = true;
+			stack++;
+		}
+	}
+
+	// Ensure 16-byte alignment
+	if ((depth + stack) % 2 == 1) {
+		println("  str xzr, [sp, #-16]!");
+		depth++;
+		stack++;
+	}
+
+	// Push: stack args first, then register args
+	push_args2(node->args, true);
+	push_args2(node->args, false);
+
+	return stack;
+}
+
 static void gen_addr(Node *node) {
 	switch (node->kind) {
 	case ND_VAR:
 		if (node->var->is_local) {
 			println("  add x0, x29, #%d", node->var->offset);
 		} else {
-			error_tok(node->tok, "global variables not yet implemented");
+			println("  adrp x0, %s", node->var->name);
+			println("  add x0, x0, :lo12:%s", node->var->name);
 		}
 		return;
 	case ND_DEREF:
@@ -63,8 +126,9 @@ static void gen_addr(Node *node) {
 }
 
 static void load(Type *ty) {
-	// Arrays and structs decay to pointers, no load needed
-	if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
+	// Arrays, structs, and functions decay to pointers, no load needed
+	if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT ||
+	    ty->kind == TY_UNION || ty->kind == TY_FUNC) {
 		return;
 	}
 
@@ -241,6 +305,33 @@ static void gen_expr(Node *node) {
 		gen_expr(node->lhs);
 		load(node->ty);
 		return;
+	case ND_FUNCALL: {
+		int stack_args = push_args(node);
+		gen_expr(node->lhs);	 // Function address -> x0
+		println("  mov x9, x0"); // Save to temp register
+
+		// Pop args into x0-x7
+		int gp = 0;
+		for (Node *arg = node->args; arg; arg = arg->next) {
+			Type *ty = arg->ty;
+			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
+			    ty->kind == TY_UNION) {
+				continue;
+			}
+			if (!arg->pass_by_stack && gp < GP_MAX) {
+				pop(argreg64[gp++]);
+			}
+		}
+
+		println("  blr x9"); // Indirect call
+
+		// Clean up stack args
+		if (stack_args > 0) {
+			println("  add sp, sp, #%d", stack_args * 16);
+			depth -= stack_args;
+		}
+		return;
+	}
 	case ND_ADD:
 	case ND_SUB:
 	case ND_MUL:
@@ -442,9 +533,30 @@ static void assign_lvar_offsets(Obj *prog) {
 			continue;
 		}
 
+		int top = 16; // Stack params start at FP+16
 		int bottom = 0;
+		int gp = 0;
 
+		// Mark stack-passed parameters (args 9+)
+		for (Obj *var = fn->params; var; var = var->next) {
+			Type *ty = var->ty;
+			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
+			    ty->kind == TY_UNION) {
+				continue;
+			}
+			if (gp++ < GP_MAX) {
+				continue;
+			}
+			top = align_to(top, 8);
+			var->offset = top;
+			top += MAX(8, var->ty->size);
+		}
+
+		// Local variables get negative offsets
 		for (Obj *var = fn->locals; var; var = var->next) {
+			if (var->offset) {
+				continue; // Already assigned (stack param)
+			}
 			bottom += var->ty->size;
 			bottom = align_to(bottom, var->align);
 			var->offset = -bottom;
@@ -510,6 +622,20 @@ static void emit_text(Obj *prog) {
 		println("  mov x29, sp");
 		if (fn->stack_size > 0) {
 			println("  sub sp, sp, #%d", fn->stack_size);
+		}
+
+		// Copy register parameters to stack slots
+		int gp = 0;
+		for (Obj *var = fn->params; var; var = var->next) {
+			Type *ty = var->ty;
+			if (is_flonum(ty) || ty->kind == TY_STRUCT ||
+			    ty->kind == TY_UNION) {
+				continue;
+			}
+			if (gp >= GP_MAX) {
+				break; // Rest are on stack already
+			}
+			store_gp(gp++, var->offset, ty->size);
 		}
 
 		// Emit code

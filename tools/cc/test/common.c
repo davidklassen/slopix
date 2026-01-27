@@ -1,5 +1,5 @@
-#include <stdio.h>
-#include <unistd.h>
+int printf(char *fmt, ...);
+void exit(int status);
 
 void assert(int expected, int actual, char *code) {
 	if (expected == actual) {
