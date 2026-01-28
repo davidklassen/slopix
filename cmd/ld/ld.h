@@ -130,6 +130,27 @@ typedef struct {
 	int symtab_shndx;
 } ObjectFile;
 
+// Symbol table
+#define SYMTAB_BUCKETS 4096
+
+typedef struct Symbol Symbol;
+struct Symbol {
+	const char *name;
+	uint64_t value;
+	uint64_t size;
+	uint8_t type;
+	uint8_t binding;
+	ObjectFile *file;
+	uint16_t shndx;
+	uint16_t output_shndx;
+	Symbol *next;
+};
+
+typedef struct {
+	Symbol *buckets[SYMTAB_BUCKETS];
+	int count;
+} SymbolTable;
+
 // main.c
 void error(char *fmt, ...);
 
@@ -140,7 +161,11 @@ const char *section_name(ObjectFile *obj, int idx);
 uint8_t *section_data(ObjectFile *obj, int idx);
 const char *symbol_name(ObjectFile *obj, int idx);
 
-// symbol.c (stub)
+// symbol.c
+void symtab_init(SymbolTable *tab);
+Symbol *symbol_lookup(SymbolTable *tab, const char *name);
+bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
+void dump_globals(SymbolTable *global);
 
 // section.c (stub)
 

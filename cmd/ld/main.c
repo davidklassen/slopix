@@ -18,6 +18,7 @@ static void usage(int code) {
 	fprintf(stderr, "  -o <file>         Output file (default: a.out)\n");
 	fprintf(stderr, "  --dump-sections   Print sections and exit\n");
 	fprintf(stderr, "  --dump-symbols    Print symbols and exit\n");
+	fprintf(stderr, "  --dump-globals    Print resolved globals and exit\n");
 	fprintf(stderr, "  --help            Print this help and exit\n");
 	fprintf(stderr, "  --version         Print version and exit\n");
 	exit(code);
@@ -153,6 +154,7 @@ int main(int argc, char **argv) {
 	char *output_file = NULL;
 	bool dump_sections_flag = false;
 	bool dump_symbols_flag = false;
+	bool dump_globals_flag = false;
 	char **input_files = NULL;
 	int input_count = 0;
 
@@ -168,6 +170,8 @@ int main(int argc, char **argv) {
 			dump_sections_flag = true;
 		} else if (strcmp(argv[i], "--dump-symbols") == 0) {
 			dump_symbols_flag = true;
+		} else if (strcmp(argv[i], "--dump-globals") == 0) {
+			dump_globals_flag = true;
 		} else if (strcmp(argv[i], "--version") == 0) {
 			version();
 		} else if (strcmp(argv[i], "--help") == 0) {
@@ -185,24 +189,42 @@ int main(int argc, char **argv) {
 
 	(void)output_file;
 
+	ObjectFile **objects = malloc(input_count * sizeof(ObjectFile *));
 	for (int i = 0; i < input_count; i++) {
-		ObjectFile *obj = elf_read(input_files[i]);
-
-		if (input_count > 1) {
-			printf("\n%s:\n", obj->filename);
-		}
-
-		if (dump_sections_flag) {
-			dump_sections(obj);
-		}
-
-		if (dump_symbols_flag) {
-			dump_symbols(obj);
-		}
-
-		elf_free(obj);
+		objects[i] = elf_read(input_files[i]);
 	}
 
+	// Per-file diagnostics
+	if (dump_sections_flag || dump_symbols_flag) {
+		for (int i = 0; i < input_count; i++) {
+			if (input_count > 1) {
+				printf("\n%s:\n", objects[i]->filename);
+			}
+			if (dump_sections_flag) {
+				dump_sections(objects[i]);
+			}
+			if (dump_symbols_flag) {
+				dump_symbols(objects[i]);
+			}
+		}
+	}
+
+	// Symbol resolution
+	SymbolTable global;
+	symtab_init(&global);
+
+	if (!resolve_symbols(objects, input_count, &global)) {
+		exit(1);
+	}
+
+	if (dump_globals_flag) {
+		dump_globals(&global);
+	}
+
+	for (int i = 0; i < input_count; i++) {
+		elf_free(objects[i]);
+	}
+	free(objects);
 	free(input_files);
 	return 0;
 }
