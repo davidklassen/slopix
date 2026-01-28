@@ -68,7 +68,7 @@ TEST(pipe_fork_communicate) {
 	int n = read(fd[0], buf, sizeof(buf));
 	buf[n] = '\0';
 	close(fd[0]);
-	wait();
+	wait(NULL);
 
 	ASSERT_EQ(n, 10, "should read 10 bytes");
 	ASSERT(strcmp(buf, "from child") == 0, "data should match");

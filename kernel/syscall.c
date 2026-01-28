@@ -157,16 +157,21 @@ static long sys_exec(const char *cmdline) {
 		}
 	}
 
-	paddr_t stack_pa = pmm_alloc();
-	if (stack_pa == PMM_INVALID) {
-		vmm_free(new_pt);
-		return -1;
-	}
-
-	if (vmm_map_page(new_pt, USER_STACK - PAGE_SIZE, stack_pa, 1, 0) < 0) {
-		pmm_free(stack_pa);
-		vmm_free(new_pt);
-		return -1;
+	paddr_t stack_pa = 0;
+	for (int i = 0; i < USER_STACK_PAGES; i++) {
+		paddr_t pa = pmm_alloc();
+		if (pa == PMM_INVALID) {
+			vmm_free(new_pt);
+			return -1;
+		}
+		if (vmm_map_page(new_pt, USER_STACK - (i + 1) * PAGE_SIZE, pa, 1, 0) < 0) {
+			pmm_free(pa);
+			vmm_free(new_pt);
+			return -1;
+		}
+		if (i == 0) {
+			stack_pa = pa;
+		}
 	}
 
 	// Set up argc/argv on stack

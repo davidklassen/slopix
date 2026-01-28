@@ -7,7 +7,8 @@ TEST(fork_wait) {
 	if (pid == 0) {
 		exit(42);
 	}
-	int ret = wait();
+	int ret;
+	wait(&ret);
 	ASSERT(WIFEXITED(ret), "child exited normally");
 	ASSERT_EQ(WEXITSTATUS(ret), 42, "child exit status is 42");
 	return 0;
@@ -21,7 +22,7 @@ TEST(fork_multiple) {
 		}
 	}
 	int count = 0;
-	while (wait() >= 0) {
+	while (wait(NULL) >= 0) {
 		count++;
 	}
 	ASSERT_EQ(count, 3, "reaped 3 children");
@@ -39,7 +40,8 @@ TEST(exec_true) {
 		exec("true");
 		exit(1);
 	}
-	int ret = wait();
+	int ret;
+	wait(&ret);
 	ASSERT(WIFEXITED(ret), "exec'd program exited normally");
 	ASSERT_EQ(WEXITSTATUS(ret), 0, "exec'd program exits 0");
 	return 0;

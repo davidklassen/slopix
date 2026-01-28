@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -437,8 +438,8 @@ static void runcmd(struct cmd *cmd) {
 		}
 		close(p[0]);
 		close(p[1]);
-		wait();
-		wait();
+		wait(NULL);
+		wait(NULL);
 		exit(0);
 	}
 	}

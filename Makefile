@@ -52,9 +52,12 @@ disk.img: $(MKFS) cmd
 	$(MKFS) $@ -s 4096 \
 		:dir:/dev \
 		:dir:/bin \
+		:dir:/lib \
 		:dir:/src \
 		:dir:/src/libc \
 		:dir:/src/ld \
+		:dir:/src/cc \
+		:dir:/src/cc/include \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
@@ -81,6 +84,8 @@ disk.img: $(MKFS) cmd
 		cmd/sleep.elf:/bin/sleep \
 		cmd/as.elf:/bin/as \
 		cmd/ld.elf:/bin/ld \
+		cmd/cc.elf:/bin/cc \
+		libc/libc.a:/lib/libc.a \
 		cmd/cat/cat.c:/src/cat.c \
 		cmd/cp/cp.c:/src/cp.c \
 		cmd/echo/echo.c:/src/echo.c \
@@ -99,13 +104,45 @@ disk.img: $(MKFS) cmd
 		libc/stdio.c:/src/libc/stdio.c \
 		libc/string.c:/src/libc/string.c \
 		libc/syscall.S:/src/libc/syscall.S \
+		libc/include/assert.h:/src/libc/assert.h \
 		libc/include/ctype.h:/src/libc/ctype.h \
+		libc/include/errno.h:/src/libc/errno.h \
 		libc/include/fcntl.h:/src/libc/fcntl.h \
+		libc/include/inttypes.h:/src/libc/inttypes.h \
+		libc/include/libgen.h:/src/libc/libgen.h \
 		libc/include/signal.h:/src/libc/signal.h \
+		libc/include/stdarg.h:/src/libc/stdarg.h \
 		libc/include/stdio.h:/src/libc/stdio.h \
+		libc/include/stdlib.h:/src/libc/stdlib.h \
 		libc/include/string.h:/src/libc/string.h \
+		libc/include/strings.h:/src/libc/strings.h \
+		libc/include/time.h:/src/libc/time.h \
 		libc/include/unistd.h:/src/libc/unistd.h \
-		cmd/ld/hello.S:/src/ld/hello.S
+		:dir:/src/libc/sys \
+		libc/include/sys/mman.h:/src/libc/sys/mman.h \
+		libc/include/sys/stat.h:/src/libc/sys/stat.h \
+		libc/include/sys/wait.h:/src/libc/sys/wait.h \
+		cmd/ld/hello.S:/src/ld/hello.S \
+		cmd/cc/main.c:/src/cc/main.c \
+		cmd/cc/tokenize.c:/src/cc/tokenize.c \
+		cmd/cc/preprocess.c:/src/cc/preprocess.c \
+		cmd/cc/parse.c:/src/cc/parse.c \
+		cmd/cc/type.c:/src/cc/type.c \
+		cmd/cc/codegen.c:/src/cc/codegen.c \
+		cmd/cc/unicode.c:/src/cc/unicode.c \
+		cmd/cc/strings.c:/src/cc/strings.c \
+		cmd/cc/hashmap.c:/src/cc/hashmap.c \
+		cmd/cc/chibicc.h:/src/cc/chibicc.h \
+		cmd/cc/hello.c:/src/cc/hello.c \
+		tools/cc/include/assert.h:/src/cc/include/assert.h \
+		tools/cc/include/float.h:/src/cc/include/float.h \
+		tools/cc/include/stdalign.h:/src/cc/include/stdalign.h \
+		tools/cc/include/stdarg.h:/src/cc/include/stdarg.h \
+		tools/cc/include/stdatomic.h:/src/cc/include/stdatomic.h \
+		tools/cc/include/stdbool.h:/src/cc/include/stdbool.h \
+		tools/cc/include/stddef.h:/src/cc/include/stddef.h \
+		tools/cc/include/stdint.h:/src/cc/include/stdint.h \
+		tools/cc/include/stdnoreturn.h:/src/cc/include/stdnoreturn.h
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 2048 \
@@ -136,5 +173,6 @@ tidy:
 	clang-format -i libc/*.c libc/include/*.h
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
+	clang-format -i cmd/cc/*.c cmd/cc/*.h
 	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
 	clang-format -i tools/cc/*.c tools/cc/*.h tools/cc/include/*.h

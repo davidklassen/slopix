@@ -20,7 +20,7 @@ int main(void) {
 				exit(1);
 			}
 		}
-		int pid = wait();
+		int pid = wait(NULL);
 		if (pid == shell_pid) {
 			shell_pid = -1;
 		}

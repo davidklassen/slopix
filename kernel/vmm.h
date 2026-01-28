@@ -80,7 +80,8 @@ typedef unsigned long pte_t;
 #define SCTLR_I (1UL << 12) // Instruction cache enable
 
 // User memory layout
-#define USER_STACK 0x0001000000000000UL
+#define USER_STACK	 0x0001000000000000UL
+#define USER_STACK_PAGES 16 // 64KB stack
 
 // User-space page table management
 pte_t *vmm_create(void);

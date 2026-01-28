@@ -91,7 +91,8 @@ TEST(mmap_fork_inherits) {
 		exit(1);
 	}
 	ASSERT(pid > 0, "fork succeeds");
-	int ret = wait();
+	int ret;
+	wait(&ret);
 	ASSERT(WIFEXITED(ret), "child exited normally");
 	ASSERT_EQ(WEXITSTATUS(ret), 0, "child read parent's mmap'd memory");
 
@@ -112,7 +113,7 @@ TEST(mmap_fork_independent) {
 		exit(0);
 	}
 	ASSERT(pid > 0, "fork succeeds");
-	wait();
+	wait(NULL);
 
 	ASSERT_EQ(cp[0], (char)0xAA, "child write did not affect parent");
 

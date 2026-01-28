@@ -431,9 +431,29 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 		}
 
 		int width = 0;
-		while (*fmt >= '0' && *fmt <= '9') {
-			width = width * 10 + (*fmt - '0');
+		if (*fmt == '*') {
+			width = va_arg(ap, int);
 			fmt++;
+		} else {
+			while (*fmt >= '0' && *fmt <= '9') {
+				width = width * 10 + (*fmt - '0');
+				fmt++;
+			}
+		}
+
+		int precision = -1;
+		if (*fmt == '.') {
+			fmt++;
+			if (*fmt == '*') {
+				precision = va_arg(ap, int);
+				fmt++;
+			} else {
+				precision = 0;
+				while (*fmt >= '0' && *fmt <= '9') {
+					precision = precision * 10 + (*fmt - '0');
+					fmt++;
+				}
+			}
 		}
 
 		int is_long = 0;
@@ -576,6 +596,9 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 			while (*p++) {
 				slen++;
 			}
+			if (precision >= 0 && precision < slen) {
+				slen = precision;
+			}
 			int pad = width - slen;
 			while (pad-- > 0) {
 				if (fputc(' ', stream) == EOF) {
@@ -583,8 +606,8 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 				}
 				count++;
 			}
-			while (*s) {
-				if (fputc(*s++, stream) == EOF) {
+			for (int i = 0; i < slen; i++) {
+				if (fputc(s[i], stream) == EOF) {
 					return -1;
 				}
 				count++;
@@ -664,9 +687,29 @@ int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
 		}
 
 		int width = 0;
-		while (*fmt >= '0' && *fmt <= '9') {
-			width = width * 10 + (*fmt - '0');
+		if (*fmt == '*') {
+			width = va_arg(ap, int);
 			fmt++;
+		} else {
+			while (*fmt >= '0' && *fmt <= '9') {
+				width = width * 10 + (*fmt - '0');
+				fmt++;
+			}
+		}
+
+		int precision = -1;
+		if (*fmt == '.') {
+			fmt++;
+			if (*fmt == '*') {
+				precision = va_arg(ap, int);
+				fmt++;
+			} else {
+				precision = 0;
+				while (*fmt >= '0' && *fmt <= '9') {
+					precision = precision * 10 + (*fmt - '0');
+					fmt++;
+				}
+			}
 		}
 
 		int is_long = 0;
@@ -809,6 +852,9 @@ int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
 			while (*p++) {
 				slen++;
 			}
+			if (precision >= 0 && precision < slen) {
+				slen = precision;
+			}
 			int pad = width - slen;
 			while (pad-- > 0) {
 				if (str && (size_t)count < size - 1) {
@@ -816,11 +862,10 @@ int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
 				}
 				count++;
 			}
-			while (*s) {
+			for (int i = 0; i < slen; i++) {
 				if (str && (size_t)count < size - 1) {
-					str[count] = *s;
+					str[count] = s[i];
 				}
-				s++;
 				count++;
 			}
 			break;

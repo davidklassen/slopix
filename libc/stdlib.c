@@ -123,6 +123,76 @@ long strtol(const char *nptr, char **endptr, int base) {
 	return (long)strtoul(nptr, endptr, base);
 }
 
+int atoi(const char *s) {
+	return (int)strtol(s, NULL, 10);
+}
+
+long double strtold(const char *nptr, char **endptr) {
+	const char *s = nptr;
+	long double result = 0;
+	long double frac = 0;
+	int neg = 0;
+	int exp = 0;
+	int exp_neg = 0;
+
+	while (isspace(*s)) {
+		s++;
+	}
+
+	if (*s == '-') {
+		neg = 1;
+		s++;
+	} else if (*s == '+') {
+		s++;
+	}
+
+	while (isdigit(*s)) {
+		result = result * 10 + (*s - '0');
+		s++;
+	}
+
+	if (*s == '.') {
+		s++;
+		long double divisor = 10;
+		while (isdigit(*s)) {
+			frac += (*s - '0') / divisor;
+			divisor *= 10;
+			s++;
+		}
+	}
+
+	result += frac;
+
+	if (*s == 'e' || *s == 'E') {
+		s++;
+		if (*s == '-') {
+			exp_neg = 1;
+			s++;
+		} else if (*s == '+') {
+			s++;
+		}
+		while (isdigit(*s)) {
+			exp = exp * 10 + (*s - '0');
+			s++;
+		}
+		long double multiplier = 1;
+		for (int i = 0; i < exp; i++) {
+			multiplier *= 10;
+		}
+		if (exp_neg) {
+			result /= multiplier;
+		} else {
+			result *= multiplier;
+		}
+	}
+
+	if (endptr) {
+		*endptr = (char *)s;
+	}
+
+	return neg ? -result : result;
+}
+
 int access(const char *path, int mode) {
 	(void)mode;
 	int fd = open(path, O_RDONLY);
@@ -131,4 +201,46 @@ int access(const char *path, int mode) {
 	}
 	close(fd);
 	return 0;
+}
+
+extern int _wait_syscall(void);
+
+int wait(int *wstatus) {
+	int ret = _wait_syscall();
+	if (ret < 0) {
+		return -1;
+	}
+	int pid = ret >> 16;
+	int status = ret & 0xffff;
+	if (wstatus) {
+		*wstatus = status;
+	}
+	return pid;
+}
+
+int execvp(const char *file, char *const argv[]) {
+	char cmdline[256];
+	int pos = 0;
+
+	for (int i = 0; argv[i]; i++) {
+		if (i > 0) {
+			cmdline[pos++] = ' ';
+		}
+		const char *arg = argv[i];
+		while (*arg && pos < 255) {
+			cmdline[pos++] = *arg++;
+		}
+	}
+	cmdline[pos] = '\0';
+
+	return exec(cmdline);
+}
+
+void _assert_fail(const char *expr, const char *file, int line) {
+	write(2, "assert failed: ", 15);
+	write(2, expr, strlen(expr));
+	write(2, " at ", 4);
+	write(2, file, strlen(file));
+	write(2, "\n", 1);
+	_exit(1);
 }

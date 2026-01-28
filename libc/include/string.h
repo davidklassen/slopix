@@ -16,7 +16,6 @@ char *strncpy(char *dest, const char *src, size_t n);
 char *strcat(char *dest, const char *src);
 char *strchr(const char *s, int c);
 char *strstr(const char *haystack, const char *needle);
-int atoi(const char *s);
 int itoa(int n, char *buf);
 char *strdup(const char *s);
 char *strndup(const char *s, size_t n);

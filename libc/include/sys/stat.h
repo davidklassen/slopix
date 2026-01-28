@@ -1,6 +1,8 @@
 #ifndef _SYS_STAT_H
 #define _SYS_STAT_H
 
+#include <time.h>
+
 typedef long off_t;
 
 struct stat {
@@ -9,6 +11,7 @@ struct stat {
 	unsigned short st_mode;
 	unsigned short st_nlink;
 	unsigned int st_size;
+	time_t st_mtime;
 };
 
 int fstat(int fd, struct stat *st);

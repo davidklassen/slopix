@@ -1,6 +1,10 @@
 #ifndef UNISTD_H
 #define UNISTD_H
 
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 typedef unsigned long size_t;
 typedef long ssize_t;
 
@@ -15,8 +19,9 @@ void _exit(int status) __attribute__((noreturn));
 void sleep(unsigned long ms);
 int getpid(void);
 int fork(void);
-int wait(void);
+int wait(int *wstatus);
 int exec(const char *name);
+int execvp(const char *file, char *const argv[]);
 int poll(int fd, long timeout_ms);
 void poweroff(void);
 void *sbrk(long n);

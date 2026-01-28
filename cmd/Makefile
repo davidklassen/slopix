@@ -7,7 +7,7 @@ CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
 	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf \
-	as.elf ld.elf
+	as.elf ld.elf cc.elf
 
 all: $(PROGS)
 
@@ -86,6 +86,10 @@ ld.elf:
 	$(MAKE) -C ld CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 	cp ld/ld.elf $@
 
+cc.elf:
+	$(MAKE) -C cc CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	cp cc/cc.elf $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -S -o $*.s $<
 	$(AS) -o $@ $*.s
@@ -95,5 +99,6 @@ clean:
 	$(MAKE) -C tests clean
 	$(MAKE) -C as clean
 	$(MAKE) -C ld clean
+	$(MAKE) -C cc clean
 
 .PHONY: all clean

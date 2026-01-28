@@ -53,14 +53,15 @@ void init(const char *program) {
 		kpanic("init: invalid program path");
 	}
 
-	paddr_t stack_pa = pmm_alloc();
-	if (stack_pa == PMM_INVALID) {
-		kpanic("init: failed to allocate stack");
-	}
-
-	unsigned long stack_va = USER_STACK - PAGE_SIZE;
-	if (vmm_map_page(pt, stack_va, stack_pa, 1, 0) < 0) {
-		kpanic("init: failed to map stack");
+	for (int i = 0; i < USER_STACK_PAGES; i++) {
+		paddr_t stack_pa = pmm_alloc();
+		if (stack_pa == PMM_INVALID) {
+			kpanic("init: failed to allocate stack");
+		}
+		unsigned long stack_va = USER_STACK - (i + 1) * PAGE_SIZE;
+		if (vmm_map_page(pt, stack_va, stack_pa, 1, 0) < 0) {
+			kpanic("init: failed to map stack");
+		}
 	}
 
 	int pid = proc_create_user(pt, entry_addr, USER_STACK, brk);

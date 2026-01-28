@@ -1,4 +1,4 @@
-.global write, _exit, read, sleep, getpid, fork, wait, exec, poll, poweroff, sbrk
+.global write, _exit, read, sleep, getpid, fork, _wait_syscall, exec, poll, poweroff, sbrk
 .global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
 .global stat, getcwd, lseek, rename, mmap, munmap
 .global kill, getprocs, getppid, waitpid
@@ -34,7 +34,7 @@ fork:
 	svc #0
 	ret
 
-wait:
+_wait_syscall:
 	mov x8, #6
 	svc #0
 	ret

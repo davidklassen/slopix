@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -477,6 +478,371 @@ TEST(fseek_clears_eof) {
 	return 0;
 }
 
+TEST(memstream_large) {
+	// Test memstream with >4096 bytes directly (no file I/O)
+	char *buf;
+	size_t buflen;
+	FILE *f = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(f, "open_memstream");
+
+	// Write 5000 bytes with known pattern
+	for (int i = 0; i < 5000; i++) {
+		fputc('A' + (i % 26), f);
+	}
+	fclose(f);
+
+	ASSERT_EQ((int)buflen, 5000, "buflen");
+	ASSERT_EQ(buf[0], 'A', "byte 0");
+	ASSERT_EQ(buf[2047], 'A' + (2047 % 26), "byte 2047");
+	ASSERT_EQ(buf[2048], 'A' + (2048 % 26), "byte 2048");
+	ASSERT_EQ(buf[3604], 'A' + (3604 % 26), "byte 3604");
+	ASSERT_EQ(buf[3605], 'A' + (3605 % 26), "byte 3605");
+	ASSERT_EQ(buf[4095], 'A' + (4095 % 26), "byte 4095");
+	ASSERT_EQ(buf[4096], 'A' + (4096 % 26), "byte 4096");
+	ASSERT_EQ(buf[4999], 'A' + (4999 % 26), "byte 4999");
+
+	free(buf);
+	return 0;
+}
+
+TEST(large_file_read) {
+	// Write a 5000 byte file with known pattern
+	FILE *f = fopen("/test_large.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	for (int i = 0; i < 5000; i++) {
+		fputc('A' + (i % 26), f);
+	}
+	fclose(f);
+
+	// Read using same pattern as chibicc's read_file
+	f = fopen("/test_large.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+
+	char *buf;
+	size_t buflen;
+	FILE *out = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(out, "open_memstream");
+
+	char *buf2 = malloc(4096);
+	for (;;) {
+		int n = fread(buf2, 1, 4096, f);
+		if (n == 0) {
+			break;
+		}
+		fwrite(buf2, 1, n, out);
+	}
+	free(buf2);
+	fclose(f);
+	fclose(out);
+
+	ASSERT_EQ((int)buflen, 5000, "buflen is 5000");
+
+	// Check bytes around the problem area (3605)
+	ASSERT_EQ(buf[3600], 'A' + (3600 % 26), "byte 3600");
+	ASSERT_EQ(buf[3605], 'A' + (3605 % 26), "byte 3605");
+	ASSERT_EQ(buf[3610], 'A' + (3610 % 26), "byte 3610");
+	ASSERT_EQ(buf[4000], 'A' + (4000 % 26), "byte 4000");
+	ASSERT_EQ(buf[4999], 'A' + (4999 % 26), "byte 4999");
+
+	free(buf);
+	unlink("/test_large.txt");
+	return 0;
+}
+
+TEST(large_file_read_content) {
+	// Write file with specific content at byte 3605
+	FILE *f = fopen("/test_large2.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	for (int i = 0; i < 3605; i++) {
+		fputc('X', f);
+	}
+	fputc('!', f); // byte 3605 should be '!'
+	for (int i = 3606; i < 5000; i++) {
+		fputc('Y', f);
+	}
+	fclose(f);
+
+	// Read it back
+	f = fopen("/test_large2.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+
+	char *buf;
+	size_t buflen;
+	FILE *out = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(out, "open_memstream");
+
+	char *buf2 = malloc(4096);
+	for (;;) {
+		int n = fread(buf2, 1, 4096, f);
+		if (n == 0) {
+			break;
+		}
+		fwrite(buf2, 1, n, out);
+	}
+	free(buf2);
+	fclose(f);
+	fclose(out);
+
+	ASSERT_EQ((int)buflen, 5000, "buflen");
+	ASSERT_EQ(buf[3604], 'X', "byte before marker");
+	ASSERT_EQ(buf[3605], '!', "marker byte 3605");
+	ASSERT_EQ(buf[3606], 'Y', "byte after marker");
+
+	free(buf);
+	unlink("/test_large2.txt");
+	return 0;
+}
+
+// Test writing blocks one at a time
+TEST(blockwise_file_rw) {
+	int fd = open("/test_block.txt", O_WRONLY | O_CREAT | O_TRUNC);
+	ASSERT_TRUE(fd >= 0, "open for write");
+
+	// Write 5 blocks (1024 bytes each)
+	char wbuf[1024];
+	for (int block = 0; block < 5; block++) {
+		for (int i = 0; i < 1024; i++) {
+			int global_i = block * 1024 + i;
+			wbuf[i] = 'A' + (global_i % 26);
+		}
+		int n = write(fd, wbuf, 1024);
+		ASSERT_EQ(n, 1024, "write block");
+	}
+	close(fd);
+
+	// Read back block by block
+	fd = open("/test_block.txt", O_RDONLY);
+	ASSERT_TRUE(fd >= 0, "open for read");
+
+	char rbuf[1024];
+	for (int block = 0; block < 5; block++) {
+		int n = read(fd, rbuf, 1024);
+		ASSERT_EQ(n, 1024, "read block");
+
+		for (int i = 0; i < 1024; i++) {
+			int global_i = block * 1024 + i;
+			char expected = 'A' + (global_i % 26);
+			if (rbuf[i] != expected) {
+				// Found first mismatch
+				close(fd);
+				unlink("/test_block.txt");
+				ASSERT_EQ(global_i, -1, "byte mismatch");
+			}
+		}
+	}
+	close(fd);
+	unlink("/test_block.txt");
+	return 0;
+}
+
+// Test using raw syscalls to bypass stdio - single large write
+TEST(raw_large_file_rw) {
+	// Write using raw write()
+	int fd = open("/test_raw.txt", O_WRONLY | O_CREAT | O_TRUNC);
+	ASSERT_TRUE(fd >= 0, "open for write");
+
+	char *wbuf = malloc(5000);
+	for (int i = 0; i < 5000; i++) {
+		wbuf[i] = 'A' + (i % 26);
+	}
+	int written = write(fd, wbuf, 5000);
+	ASSERT_EQ(written, 5000, "write 5000");
+	close(fd);
+
+	// Read using raw read()
+	fd = open("/test_raw.txt", O_RDONLY);
+	ASSERT_TRUE(fd >= 0, "open for read");
+
+	char *rbuf = malloc(5000);
+	int total = 0;
+	while (total < 5000) {
+		int n = read(fd, rbuf + total, 5000 - total);
+		if (n <= 0) {
+			break;
+		}
+		total += n;
+	}
+	close(fd);
+
+	ASSERT_EQ(total, 5000, "read 5000 bytes");
+
+	// Find first mismatch
+	int bad_byte = -1;
+	for (int i = 0; i < 5000; i++) {
+		char expected = 'A' + (i % 26);
+		if (rbuf[i] != expected) {
+			bad_byte = i;
+			break;
+		}
+	}
+	ASSERT_EQ(bad_byte, -1, "all bytes match");
+
+	free(wbuf);
+	free(rbuf);
+	unlink("/test_raw.txt");
+	return 0;
+}
+
+// Test fwrite to memstream directly
+TEST(fwrite_to_memstream) {
+	char *inbuf = malloc(5000);
+	for (int i = 0; i < 5000; i++) {
+		inbuf[i] = 'A' + (i % 26);
+	}
+
+	char *buf;
+	size_t buflen;
+	FILE *out = open_memstream(&buf, &buflen);
+	ASSERT_NOT_NULL(out, "open_memstream");
+
+	// Write in 4096-byte chunks like the failing test
+	size_t written = fwrite(inbuf, 1, 4096, out);
+	ASSERT_EQ((int)written, 4096, "first fwrite");
+
+	written = fwrite(inbuf + 4096, 1, 904, out);
+	ASSERT_EQ((int)written, 904, "second fwrite");
+
+	fclose(out);
+
+	ASSERT_EQ((int)buflen, 5000, "buflen");
+
+	int bad_byte = -1;
+	for (int i = 0; i < 5000; i++) {
+		char expected = 'A' + (i % 26);
+		if (buf[i] != expected) {
+			bad_byte = i;
+			break;
+		}
+	}
+	ASSERT_EQ(bad_byte, -1, "all bytes match");
+
+	free(inbuf);
+	free(buf);
+	return 0;
+}
+
+// Simple test: raw write, then fgetc read one byte at a time
+TEST(write_raw_fgetc_simple) {
+	// Write using raw write()
+	int fd = open("/test_fgetc.txt", O_WRONLY | O_CREAT | O_TRUNC);
+	ASSERT_TRUE(fd >= 0, "open for write");
+
+	char *wbuf = malloc(5000);
+	for (int i = 0; i < 5000; i++) {
+		wbuf[i] = 'A' + (i % 26);
+	}
+	write(fd, wbuf, 5000);
+	close(fd);
+
+	// Read using fgetc directly
+	FILE *f = fopen("/test_fgetc.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+
+	int bad_byte = -1;
+	for (int i = 0; i < 5000; i++) {
+		int c = fgetc(f);
+		if (c == EOF) {
+			bad_byte = i;
+			break;
+		}
+		char expected = 'A' + (i % 26);
+		if ((char)c != expected) {
+			bad_byte = i;
+			break;
+		}
+	}
+	fclose(f);
+
+	ASSERT_EQ(bad_byte, -1, "all bytes match");
+	free(wbuf);
+	unlink("/test_fgetc.txt");
+	return 0;
+}
+
+// Write with raw syscalls, read with stdio
+TEST(write_raw_read_stdio) {
+	// Write using raw write()
+	int fd = open("/test_mixed1.txt", O_WRONLY | O_CREAT | O_TRUNC);
+	ASSERT_TRUE(fd >= 0, "open for write");
+
+	char *wbuf = malloc(5000);
+	for (int i = 0; i < 5000; i++) {
+		wbuf[i] = 'A' + (i % 26);
+	}
+	write(fd, wbuf, 5000);
+	close(fd);
+
+	// Read using stdio fread
+	FILE *f = fopen("/test_mixed1.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+
+	char *buf;
+	size_t buflen;
+	FILE *out = open_memstream(&buf, &buflen);
+
+	char *buf2 = malloc(4096);
+	for (;;) {
+		int n = fread(buf2, 1, 4096, f);
+		if (n == 0) {
+			break;
+		}
+		fwrite(buf2, 1, n, out);
+	}
+	free(buf2);
+	fclose(f);
+	fclose(out);
+
+	ASSERT_EQ((int)buflen, 5000, "buflen");
+
+	int bad_byte = -1;
+	for (int i = 0; i < 5000; i++) {
+		char expected = 'A' + (i % 26);
+		if (buf[i] != expected) {
+			bad_byte = i;
+			break;
+		}
+	}
+	ASSERT_EQ(bad_byte, -1, "byte 3605");
+
+	free(wbuf);
+	free(buf);
+	unlink("/test_mixed1.txt");
+	return 0;
+}
+
+// Write with stdio, read with raw syscalls
+TEST(write_stdio_read_raw) {
+	// Write using stdio fputc
+	FILE *f = fopen("/test_mixed2.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	for (int i = 0; i < 5000; i++) {
+		fputc('A' + (i % 26), f);
+	}
+	fclose(f);
+
+	// Read using raw read()
+	int fd = open("/test_mixed2.txt", O_RDONLY);
+	ASSERT_TRUE(fd >= 0, "open for read");
+
+	char *rbuf = malloc(5000);
+	int total = 0;
+	while (total < 5000) {
+		int n = read(fd, rbuf + total, 5000 - total);
+		if (n <= 0) {
+			break;
+		}
+		total += n;
+	}
+	close(fd);
+
+	ASSERT_EQ(total, 5000, "read 5000 bytes");
+	ASSERT_EQ(rbuf[3605], 'A' + (3605 % 26), "byte 3605");
+
+	free(rbuf);
+	unlink("/test_mixed2.txt");
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -520,4 +886,13 @@ TEST_SUITE(stdio) {
 	RUN_TEST(feof_not_eof);
 	RUN_TEST(feof_at_eof);
 	RUN_TEST(fseek_clears_eof);
+	RUN_TEST(memstream_large);
+	RUN_TEST(blockwise_file_rw);
+	RUN_TEST(raw_large_file_rw);
+	RUN_TEST(fwrite_to_memstream);
+	RUN_TEST(write_raw_fgetc_simple);
+	RUN_TEST(write_raw_read_stdio);
+	RUN_TEST(write_stdio_read_raw);
+	RUN_TEST(large_file_read);
+	RUN_TEST(large_file_read_content);
 }

@@ -32,5 +32,6 @@ void test_report(void);
 #define ASSERT_NE(a, b, msg)	ASSERT((a) != (b), msg)
 #define ASSERT_NOT_NULL(p, msg) ASSERT((p) != 0, msg)
 #define ASSERT_NULL(p, msg)	ASSERT((p) == 0, msg)
+#define ASSERT_TRUE(cond, msg)	ASSERT((cond), msg)
 
 #endif

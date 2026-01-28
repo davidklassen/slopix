@@ -17,5 +17,6 @@ struct tm {
 
 time_t time(time_t *tloc);
 struct tm *localtime(const time_t *timep);
+char *ctime_r(const time_t *timep, char *buf);
 
 #endif

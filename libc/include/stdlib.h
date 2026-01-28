@@ -20,6 +20,9 @@ void _exit(int status) __attribute__((noreturn));
 
 long strtol(const char *nptr, char **endptr, int base);
 unsigned long strtoul(const char *nptr, char **endptr, int base);
+long double strtold(const char *nptr, char **endptr);
+
+int atoi(const char *s);
 
 int mkstemp(char *templ);
 

@@ -149,23 +149,6 @@ char *strstr(const char *haystack, const char *needle) {
 	return 0;
 }
 
-int atoi(const char *s) {
-	int n = 0;
-	int neg = 0;
-	while (*s == ' ') {
-		s++;
-	}
-	if (*s == '-') {
-		neg = 1;
-		s++;
-	}
-	while (*s >= '0' && *s <= '9') {
-		n = n * 10 + (*s - '0');
-		s++;
-	}
-	return neg ? -n : n;
-}
-
 int itoa(int n, char *buf) {
 	char tmp[16];
 	int i = 0;

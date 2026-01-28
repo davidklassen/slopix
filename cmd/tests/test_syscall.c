@@ -157,7 +157,8 @@ TEST(exec_from_disk) {
 		exec("/true");
 		exit(1);
 	}
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "exec /true from disk");
 	return 0;
 }
@@ -169,7 +170,8 @@ TEST(getppid_returns_parent) {
 		int ppid = getppid();
 		exit(ppid == parent_pid ? 0 : 1);
 	}
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child sees correct ppid");
 	return 0;
 }
@@ -196,7 +198,8 @@ TEST(kill_terminates_child) {
 		exit(0);
 	}
 	ASSERT_EQ(kill(child_pid, SIGTERM), 0, "kill returns 0");
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(!WIFEXITED(status), "killed child did not exit normally");
 	return 0;
 }
@@ -313,7 +316,8 @@ TEST(kill_with_sigkill) {
 		exit(0);
 	}
 	ASSERT_EQ(kill(child_pid, SIGKILL), 0, "sigkill ok");
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(!WIFEXITED(status), "killed by sigkill");
 	return 0;
 }
@@ -340,7 +344,7 @@ TEST(kill_with_sigstop) {
 	ASSERT(found_stopped, "child is stopped");
 
 	kill(child_pid, SIGKILL);
-	wait();
+	wait(NULL);
 	return 0;
 }
 
@@ -370,7 +374,7 @@ TEST(kill_with_sigcont) {
 	ASSERT(found_running, "child resumed");
 
 	kill(child_pid, SIGKILL);
-	wait();
+	wait(NULL);
 	return 0;
 }
 
@@ -408,7 +412,7 @@ TEST(ps_shows_stopped) {
 	ASSERT(found, "found stopped child");
 
 	kill(child_pid, SIGKILL);
-	wait();
+	wait(NULL);
 	return 0;
 }
 
@@ -428,7 +432,8 @@ TEST(getpgid_returns_correct) {
 		int my_pgid = getpgid(0);
 		exit(my_pgid == parent_pgid ? 0 : 1);
 	}
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child inherited parent pgid");
 	return 0;
 }
@@ -440,7 +445,8 @@ TEST(child_new_pgrp) {
 		int my_pgid = getpgid(0);
 		exit(my_pgid == getpid() ? 0 : 1);
 	}
-	int status = wait();
+	int status;
+	wait(&status);
 	ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0, "child created own process group");
 	return 0;
 }
@@ -464,7 +470,7 @@ TEST(tcsetpgrp_tcgetpgrp) {
 	ASSERT_EQ(tcgetpgrp(0), 0, "tcgetpgrp returns 0 after clear");
 
 	kill(child_pid, SIGKILL);
-	wait();
+	wait(NULL);
 	return 0;
 }
 

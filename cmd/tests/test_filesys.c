@@ -204,7 +204,7 @@ TEST(fork_shares_offset) {
 		exit(0);
 	}
 	ASSERT(pid > 0, "fork succeeds");
-	wait();
+	wait(NULL);
 
 	long off = lseek(fd, 0, 1);
 	ASSERT_EQ(off, 8, "offset advanced by both parent and child reads");

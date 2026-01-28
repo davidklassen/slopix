@@ -2,7 +2,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -64,11 +63,16 @@ Archive *archive_open(const char *path) {
 		error("%s: file too small for archive", path);
 	}
 
-	void *data = mmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-	if (data == MAP_FAILED) {
-		error("cannot mmap %s: %s", path, strerror(errno));
+	void *data = malloc(st.st_size);
+	if (!data) {
+		error("cannot allocate memory for %s", path);
 	}
+	ssize_t n = read(fd, data, st.st_size);
 	close(fd);
+	if (n != st.st_size) {
+		free(data);
+		error("cannot read %s", path);
+	}
 
 	if (memcmp(data, AR_MAGIC, AR_MAGIC_LEN) != 0) {
 		error("%s: not an archive file", path);
@@ -160,7 +164,7 @@ void archive_close(Archive *ar) {
 		}
 		free(ar->members);
 		free(ar->symbols);
-		munmap(ar->data, ar->size);
+		free(ar->data);
 		free(ar->path);
 		free(ar);
 	}
