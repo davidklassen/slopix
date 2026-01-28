@@ -128,7 +128,38 @@ typedef struct {
 	Elf64_Sym *symtab;
 	int symcount;
 	int symtab_shndx;
+	bool is_archive_member;
 } ObjectFile;
+
+// Archive format constants
+#define AR_MAGIC     "!<arch>\n"
+#define AR_MAGIC_LEN 8
+
+// Archive member (parsed from 60-byte ar header)
+typedef struct {
+	char *name;
+	uint8_t *data;
+	size_t size;
+	size_t offset;
+	bool extracted;
+} ArchiveMember;
+
+// Archive symbol index entry
+typedef struct {
+	const char *name;
+	int member_idx;
+} ArchiveSymbol;
+
+// Archive file
+typedef struct {
+	char *path;
+	uint8_t *data;
+	size_t size;
+	ArchiveMember *members;
+	int member_count;
+	ArchiveSymbol *symbols;
+	int symbol_count;
+} Archive;
 
 // Symbol table
 #define SYMTAB_BUCKETS 4096
@@ -156,6 +187,7 @@ void error(char *fmt, ...);
 
 // elf_read.c
 ObjectFile *elf_read(const char *path);
+ObjectFile *elf_read_memory(uint8_t *data, size_t size, const char *name);
 void elf_free(ObjectFile *obj);
 const char *section_name(ObjectFile *obj, int idx);
 uint8_t *section_data(ObjectFile *obj, int idx);
@@ -165,6 +197,10 @@ const char *symbol_name(ObjectFile *obj, int idx);
 void symtab_init(SymbolTable *tab);
 Symbol *symbol_lookup(SymbolTable *tab, const char *name);
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
+void collect_definitions(ObjectFile **objects, int count, SymbolTable *global);
+bool resolve_archives(ObjectFile ***objects, int *count, int *capacity,
+                      Archive **archives, int archive_count, SymbolTable *global);
+bool check_undefined(ObjectFile **objects, int count, SymbolTable *global);
 void dump_globals(SymbolTable *global);
 
 // section.c
@@ -222,6 +258,10 @@ const char *reloc_type_name(int type);
 
 // output.c (stub)
 
-// archive.c (stub)
+// archive.c
+Archive *archive_open(const char *path);
+void archive_close(Archive *ar);
+ObjectFile *archive_extract_member(Archive *ar, int member_idx);
+int archive_find_symbol(Archive *ar, const char *name);
 
 #endif

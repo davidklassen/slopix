@@ -50,10 +50,7 @@ static void symbol_replace(Symbol *existing, uint64_t value, uint64_t size, uint
 	existing->shndx = shndx;
 }
 
-bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
-	bool ok = true;
-
-	// Pass 1: collect definitions
+void collect_definitions(ObjectFile **objects, int count, SymbolTable *global) {
 	for (int i = 0; i < count; i++) {
 		ObjectFile *obj = objects[i];
 		if (!obj->symtab) {
@@ -90,15 +87,73 @@ bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
 						name);
 					fprintf(stderr, "  first defined in %s\n", existing->file->filename);
 					fprintf(stderr, "  also defined in %s\n", obj->filename);
-					ok = false;
+					exit(1);
 				}
 			} else {
 				symbol_add(global, name, sym->st_value, sym->st_size, type, binding, obj, sym->st_shndx);
 			}
 		}
 	}
+}
 
-	// Pass 2: check undefined references
+static void add_object(ObjectFile ***objects, int *count, int *capacity, ObjectFile *obj) {
+	if (*count >= *capacity) {
+		*capacity = *capacity ? *capacity * 2 : 16;
+		*objects = realloc(*objects, *capacity * sizeof(ObjectFile *));
+	}
+	(*objects)[(*count)++] = obj;
+}
+
+bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive **archives, int archive_count, SymbolTable *global) {
+	bool extracted;
+	do {
+		extracted = false;
+
+		for (int i = 0; i < *count; i++) {
+			ObjectFile *obj = (*objects)[i];
+			if (!obj->symtab) {
+				continue;
+			}
+
+			for (int j = 1; j < obj->symcount; j++) {
+				Elf64_Sym *sym = &obj->symtab[j];
+				uint8_t binding = ELF64_ST_BIND(sym->st_info);
+
+				if (binding == STB_LOCAL || sym->st_shndx != SHN_UNDEF) {
+					continue;
+				}
+
+				const char *name = symbol_name(obj, j);
+				if (!name || name[0] == '\0') {
+					continue;
+				}
+
+				if (symbol_lookup(global, name)) {
+					continue;
+				}
+
+				for (int k = 0; k < archive_count; k++) {
+					int member_idx = archive_find_symbol(archives[k], name);
+					if (member_idx >= 0) {
+						ObjectFile *member = archive_extract_member(archives[k], member_idx);
+						if (member) {
+							add_object(objects, count, capacity, member);
+							collect_definitions(&member, 1, global);
+							extracted = true;
+						}
+						break;
+					}
+				}
+			}
+		}
+	} while (extracted);
+
+	return true;
+}
+
+bool check_undefined(ObjectFile **objects, int count, SymbolTable *global) {
+	bool ok = true;
+
 	for (int i = 0; i < count; i++) {
 		ObjectFile *obj = objects[i];
 		if (!obj->symtab) {
@@ -133,7 +188,6 @@ bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
 		}
 	}
 
-	// Check for _start entry point
 	if (!symbol_lookup(global, "_start")) {
 		fprintf(stderr, "ld: undefined reference to '_start'\n");
 		fprintf(stderr, "  (entry point not found)\n");
@@ -141,6 +195,11 @@ bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
 	}
 
 	return ok;
+}
+
+bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
+	collect_definitions(objects, count, global);
+	return check_undefined(objects, count, global);
 }
 
 void dump_globals(SymbolTable *global) {

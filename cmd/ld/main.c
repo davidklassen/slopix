@@ -1,5 +1,8 @@
 #include "ld.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #define LD_VERSION "ld (slopix) 1.0"
 
 void error(char *fmt, ...) {
@@ -20,9 +23,40 @@ static void usage(int code) {
 	fprintf(stderr, "  --dump-symbols    Print symbols and exit\n");
 	fprintf(stderr, "  --dump-globals    Print resolved globals and exit\n");
 	fprintf(stderr, "  --dump-merged     Print merged output sections and exit\n");
+	fprintf(stderr, "  --dump-archives   Print archive contents and exit\n");
 	fprintf(stderr, "  --help            Print this help and exit\n");
 	fprintf(stderr, "  --version         Print version and exit\n");
 	exit(code);
+}
+
+static bool is_archive(const char *path) {
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		return false;
+	}
+	char buf[AR_MAGIC_LEN];
+	bool is_ar = (read(fd, buf, AR_MAGIC_LEN) == AR_MAGIC_LEN &&
+		      memcmp(buf, AR_MAGIC, AR_MAGIC_LEN) == 0);
+	close(fd);
+	return is_ar;
+}
+
+static void dump_archive(Archive *ar) {
+	printf("Archive: %s\n", ar->path);
+	printf("Members (%d):\n", ar->member_count);
+	for (int i = 0; i < ar->member_count; i++) {
+		ArchiveMember *m = &ar->members[i];
+		printf("  [%d] %-20s %zu bytes\n", i, m->name, m->size);
+	}
+	printf("Symbols (%d):\n", ar->symbol_count);
+	for (int i = 0; i < ar->symbol_count; i++) {
+		ArchiveSymbol *s = &ar->symbols[i];
+		printf("  %-40s -> member %d", s->name, s->member_idx);
+		if (s->member_idx >= 0 && s->member_idx < ar->member_count) {
+			printf(" (%s)", ar->members[s->member_idx].name);
+		}
+		printf("\n");
+	}
 }
 
 static void version(void) {
@@ -157,6 +191,7 @@ int main(int argc, char **argv) {
 	bool dump_symbols_flag = false;
 	bool dump_globals_flag = false;
 	bool dump_merged_flag = false;
+	bool dump_archives_flag = false;
 	char **input_files = NULL;
 	int input_count = 0;
 
@@ -176,6 +211,8 @@ int main(int argc, char **argv) {
 			dump_globals_flag = true;
 		} else if (strcmp(argv[i], "--dump-merged") == 0) {
 			dump_merged_flag = true;
+		} else if (strcmp(argv[i], "--dump-archives") == 0) {
+			dump_archives_flag = true;
 		} else if (strcmp(argv[i], "--version") == 0) {
 			version();
 		} else if (strcmp(argv[i], "--help") == 0) {
@@ -193,15 +230,38 @@ int main(int argc, char **argv) {
 
 	(void)output_file;
 
-	ObjectFile **objects = malloc(input_count * sizeof(ObjectFile *));
+	ObjectFile **objects = NULL;
+	int object_count = 0;
+	int object_capacity = 0;
+
+	Archive **archives = NULL;
+	int archive_count = 0;
+
 	for (int i = 0; i < input_count; i++) {
-		objects[i] = elf_read(input_files[i]);
+		if (is_archive(input_files[i])) {
+			archives = realloc(archives, (archive_count + 1) * sizeof(Archive *));
+			archives[archive_count++] = archive_open(input_files[i]);
+		} else {
+			if (object_count >= object_capacity) {
+				object_capacity = object_capacity ? object_capacity * 2 : 16;
+				objects = realloc(objects, object_capacity * sizeof(ObjectFile *));
+			}
+			objects[object_count++] = elf_read(input_files[i]);
+		}
 	}
 
-	// Per-file diagnostics
+	if (dump_archives_flag) {
+		for (int i = 0; i < archive_count; i++) {
+			if (i > 0) {
+				printf("\n");
+			}
+			dump_archive(archives[i]);
+		}
+	}
+
 	if (dump_sections_flag || dump_symbols_flag) {
-		for (int i = 0; i < input_count; i++) {
-			if (input_count > 1) {
+		for (int i = 0; i < object_count; i++) {
+			if (object_count > 1) {
 				printf("\n%s:\n", objects[i]->filename);
 			}
 			if (dump_sections_flag) {
@@ -213,15 +273,15 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	// Symbol resolution
 	SymbolTable global;
 	symtab_init(&global);
 
-	if (!resolve_symbols(objects, input_count, &global)) {
+	collect_definitions(objects, object_count, &global);
+	resolve_archives(&objects, &object_count, &object_capacity, archives, archive_count, &global);
+	if (!check_undefined(objects, object_count, &global)) {
 		exit(1);
 	}
 
-	// Section merging
 	OutputSection sections[OUT_COUNT];
 	output_section_init(&sections[OUT_NULL], "", SHT_NULL, 0);
 	output_section_init(&sections[OUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
@@ -229,11 +289,11 @@ int main(int argc, char **argv) {
 	output_section_init(&sections[OUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
 	output_section_init(&sections[OUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
 
-	merge_sections(objects, input_count, sections);
+	merge_sections(objects, object_count, sections);
 	assign_addresses(sections);
 	update_symbol_values(&global, sections);
 
-	if (!apply_relocations(objects, input_count, &global, sections)) {
+	if (!apply_relocations(objects, object_count, &global, sections)) {
 		exit(1);
 	}
 
@@ -245,10 +305,14 @@ int main(int argc, char **argv) {
 		dump_output_sections(sections);
 	}
 
-	for (int i = 0; i < input_count; i++) {
+	for (int i = 0; i < object_count; i++) {
 		elf_free(objects[i]);
 	}
 	free(objects);
+	for (int i = 0; i < archive_count; i++) {
+		archive_close(archives[i]);
+	}
+	free(archives);
 	free(input_files);
 	return 0;
 }
