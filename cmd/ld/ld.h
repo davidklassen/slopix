@@ -167,7 +167,53 @@ Symbol *symbol_lookup(SymbolTable *tab, const char *name);
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
 void dump_globals(SymbolTable *global);
 
-// section.c (stub)
+// section.c
+
+// Memory layout
+#define TEXT_BASE     0x10000
+#define SECTION_ALIGN 8
+
+// Output section indices
+enum {
+	OUT_NULL = 0,
+	OUT_TEXT = 1,
+	OUT_RODATA = 2,
+	OUT_DATA = 3,
+	OUT_BSS = 4,
+	OUT_COUNT
+};
+
+// Section piece - tracks origin of merged content
+typedef struct SectionPiece {
+	ObjectFile *file;
+	int input_shndx;
+	uint64_t output_offset;
+	uint64_t size;
+} SectionPiece;
+
+// Output section
+typedef struct OutputSection {
+	const char *name;
+	uint64_t addr;
+	uint64_t offset;
+	uint64_t size;
+	uint64_t alignment;
+	uint32_t type;
+	uint64_t flags;
+	uint8_t *data;
+	int piece_count;
+	int piece_capacity;
+	SectionPiece *pieces;
+} OutputSection;
+
+void output_section_init(OutputSection *sec, const char *name, uint32_t type, uint64_t flags);
+int categorize_section(const char *name, uint64_t flags);
+void merge_sections(ObjectFile **objects, int count, OutputSection *sections);
+void assign_addresses(OutputSection *sections);
+SectionPiece *find_piece(OutputSection *sections, ObjectFile *file, int input_shndx);
+void update_symbol_values(SymbolTable *global, OutputSection *sections);
+uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections);
+void dump_output_sections(OutputSection *sections);
 
 // reloc.c (stub)
 

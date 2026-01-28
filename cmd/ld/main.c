@@ -19,6 +19,7 @@ static void usage(int code) {
 	fprintf(stderr, "  --dump-sections   Print sections and exit\n");
 	fprintf(stderr, "  --dump-symbols    Print symbols and exit\n");
 	fprintf(stderr, "  --dump-globals    Print resolved globals and exit\n");
+	fprintf(stderr, "  --dump-merged     Print merged output sections and exit\n");
 	fprintf(stderr, "  --help            Print this help and exit\n");
 	fprintf(stderr, "  --version         Print version and exit\n");
 	exit(code);
@@ -155,6 +156,7 @@ int main(int argc, char **argv) {
 	bool dump_sections_flag = false;
 	bool dump_symbols_flag = false;
 	bool dump_globals_flag = false;
+	bool dump_merged_flag = false;
 	char **input_files = NULL;
 	int input_count = 0;
 
@@ -172,6 +174,8 @@ int main(int argc, char **argv) {
 			dump_symbols_flag = true;
 		} else if (strcmp(argv[i], "--dump-globals") == 0) {
 			dump_globals_flag = true;
+		} else if (strcmp(argv[i], "--dump-merged") == 0) {
+			dump_merged_flag = true;
 		} else if (strcmp(argv[i], "--version") == 0) {
 			version();
 		} else if (strcmp(argv[i], "--help") == 0) {
@@ -217,8 +221,24 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
+	// Section merging
+	OutputSection sections[OUT_COUNT];
+	output_section_init(&sections[OUT_NULL], "", SHT_NULL, 0);
+	output_section_init(&sections[OUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+	output_section_init(&sections[OUT_RODATA], ".rodata", SHT_PROGBITS, SHF_ALLOC);
+	output_section_init(&sections[OUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+	output_section_init(&sections[OUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
+
+	merge_sections(objects, input_count, sections);
+	assign_addresses(sections);
+	update_symbol_values(&global, sections);
+
 	if (dump_globals_flag) {
 		dump_globals(&global);
+	}
+
+	if (dump_merged_flag) {
+		dump_output_sections(sections);
 	}
 
 	for (int i = 0; i < input_count; i++) {
