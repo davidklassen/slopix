@@ -5,9 +5,9 @@ LD ?= $(ROOT)/tools/ld/ld
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
-	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
+	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf cmp.elf \
 	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf \
-	as.elf ld.elf cc.elf
+	as.elf ld.elf cc.elf buildcc.elf
 
 all: $(PROGS)
 
@@ -53,6 +53,9 @@ cp.elf: cp/cp.o
 mv.elf: mv/mv.o
 	$(LD) -o $@ $< $(LIBC)
 
+cmp.elf: cmp/cmp.o
+	$(LD) -o $@ $< $(LIBC)
+
 touch.elf: touch/touch.o
 	$(LD) -o $@ $< $(LIBC)
 
@@ -72,6 +75,9 @@ kill.elf: kill/kill.o
 	$(LD) -o $@ $< $(LIBC)
 
 sleep.elf: sleep/sleep.o
+	$(LD) -o $@ $< $(LIBC)
+
+buildcc.elf: buildcc/buildcc.o
 	$(LD) -o $@ $< $(LIBC)
 
 tests.elf:

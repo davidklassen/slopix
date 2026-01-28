@@ -262,6 +262,27 @@ TEST(sprintf_long) {
 	return 0;
 }
 
+TEST(sprintf_long_positive) {
+	char buf[32];
+	sprintf(buf, "%ld", 9876543210L);
+	ASSERT_EQ(strcmp(buf, "9876543210"), 0, "sprintf long positive");
+	return 0;
+}
+
+TEST(sprintf_long_zero) {
+	char buf[32];
+	sprintf(buf, "%ld", 0L);
+	ASSERT_EQ(strcmp(buf, "0"), 0, "sprintf long zero");
+	return 0;
+}
+
+TEST(sprintf_long_unsigned) {
+	char buf[32];
+	sprintf(buf, "%lu", 18446744073709551615UL);
+	ASSERT_EQ(strcmp(buf, "18446744073709551615"), 0, "sprintf ulong max");
+	return 0;
+}
+
 TEST(sprintf_null_string) {
 	char buf[32];
 	sprintf(buf, "%s", (char *)0);
@@ -872,6 +893,9 @@ TEST_SUITE(stdio) {
 	RUN_TEST(sprintf_negative);
 	RUN_TEST(sprintf_unsigned);
 	RUN_TEST(sprintf_long);
+	RUN_TEST(sprintf_long_positive);
+	RUN_TEST(sprintf_long_zero);
+	RUN_TEST(sprintf_long_unsigned);
 	RUN_TEST(sprintf_null_string);
 	RUN_TEST(fprintf_basic);
 	RUN_TEST(open_memstream_basic);

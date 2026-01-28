@@ -15,6 +15,22 @@ static void print_int(int n) {
 	puts(buf);
 }
 
+static void print_long(long n) {
+	char buf[24];
+	char *p = buf + sizeof(buf) - 1;
+	*p = '\0';
+	int neg = n < 0;
+	unsigned long u = neg ? -n : n;
+	do {
+		*--p = '0' + (u % 10);
+		u /= 10;
+	} while (u);
+	if (neg) {
+		*--p = '-';
+	}
+	puts(p);
+}
+
 static void print_hex(unsigned int n) {
 	char buf[16];
 	char *digits = "0123456789abcdef";
@@ -66,14 +82,28 @@ int printf(const char *fmt, ...) {
 		if (*fmt == '%' && *(fmt + 1)) {
 			fmt++;
 			int width = 0;
+			int is_long = 0;
 			while (*fmt >= '0' && *fmt <= '9') {
 				width = width * 10 + (*fmt - '0');
 				fmt++;
 			}
+			if (*fmt == 'l') {
+				is_long = 1;
+				fmt++;
+			}
 			switch (*fmt) {
 			case 'd':
-				if (width > 0) {
+				if (is_long) {
+					print_long(va_arg(ap, long));
+				} else if (width > 0) {
 					print_int_width(va_arg(ap, int), width);
+				} else {
+					print_int(va_arg(ap, int));
+				}
+				break;
+			case 'u':
+				if (is_long) {
+					print_long(va_arg(ap, long));
 				} else {
 					print_int(va_arg(ap, int));
 				}

@@ -1036,7 +1036,11 @@ static void emit_data(Obj *prog) {
 			int pos = 0;
 			while (pos < var->ty->size) {
 				if (rel && rel->offset == pos) {
-					println("  .xword %s%+ld", *rel->label, rel->addend);
+					if (rel->addend >= 0) {
+						println("  .xword %s+%d", *rel->label, (int)rel->addend);
+					} else {
+						println("  .xword %s%d", *rel->label, (int)rel->addend);
+					}
 					rel = rel->next;
 					pos += 8;
 				} else {

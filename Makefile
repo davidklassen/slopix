@@ -49,7 +49,7 @@ kernel/kernel-test.bin:
 	$(MAKE) -C kernel kernel-test.bin
 
 disk.img: $(MKFS) cmd
-	$(MKFS) $@ -s 4096 \
+	$(MKFS) $@ -s 8192 \
 		:dir:/dev \
 		:dir:/bin \
 		:dir:/lib \
@@ -76,6 +76,7 @@ disk.img: $(MKFS) cmd
 		cmd/rm.elf:/bin/rm \
 		cmd/cp.elf:/bin/cp \
 		cmd/mv.elf:/bin/mv \
+		cmd/cmp.elf:/bin/cmp \
 		cmd/touch.elf:/bin/touch \
 		cmd/wc.elf:/bin/wc \
 		cmd/head.elf:/bin/head \
@@ -86,6 +87,7 @@ disk.img: $(MKFS) cmd
 		cmd/as.elf:/bin/as \
 		cmd/ld.elf:/bin/ld \
 		cmd/cc.elf:/bin/cc \
+		cmd/buildcc.elf:/bin/buildcc \
 		libc/libc.a:/lib/libc.a \
 		cmd/cat/cat.c:/src/cat.c \
 		cmd/cp/cp.c:/src/cp.c \

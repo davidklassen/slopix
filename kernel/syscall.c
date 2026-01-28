@@ -303,6 +303,17 @@ static long sys_fork(void) {
 static long encode_wait_status(struct proc *p) {
 	int exit_code = p->exit_status;
 	int child_pid = p->pid;
+
+	// Free process memory immediately to avoid exhaustion
+	if (p->pagetable) {
+		vmm_free(p->pagetable);
+		p->pagetable = 0;
+	}
+	if (p->kstack) {
+		pmm_free(VA_TO_PA(p->kstack));
+		p->kstack = 0;
+	}
+
 	p->state = UNUSED;
 	if (exit_code < 0) {
 		return (child_pid << 16) | ((-exit_code) & 0x7f);
