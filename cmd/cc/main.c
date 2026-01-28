@@ -1,5 +1,7 @@
 #include "chibicc.h"
 
+#define CC_VERSION "cc (slopix) 1.0"
+
 typedef enum {
 	FILE_NONE,
 	FILE_C,
@@ -40,8 +42,13 @@ static StringArray input_paths;
 static StringArray tmpfiles;
 
 static void usage(int status) {
-	fprintf(stderr, "chibicc [ -o <path> ] <file>\n");
+	fprintf(stderr, "cc [ -o <path> ] <file>\n");
 	exit(status);
+}
+
+static void version(void) {
+	printf("%s\n", CC_VERSION);
+	exit(0);
 }
 
 static bool take_arg(char *arg) {
@@ -150,6 +157,10 @@ static void parse_args(int argc, char **argv) {
 
 		if (!strcmp(argv[i], "--help")) {
 			usage(0);
+		}
+
+		if (!strcmp(argv[i], "--version")) {
+			version();
 		}
 
 		if (!strcmp(argv[i], "-o")) {

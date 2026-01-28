@@ -6,7 +6,7 @@ CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf cmp.elf \
-	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf \
+	touch.elf wc.elf head.elf grep.elf sed.elf ps.elf kill.elf sleep.elf tests.elf \
 	as.elf ld.elf cc.elf buildcc.elf
 
 all: $(PROGS)
@@ -66,6 +66,9 @@ head.elf: head/head.o
 	$(LD) -o $@ $< $(LIBC)
 
 grep.elf: grep/grep.o
+	$(LD) -o $@ $< $(LIBC)
+
+sed.elf: sed/sed.o
 	$(LD) -o $@ $< $(LIBC)
 
 ps.elf: ps/ps.o

@@ -81,6 +81,7 @@ disk.img: $(MKFS) cmd
 		cmd/wc.elf:/bin/wc \
 		cmd/head.elf:/bin/head \
 		cmd/grep.elf:/bin/grep \
+		cmd/sed.elf:/bin/sed \
 		cmd/ps.elf:/bin/ps \
 		cmd/kill.elf:/bin/kill \
 		cmd/sleep.elf:/bin/sleep \
@@ -93,6 +94,7 @@ disk.img: $(MKFS) cmd
 		cmd/cp/cp.c:/src/cp.c \
 		cmd/echo/echo.c:/src/echo.c \
 		cmd/grep/grep.c:/src/grep.c \
+		cmd/sed/sed.c:/src/sed.c \
 		cmd/head/head.c:/src/head.c \
 		cmd/kill/kill.c:/src/kill.c \
 		cmd/ls/ls.c:/src/ls.c \
