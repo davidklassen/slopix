@@ -233,6 +233,10 @@ int main(int argc, char **argv) {
 	assign_addresses(sections);
 	update_symbol_values(&global, sections);
 
+	if (!apply_relocations(objects, input_count, &global, sections)) {
+		exit(1);
+	}
+
 	if (dump_globals_flag) {
 		dump_globals(&global);
 	}

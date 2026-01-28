@@ -215,7 +215,10 @@ void update_symbol_values(SymbolTable *global, OutputSection *sections);
 uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections);
 void dump_output_sections(OutputSection *sections);
 
-// reloc.c (stub)
+// reloc.c
+bool apply_relocations(ObjectFile **objects, int count,
+                       SymbolTable *global, OutputSection *sections);
+const char *reloc_type_name(int type);
 
 // output.c (stub)
 
