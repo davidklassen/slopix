@@ -70,8 +70,8 @@ static void add_default_include_paths(char *argv0) {
 	// Slopix libc headers (tools/cc/../../libc/include)
 	strarray_push(&include_paths, format("%s/../../libc/include", dir));
 
-	// chibicc's bundled headers (tools/cc/include)
-	strarray_push(&include_paths, format("%s/include", dir));
+	// chibicc's bundled headers (cmd/cc/include)
+	strarray_push(&include_paths, format("%s/../../cmd/cc/include", dir));
 
 	// Keep a copy of the standard include paths for -MMD option.
 	for (int i = 0; i < include_paths.len; i++) {

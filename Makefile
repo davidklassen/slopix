@@ -5,7 +5,7 @@ MKRAMFS = $(ROOT)/tools/mkramfs/mkramfs
 LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
 CC = $(ROOT)/tools/cc/chibicc
-CC_INCLUDE = $(ROOT)/tools/cc/include
+CC_INCLUDE = $(ROOT)/cmd/cc/include
 AS = $(ROOT)/tools/as/as
 LD = $(ROOT)/tools/ld/ld
 
@@ -53,6 +53,7 @@ disk.img: $(MKFS) cmd
 		:dir:/dev \
 		:dir:/bin \
 		:dir:/lib \
+		:dir:/tmp \
 		:dir:/src \
 		:dir:/src/libc \
 		:dir:/src/ld \
@@ -134,15 +135,15 @@ disk.img: $(MKFS) cmd
 		cmd/cc/hashmap.c:/src/cc/hashmap.c \
 		cmd/cc/chibicc.h:/src/cc/chibicc.h \
 		cmd/cc/hello.c:/src/cc/hello.c \
-		tools/cc/include/assert.h:/src/cc/include/assert.h \
-		tools/cc/include/float.h:/src/cc/include/float.h \
-		tools/cc/include/stdalign.h:/src/cc/include/stdalign.h \
-		tools/cc/include/stdarg.h:/src/cc/include/stdarg.h \
-		tools/cc/include/stdatomic.h:/src/cc/include/stdatomic.h \
-		tools/cc/include/stdbool.h:/src/cc/include/stdbool.h \
-		tools/cc/include/stddef.h:/src/cc/include/stddef.h \
-		tools/cc/include/stdint.h:/src/cc/include/stdint.h \
-		tools/cc/include/stdnoreturn.h:/src/cc/include/stdnoreturn.h
+		cmd/cc/include/assert.h:/src/cc/include/assert.h \
+		cmd/cc/include/float.h:/src/cc/include/float.h \
+		cmd/cc/include/stdalign.h:/src/cc/include/stdalign.h \
+		cmd/cc/include/stdarg.h:/src/cc/include/stdarg.h \
+		cmd/cc/include/stdatomic.h:/src/cc/include/stdatomic.h \
+		cmd/cc/include/stdbool.h:/src/cc/include/stdbool.h \
+		cmd/cc/include/stddef.h:/src/cc/include/stddef.h \
+		cmd/cc/include/stdint.h:/src/cc/include/stdint.h \
+		cmd/cc/include/stdnoreturn.h:/src/cc/include/stdnoreturn.h
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 2048 \
@@ -173,6 +174,6 @@ tidy:
 	clang-format -i libc/*.c libc/include/*.h
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
-	clang-format -i cmd/cc/*.c cmd/cc/*.h
+	clang-format -i cmd/cc/*.c cmd/cc/*.h cmd/cc/include/*.h
 	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
-	clang-format -i tools/cc/*.c tools/cc/*.h tools/cc/include/*.h
+	clang-format -i tools/cc/*.c tools/cc/*.h

@@ -9,7 +9,7 @@
 #define NDINDIRECT (NINDIRECT * NINDIRECT)
 #define MAXFILE	   (NDIRECT + NINDIRECT + NDINDIRECT)
 
-#define DIRSIZ	14
+#define DIRSIZ	62
 #define FSMAGIC 0x10203040
 
 #define IPB (BSIZE / sizeof(struct dinode))

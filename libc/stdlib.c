@@ -219,15 +219,15 @@ int wait(int *wstatus) {
 }
 
 int execvp(const char *file, char *const argv[]) {
-	char cmdline[256];
+	char cmdline[512];
 	int pos = 0;
 
 	for (int i = 0; argv[i]; i++) {
-		if (i > 0) {
+		if (i > 0 && pos < 511) {
 			cmdline[pos++] = ' ';
 		}
 		const char *arg = argv[i];
-		while (*arg && pos < 255) {
+		while (*arg && pos < 511) {
 			cmdline[pos++] = *arg++;
 		}
 	}

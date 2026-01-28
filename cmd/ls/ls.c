@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define DIRSIZ	  14
+#define DIRSIZ	  62
 #define T_FILE	  1
 #define T_DIR	  2
 #define T_DEVICE  3
@@ -37,7 +37,7 @@ static void ls(const char *path) {
 	}
 
 	struct dirent de;
-	char fullpath[128];
+	char fullpath[256];
 	char name[DIRSIZ + 1];
 
 	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
