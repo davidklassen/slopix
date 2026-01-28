@@ -54,6 +54,17 @@ typedef struct {
 	int64_t r_addend;
 } Elf64_Rela;
 
+typedef struct {
+	uint32_t p_type;
+	uint32_t p_flags;
+	uint64_t p_offset;
+	uint64_t p_vaddr;
+	uint64_t p_paddr;
+	uint64_t p_filesz;
+	uint64_t p_memsz;
+	uint64_t p_align;
+} Elf64_Phdr;
+
 // ELF identification
 #define ELFMAG0	    0x7f
 #define ELFMAG1	    'E'
@@ -63,7 +74,20 @@ typedef struct {
 #define ELFDATA2LSB 1
 #define EV_CURRENT  1
 #define ET_REL	    1
+#define ET_EXEC	    2
 #define EM_AARCH64  183
+
+// Program header types
+#define PT_NULL 0
+#define PT_LOAD 1
+
+// Program header flags
+#define PF_X 0x1
+#define PF_W 0x2
+#define PF_R 0x4
+
+// Page alignment
+#define PAGE_SIZE 0x1000
 
 // Section types
 #define SHT_NULL     0
@@ -256,7 +280,8 @@ bool apply_relocations(ObjectFile **objects, int count,
                        SymbolTable *global, OutputSection *sections);
 const char *reloc_type_name(int type);
 
-// output.c (stub)
+// output.c
+bool write_executable(const char *path, OutputSection *sections, SymbolTable *global);
 
 // archive.c
 Archive *archive_open(const char *path);

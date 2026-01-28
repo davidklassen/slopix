@@ -9,6 +9,7 @@ tools/mkfs/mkfs
 tools/mkramfs/mkramfs
 tools/cc/chibicc
 tools/as/as
+tools/ld/ld
 initramfs-test.bin
 kernel/kernel.bin
 kernel/kernel-test.bin

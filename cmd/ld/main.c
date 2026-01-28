@@ -228,8 +228,6 @@ int main(int argc, char **argv) {
 		error("no input files");
 	}
 
-	(void)output_file;
-
 	ObjectFile **objects = NULL;
 	int object_count = 0;
 	int object_capacity = 0;
@@ -303,6 +301,15 @@ int main(int argc, char **argv) {
 
 	if (dump_merged_flag) {
 		dump_output_sections(sections);
+	}
+
+	bool dump_only = dump_sections_flag || dump_symbols_flag || dump_globals_flag ||
+			 dump_merged_flag || dump_archives_flag;
+	if (!dump_only) {
+		const char *out_path = output_file ? output_file : "a.out";
+		if (!write_executable(out_path, sections, &global)) {
+			exit(1);
+		}
 	}
 
 	for (int i = 0; i < object_count; i++) {
