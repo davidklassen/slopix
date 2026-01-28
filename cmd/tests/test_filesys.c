@@ -32,8 +32,8 @@ TEST(fstat_file) {
 	struct stat st;
 	int r = fstat(fd, &st);
 	ASSERT_EQ(r, 0, "fstat succeeds");
-	ASSERT(st.size > 0, "file has size > 0");
-	ASSERT_EQ(st.type, 1, "type is T_FILE (1)");
+	ASSERT(st.st_size > 0, "file has size > 0");
+	ASSERT_EQ(st.st_mode, 1, "type is T_FILE (1)");
 	close(fd);
 	return 0;
 }
@@ -103,7 +103,7 @@ TEST(open_trunc) {
 	ASSERT(fd >= 0, "open with O_TRUNC returns valid fd");
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT_EQ(st.size, 0, "file truncated to 0");
+	ASSERT_EQ(st.st_size, 0, "file truncated to 0");
 	close(fd);
 	return 0;
 }
@@ -119,7 +119,7 @@ TEST(write_extends_file) {
 	fd = open("/hello", O_RDONLY);
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT_EQ(st.size, 42, "file size is 42");
+	ASSERT_EQ(st.st_size, 42, "file size is 42");
 	close(fd);
 	return 0;
 }
@@ -142,7 +142,7 @@ TEST(mkdir_basic) {
 	ASSERT(fd >= 0, "can open directory");
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT_EQ(st.type, 2, "type is T_DIR");
+	ASSERT_EQ(st.st_mode, 2, "type is T_DIR");
 	close(fd);
 	unlink("/testdir");
 	return 0;
@@ -255,7 +255,7 @@ TEST(large_file_write) {
 
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT(st.size >= target_size, "file size >= 300KB");
+	ASSERT(st.st_size >= target_size, "file size >= 300KB");
 	close(fd);
 	return 0;
 }
@@ -266,7 +266,7 @@ TEST(large_file_read) {
 
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT(st.size >= 300 * 1024, "file is large enough");
+	ASSERT(st.st_size >= 300 * 1024, "file is large enough");
 
 	char buf[1024];
 	int total = 0;
@@ -278,7 +278,7 @@ TEST(large_file_read) {
 		total += n;
 	}
 
-	ASSERT_EQ(total, st.size, "read entire file");
+	ASSERT_EQ(total, st.st_size, "read entire file");
 	close(fd);
 	return 0;
 }

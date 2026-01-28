@@ -73,11 +73,11 @@ struct inode {
 };
 
 struct stat {
-	unsigned int dev;
-	unsigned int ino;
-	unsigned short type;
-	unsigned short nlink;
-	unsigned int size;
+	unsigned int st_dev;
+	unsigned int st_ino;
+	unsigned short st_mode;
+	unsigned short st_nlink;
+	unsigned int st_size;
 };
 
 void fs_init(unsigned int dev);

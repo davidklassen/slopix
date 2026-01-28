@@ -122,3 +122,13 @@ unsigned long strtoul(const char *nptr, char **endptr, int base) {
 long strtol(const char *nptr, char **endptr, int base) {
 	return (long)strtoul(nptr, endptr, base);
 }
+
+int access(const char *path, int mode) {
+	(void)mode;
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		return -1;
+	}
+	close(fd);
+	return 0;
+}

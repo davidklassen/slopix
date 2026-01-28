@@ -6,6 +6,8 @@ const char *reloc_type_name(int type) {
 		return "R_AARCH64_NONE";
 	case R_AARCH64_ABS64:
 		return "R_AARCH64_ABS64";
+	case R_AARCH64_ADR_PREL_LO21:
+		return "R_AARCH64_ADR_PREL_LO21";
 	case R_AARCH64_ADR_PREL_PG_HI21:
 		return "R_AARCH64_ADR_PREL_PG_HI21";
 	case R_AARCH64_ADD_ABS_LO12_NC:
@@ -114,6 +116,24 @@ static bool apply_one_reloc(uint8_t *target, uint64_t place_addr, uint64_t sym_v
 		memcpy(&insn, target, 4);
 		uint32_t imm26 = (offset >> 2) & 0x03ffffff;
 		insn = (insn & 0xfc000000) | imm26;
+		memcpy(target, &insn, 4);
+		break;
+	}
+
+	case R_AARCH64_ADR_PREL_LO21: {
+		int64_t offset = (int64_t)(s + a) - (int64_t)p;
+		if (offset < -(1 << 20) || offset >= (1 << 20)) {
+			error("%s: %s offset out of range: %lld",
+			      filename,
+			      reloc_type_name(type),
+			      (long long)offset);
+			return false;
+		}
+		uint32_t insn;
+		memcpy(&insn, target, 4);
+		uint32_t immlo = (offset & 3) << 29;
+		uint32_t immhi = ((offset >> 2) & 0x7ffff) << 5;
+		insn = (insn & 0x9f00001f) | immlo | immhi;
 		memcpy(target, &insn, 4);
 		break;
 	}

@@ -1,19 +1,19 @@
-# Native assembler: compiled by chibicc, runs on slopix
+# Native linker: compiled by chibicc, runs on slopix
 # CC, AS, LD, LIBC, LIBC_INCLUDE, CC_INCLUDE must be passed from parent
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 
-SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
+SRCS = main.c elf_read.c symbol.c section.c reloc.c output.c archive.c
 OBJS = $(SRCS:.c=.o)
 
-as.elf: $(OBJS)
+ld.elf: $(OBJS)
 	$(LD) -o $@ $(OBJS) $(LIBC)
 
-%.o: %.c as.h
+%.o: %.c ld.h
 	$(CC) $(CFLAGS) -S -o $*.s $<
 	$(AS) -o $@ $*.s
 
 clean:
-	rm -f *.o *.s as.elf
+	rm -f *.o $(SRCS:.c=.s) ld.elf
 
 .PHONY: clean

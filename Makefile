@@ -7,7 +7,7 @@ LIBC_INCLUDE = $(ROOT)/libc/include
 CC = $(ROOT)/tools/cc/chibicc
 CC_INCLUDE = $(ROOT)/tools/cc/include
 AS = $(ROOT)/tools/as/as
-LD = aarch64-elf-ld
+LD = $(ROOT)/tools/ld/ld
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
@@ -33,7 +33,10 @@ tools/cc/chibicc:
 $(AS):
 	$(MAKE) -C tools/as
 
-cmd: $(LIBC) tools/cc/chibicc $(AS)
+$(LD):
+	$(MAKE) -C tools/ld
+
+cmd: $(LIBC) tools/cc/chibicc $(AS) $(LD)
 	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 
 initramfs-test.bin: $(MKRAMFS) cmd
@@ -51,6 +54,7 @@ disk.img: $(MKFS) cmd
 		:dir:/bin \
 		:dir:/src \
 		:dir:/src/libc \
+		:dir:/src/ld \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
@@ -76,6 +80,7 @@ disk.img: $(MKFS) cmd
 		cmd/kill.elf:/bin/kill \
 		cmd/sleep.elf:/bin/sleep \
 		cmd/as.elf:/bin/as \
+		cmd/ld.elf:/bin/ld \
 		cmd/cat/cat.c:/src/cat.c \
 		cmd/cp/cp.c:/src/cp.c \
 		cmd/echo/echo.c:/src/echo.c \
@@ -99,7 +104,8 @@ disk.img: $(MKFS) cmd
 		libc/include/signal.h:/src/libc/signal.h \
 		libc/include/stdio.h:/src/libc/stdio.h \
 		libc/include/string.h:/src/libc/string.h \
-		libc/include/unistd.h:/src/libc/unistd.h
+		libc/include/unistd.h:/src/libc/unistd.h \
+		cmd/ld/hello.S:/src/ld/hello.S
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 2048 \

@@ -227,10 +227,10 @@ TEST(fs_stati) {
 	fs_ilock(ip);
 	struct stat st;
 	fs_stati(ip, &st);
-	ASSERT_EQ(st.type, T_FILE, "stat type should be T_FILE");
-	ASSERT_EQ(st.ino, ip->inum, "stat ino should match inode");
-	ASSERT_EQ(st.size, ip->size, "stat size should match inode");
-	ASSERT(st.size > 0, "file should have content");
+	ASSERT_EQ(st.st_mode, T_FILE, "stat type should be T_FILE");
+	ASSERT_EQ(st.st_ino, ip->inum, "stat ino should match inode");
+	ASSERT_EQ(st.st_size, ip->size, "stat size should match inode");
+	ASSERT(st.st_size > 0, "file should have content");
 	fs_iunlock(ip);
 	fs_iput(ip);
 	return 0;

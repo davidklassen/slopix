@@ -130,6 +130,7 @@ typedef struct {
 // AArch64 relocations
 #define R_AARCH64_NONE		     0
 #define R_AARCH64_ABS64		     257
+#define R_AARCH64_ADR_PREL_LO21	     274
 #define R_AARCH64_ADR_PREL_PG_HI21   275
 #define R_AARCH64_ADD_ABS_LO12_NC    277
 #define R_AARCH64_LDST8_ABS_LO12_NC  278
@@ -185,6 +186,13 @@ typedef struct {
 	int symbol_count;
 } Archive;
 
+// String array for library paths
+typedef struct {
+	char **data;
+	int len;
+	int capacity;
+} StringArray;
+
 // Symbol table
 #define SYMTAB_BUCKETS 4096
 
@@ -223,8 +231,9 @@ Symbol *symbol_lookup(SymbolTable *tab, const char *name);
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
 void collect_definitions(ObjectFile **objects, int count, SymbolTable *global);
 bool resolve_archives(ObjectFile ***objects, int *count, int *capacity,
-                      Archive **archives, int archive_count, SymbolTable *global);
-bool check_undefined(ObjectFile **objects, int count, SymbolTable *global);
+                      Archive **archives, int archive_count, SymbolTable *global,
+                      const char *entry_point, bool verbose);
+bool check_undefined(ObjectFile **objects, int count, SymbolTable *global, const char *entry_point);
 void dump_globals(SymbolTable *global);
 
 // section.c
@@ -281,7 +290,7 @@ bool apply_relocations(ObjectFile **objects, int count,
 const char *reloc_type_name(int type);
 
 // output.c
-bool write_executable(const char *path, OutputSection *sections, SymbolTable *global);
+bool write_executable(const char *path, OutputSection *sections, SymbolTable *global, const char *entry_point);
 
 // archive.c
 Archive *archive_open(const char *path);

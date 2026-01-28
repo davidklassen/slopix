@@ -104,8 +104,27 @@ static void add_object(ObjectFile ***objects, int *count, int *capacity, ObjectF
 	(*objects)[(*count)++] = obj;
 }
 
-bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive **archives, int archive_count, SymbolTable *global) {
+bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive **archives, int archive_count, SymbolTable *global, const char *entry_point, bool verbose) {
 	bool extracted;
+
+	// First, ensure entry point is extracted from archives if not already defined
+	if (!symbol_lookup(global, entry_point)) {
+		for (int k = 0; k < archive_count; k++) {
+			int member_idx = archive_find_symbol(archives[k], entry_point);
+			if (member_idx >= 0) {
+				ObjectFile *member = archive_extract_member(archives[k], member_idx);
+				if (member) {
+					if (verbose) {
+						fprintf(stderr, "  extracting %s (for %s)\n", member->filename, entry_point);
+					}
+					add_object(objects, count, capacity, member);
+					collect_definitions(&member, 1, global);
+				}
+				break;
+			}
+		}
+	}
+
 	do {
 		extracted = false;
 
@@ -137,6 +156,9 @@ bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive 
 					if (member_idx >= 0) {
 						ObjectFile *member = archive_extract_member(archives[k], member_idx);
 						if (member) {
+							if (verbose) {
+								fprintf(stderr, "  extracting %s (for %s)\n", member->filename, name);
+							}
 							add_object(objects, count, capacity, member);
 							collect_definitions(&member, 1, global);
 							extracted = true;
@@ -151,7 +173,7 @@ bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive 
 	return true;
 }
 
-bool check_undefined(ObjectFile **objects, int count, SymbolTable *global) {
+bool check_undefined(ObjectFile **objects, int count, SymbolTable *global, const char *entry_point) {
 	bool ok = true;
 
 	for (int i = 0; i < count; i++) {
@@ -188,8 +210,8 @@ bool check_undefined(ObjectFile **objects, int count, SymbolTable *global) {
 		}
 	}
 
-	if (!symbol_lookup(global, "_start")) {
-		fprintf(stderr, "ld: undefined reference to '_start'\n");
+	if (!symbol_lookup(global, entry_point)) {
+		fprintf(stderr, "ld: undefined reference to '%s'\n", entry_point);
 		fprintf(stderr, "  (entry point not found)\n");
 		ok = false;
 	}
@@ -199,7 +221,7 @@ bool check_undefined(ObjectFile **objects, int count, SymbolTable *global) {
 
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
 	collect_definitions(objects, count, global);
-	return check_undefined(objects, count, global);
+	return check_undefined(objects, count, global, "_start");
 }
 
 void dump_globals(SymbolTable *global) {

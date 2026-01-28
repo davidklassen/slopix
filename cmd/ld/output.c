@@ -32,10 +32,10 @@ static uint64_t align_up(uint64_t val, uint64_t align) {
 	return (val + align - 1) & ~(align - 1);
 }
 
-bool write_executable(const char *path, OutputSection *sections, SymbolTable *global) {
-	Symbol *start = symbol_lookup(global, "_start");
+bool write_executable(const char *path, OutputSection *sections, SymbolTable *global, const char *entry_point) {
+	Symbol *start = symbol_lookup(global, entry_point);
 	if (!start) {
-		fprintf(stderr, "ld: undefined entry point: _start\n");
+		fprintf(stderr, "ld: undefined entry point: %s\n", entry_point);
 		return false;
 	}
 

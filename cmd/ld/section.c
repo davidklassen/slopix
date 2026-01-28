@@ -98,12 +98,25 @@ void merge_sections(ObjectFile **objects, int count, OutputSection *sections) {
 void assign_addresses(OutputSection *sections) {
 	uint64_t addr = TEXT_BASE;
 
-	for (int i = 1; i < OUT_COUNT; i++) {
+	// Code segment: .text and .rodata
+	for (int i = OUT_TEXT; i <= OUT_RODATA; i++) {
 		OutputSection *sec = &sections[i];
 		if (sec->size == 0) {
 			continue;
 		}
+		addr = align_up(addr, sec->alignment);
+		sec->addr = addr;
+		addr += sec->size;
+	}
 
+	// Data segment: .data and .bss - must start on new page to avoid overlap
+	addr = align_up(addr, PAGE_SIZE);
+
+	for (int i = OUT_DATA; i <= OUT_BSS; i++) {
+		OutputSection *sec = &sections[i];
+		if (sec->size == 0) {
+			continue;
+		}
 		addr = align_up(addr, sec->alignment);
 		sec->addr = addr;
 		addr += sec->size;

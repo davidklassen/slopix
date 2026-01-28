@@ -1,14 +1,7 @@
-CROSS = aarch64-elf-
-ROOT = $(dir $(lastword $(MAKEFILE_LIST)))../..
-ifdef USE_OUR_AS
-AS = $(ROOT)/cmd/as/as
-else
-AS = $(CROSS)as
-endif
-LD = $(CROSS)ld
+# Userspace tests: compiled by chibicc, runs on slopix
+# CC, AS, LD, LIBC, LIBC_INCLUDE, CC_INCLUDE must be passed from parent
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
-LDFLAGS = -nostdlib -T $(LINK_LD)
 
 OBJ = tests.o test_syscall.o test_sched.o test_memory.o test_mmap.o \
       test_filesys.o test_pipe.o test_libc.o test_devices.o test_codegen.o test_malloc.o test_stdio.o test_libgen.o
@@ -16,7 +9,7 @@ OBJ = tests.o test_syscall.o test_sched.o test_memory.o test_mmap.o \
 all: tests.elf
 
 tests.elf: $(OBJ)
-	$(LD) $(LDFLAGS) -o $@ $(OBJ) $(LIBC)
+	$(LD) -o $@ $(OBJ) $(LIBC)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -S -o $*.s $<

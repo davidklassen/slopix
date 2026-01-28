@@ -29,9 +29,9 @@ static void ls(const char *path) {
 		return;
 	}
 
-	if (st.type != T_DIR) {
-		char type = (st.type == T_FILE) ? '-' : '?';
-		printf("%c %d %s\n", type, st.size, path);
+	if (st.st_mode != T_DIR) {
+		char type = (st.st_mode == T_FILE) ? '-' : '?';
+		printf("%c %d %s\n", type, st.st_size, path);
 		close(fd);
 		return;
 	}
@@ -65,7 +65,7 @@ static void ls(const char *path) {
 		}
 
 		char type;
-		switch (entst.type) {
+		switch (entst.st_mode) {
 		case T_FILE:
 			type = '-';
 			break;
@@ -83,7 +83,7 @@ static void ls(const char *path) {
 			break;
 		}
 
-		printf("%c %d %s\n", type, entst.size, name);
+		printf("%c %d %s\n", type, entst.st_size, name);
 	}
 
 	close(fd);

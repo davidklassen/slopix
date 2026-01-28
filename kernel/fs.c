@@ -409,11 +409,11 @@ void fs_itrunc(struct inode *ip) {
 }
 
 void fs_stati(struct inode *ip, struct stat *st) {
-	st->dev = ip->dev;
-	st->ino = ip->inum;
-	st->type = ip->type;
-	st->nlink = ip->nlink;
-	st->size = ip->size;
+	st->st_dev = ip->dev;
+	st->st_ino = ip->inum;
+	st->st_mode = ip->type;
+	st->st_nlink = ip->nlink;
+	st->st_size = ip->size;
 }
 
 struct inode *fs_ialloc(unsigned int dev, unsigned short type) {

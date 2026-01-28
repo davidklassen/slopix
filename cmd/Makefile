@@ -1,87 +1,90 @@
 ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
 AS ?= $(ROOT)/tools/as/as
-LD ?= aarch64-elf-ld
+LD ?= $(ROOT)/tools/ld/ld
 
 CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
-LDFLAGS = -nostdlib -T link.ld
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
 	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf \
-	as.elf
+	as.elf ld.elf
 
 all: $(PROGS)
 
 init.elf: init/init.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 shell.elf: shell/shell.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 cursor_blink.elf: cursor_blink/cursor_blink.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 echo.elf: echo/echo.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 ticker.elf: ticker/ticker.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 shutdown.elf: shutdown/shutdown.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 true.elf: true/true.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 false.elf: false/false.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 cat.elf: cat/cat.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 ls.elf: ls/ls.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 mkdir.elf: mkdir/mkdir.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 rm.elf: rm/rm.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 cp.elf: cp/cp.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 mv.elf: mv/mv.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 touch.elf: touch/touch.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 wc.elf: wc/wc.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 head.elf: head/head.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 grep.elf: grep/grep.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 ps.elf: ps/ps.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 kill.elf: kill/kill.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 sleep.elf: sleep/sleep.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LIBC)
+	$(LD) -o $@ $< $(LIBC)
 
 tests.elf:
-	$(MAKE) -C tests CC=$(CC) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) LINK_LD=$(CURDIR)/link.ld CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C tests CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 	cp tests/tests.elf $@
 
 as.elf:
 	$(MAKE) -C as CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
 	cp as/as.elf $@
+
+ld.elf:
+	$(MAKE) -C ld CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	cp ld/ld.elf $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -S -o $*.s $<
@@ -91,5 +94,6 @@ clean:
 	rm -f */*.o */*.s *.elf
 	$(MAKE) -C tests clean
 	$(MAKE) -C as clean
+	$(MAKE) -C ld clean
 
 .PHONY: all clean

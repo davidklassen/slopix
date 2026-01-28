@@ -35,7 +35,7 @@ TEST(bad_read_pointer) {
 TEST(stat_file) {
 	struct stat st;
 	ASSERT_EQ(stat("/hello", &st), 0, "stat hello");
-	ASSERT_EQ(st.type, 1, "hello is file");
+	ASSERT_EQ(st.st_mode, 1, "hello is file");
 	return 0;
 }
 
@@ -87,7 +87,7 @@ TEST(rename_dir_basic) {
 	struct stat st;
 	ASSERT_EQ(stat("/olddir", &st), -1, "old dir gone");
 	ASSERT_EQ(stat("/newdir", &st), 0, "new dir exists");
-	ASSERT_EQ(st.type, 2, "is directory");
+	ASSERT_EQ(st.st_mode, 2, "is directory");
 	ASSERT_EQ(stat("/newdir/file", &st), 0, "file inside moved");
 	unlink("/newdir/file");
 	unlink("/newdir");

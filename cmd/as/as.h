@@ -170,6 +170,7 @@ typedef struct {
 // AArch64 relocations
 #define R_AARCH64_NONE		     0
 #define R_AARCH64_ABS64		     257
+#define R_AARCH64_ADR_PREL_LO21	     274
 #define R_AARCH64_ADR_PREL_PG_HI21   275
 #define R_AARCH64_ADD_ABS_LO12_NC    277
 #define R_AARCH64_LDST8_ABS_LO12_NC  278

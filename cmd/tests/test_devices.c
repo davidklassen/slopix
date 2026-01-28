@@ -33,7 +33,7 @@ TEST(console_exists) {
 	struct stat st;
 	int r = stat("/dev/console", &st);
 	ASSERT_EQ(r, 0, "stat /dev/console");
-	ASSERT_EQ(st.type, T_DEVICE, "console is T_DEVICE");
+	ASSERT_EQ(st.st_mode, T_DEVICE, "console is T_DEVICE");
 	return 0;
 }
 
@@ -65,7 +65,7 @@ TEST(dev_dir_exists) {
 	struct stat st;
 	int r = stat("/dev", &st);
 	ASSERT_EQ(r, 0, "stat /dev");
-	ASSERT_EQ(st.type, T_DIR, "/dev is T_DIR");
+	ASSERT_EQ(st.st_mode, T_DIR, "/dev is T_DIR");
 	return 0;
 }
 

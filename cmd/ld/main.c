@@ -19,6 +19,10 @@ static void usage(int code) {
 	fprintf(stderr, "Usage: ld [options] <input.o> ...\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -o <file>         Output file (default: a.out)\n");
+	fprintf(stderr, "  -L <dir>          Add library search path\n");
+	fprintf(stderr, "  -l <name>         Link with libNAME.a\n");
+	fprintf(stderr, "  -e <symbol>       Set entry point (default: _start)\n");
+	fprintf(stderr, "  --verbose         Verbose output\n");
 	fprintf(stderr, "  --dump-sections   Print sections and exit\n");
 	fprintf(stderr, "  --dump-symbols    Print symbols and exit\n");
 	fprintf(stderr, "  --dump-globals    Print resolved globals and exit\n");
@@ -27,6 +31,25 @@ static void usage(int code) {
 	fprintf(stderr, "  --help            Print this help and exit\n");
 	fprintf(stderr, "  --version         Print version and exit\n");
 	exit(code);
+}
+
+static void strarray_push(StringArray *arr, char *s) {
+	if (arr->len >= arr->capacity) {
+		arr->capacity = arr->capacity ? arr->capacity * 2 : 8;
+		arr->data = realloc(arr->data, arr->capacity * sizeof(char *));
+	}
+	arr->data[arr->len++] = s;
+}
+
+static char *find_library(const char *name, StringArray *paths) {
+	static char buf[4096];
+	for (int i = 0; i < paths->len; i++) {
+		snprintf(buf, sizeof(buf), "%s/lib%s.a", paths->data[i], name);
+		if (access(buf, R_OK) == 0) {
+			return strdup(buf);
+		}
+	}
+	return NULL;
 }
 
 static bool is_archive(const char *path) {
@@ -187,11 +210,14 @@ static void dump_symbols(ObjectFile *obj) {
 
 int main(int argc, char **argv) {
 	char *output_file = NULL;
+	char *entry_point = "_start";
+	bool verbose_flag = false;
 	bool dump_sections_flag = false;
 	bool dump_symbols_flag = false;
 	bool dump_globals_flag = false;
 	bool dump_merged_flag = false;
 	bool dump_archives_flag = false;
+	StringArray lib_paths = {0};
 	char **input_files = NULL;
 	int input_count = 0;
 
@@ -203,6 +229,36 @@ int main(int argc, char **argv) {
 				usage(1);
 			}
 			output_file = argv[++i];
+		} else if (strcmp(argv[i], "-L") == 0) {
+			if (i + 1 >= argc) {
+				error("-L requires an argument");
+			}
+			strarray_push(&lib_paths, argv[++i]);
+		} else if (strncmp(argv[i], "-L", 2) == 0) {
+			strarray_push(&lib_paths, argv[i] + 2);
+		} else if (strcmp(argv[i], "-l") == 0) {
+			if (i + 1 >= argc) {
+				error("-l requires an argument");
+			}
+			char *resolved = find_library(argv[++i], &lib_paths);
+			if (!resolved) {
+				error("cannot find -l%s", argv[i]);
+			}
+			input_files[input_count++] = resolved;
+		} else if (strncmp(argv[i], "-l", 2) == 0) {
+			char *name = argv[i] + 2;
+			char *resolved = find_library(name, &lib_paths);
+			if (!resolved) {
+				error("cannot find -l%s", name);
+			}
+			input_files[input_count++] = resolved;
+		} else if (strcmp(argv[i], "-e") == 0) {
+			if (i + 1 >= argc) {
+				error("-e requires an argument");
+			}
+			entry_point = argv[++i];
+		} else if (strcmp(argv[i], "--verbose") == 0) {
+			verbose_flag = true;
 		} else if (strcmp(argv[i], "--dump-sections") == 0) {
 			dump_sections_flag = true;
 		} else if (strcmp(argv[i], "--dump-symbols") == 0) {
@@ -237,9 +293,15 @@ int main(int argc, char **argv) {
 
 	for (int i = 0; i < input_count; i++) {
 		if (is_archive(input_files[i])) {
+			if (verbose_flag) {
+				fprintf(stderr, "loading archive %s\n", input_files[i]);
+			}
 			archives = realloc(archives, (archive_count + 1) * sizeof(Archive *));
 			archives[archive_count++] = archive_open(input_files[i]);
 		} else {
+			if (verbose_flag) {
+				fprintf(stderr, "loading %s\n", input_files[i]);
+			}
 			if (object_count >= object_capacity) {
 				object_capacity = object_capacity ? object_capacity * 2 : 16;
 				objects = realloc(objects, object_capacity * sizeof(ObjectFile *));
@@ -271,12 +333,12 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	SymbolTable global;
+	static SymbolTable global;
 	symtab_init(&global);
 
 	collect_definitions(objects, object_count, &global);
-	resolve_archives(&objects, &object_count, &object_capacity, archives, archive_count, &global);
-	if (!check_undefined(objects, object_count, &global)) {
+	resolve_archives(&objects, &object_count, &object_capacity, archives, archive_count, &global, entry_point, verbose_flag);
+	if (!check_undefined(objects, object_count, &global, entry_point)) {
 		exit(1);
 	}
 
@@ -307,7 +369,10 @@ int main(int argc, char **argv) {
 			 dump_merged_flag || dump_archives_flag;
 	if (!dump_only) {
 		const char *out_path = output_file ? output_file : "a.out";
-		if (!write_executable(out_path, sections, &global)) {
+		if (verbose_flag) {
+			fprintf(stderr, "writing %s\n", out_path);
+		}
+		if (!write_executable(out_path, sections, &global, entry_point)) {
 			exit(1);
 		}
 	}
@@ -321,5 +386,6 @@ int main(int argc, char **argv) {
 	}
 	free(archives);
 	free(input_files);
+	free(lib_paths.data);
 	return 0;
 }

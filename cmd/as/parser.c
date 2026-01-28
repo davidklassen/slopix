@@ -162,6 +162,19 @@ static void handle_directive(Token *tok) {
 		return;
 	}
 
+	if (strcmp(dir, ".ascii") == 0 || strcmp(dir, ".asciz") == 0 ||
+	    strcmp(dir, ".string") == 0) {
+		int add_nul = (strcmp(dir, ".ascii") != 0);
+		Token *t = tok->next;
+		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
+			if (t->kind == TOK_STRING) {
+				advance_lc(strlen(t->str) + (add_nul ? 1 : 0));
+			}
+			t = t->next;
+		}
+		return;
+	}
+
 	if (strcmp(dir, ".word") == 0) {
 		Token *t = tok->next;
 		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
@@ -426,6 +439,26 @@ static void handle_directive_p2(Token *tok) {
 		return;
 	}
 
+	if (strcmp(dir, ".ascii") == 0 || strcmp(dir, ".asciz") == 0 ||
+	    strcmp(dir, ".string") == 0) {
+		int add_nul = (strcmp(dir, ".ascii") != 0);
+		Token *t = tok->next;
+		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
+			if (t->kind == TOK_STRING) {
+				if (sec) {
+					for (char *p = t->str; *p; p++) {
+						section_emit8(sec, (uint8_t)*p);
+					}
+					if (add_nul) {
+						section_emit8(sec, 0);
+					}
+				}
+			}
+			t = t->next;
+		}
+		return;
+	}
+
 	if (strcmp(dir, ".word") == 0) {
 		Token *t = tok->next;
 		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
@@ -652,6 +685,11 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rd = encode_gpr(t);
 		t = expect_comma(t->next);
+		if (t->kind == TOK_IDENT) {
+			Symbol *sym = symtab_add(t->str);
+			int sym_idx = symtab_get_index(sym);
+			emit_reloc(R_AARCH64_ADR_PREL_LO21, sym_idx, 0);
+		}
 		emit32(encode_adr(rd, 0));
 		return;
 	}

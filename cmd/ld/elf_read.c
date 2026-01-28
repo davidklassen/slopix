@@ -2,7 +2,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/mman.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -72,9 +72,14 @@ ObjectFile *elf_read(const char *path) {
 		error("%s: file too small for ELF header", path);
 	}
 
-	void *data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (data == MAP_FAILED) {
-		error("cannot mmap %s: %s", path, strerror(errno));
+	void *data = malloc(st.st_size);
+	if (!data) {
+		error("cannot allocate memory for %s", path);
+	}
+	ssize_t n = read(fd, data, st.st_size);
+	if (n != st.st_size) {
+		free(data);
+		error("cannot read %s: %s", path, strerror(errno));
 	}
 	close(fd);
 
@@ -112,7 +117,7 @@ ObjectFile *elf_read_memory(uint8_t *data, size_t size, const char *name) {
 void elf_free(ObjectFile *obj) {
 	if (obj) {
 		if (!obj->is_archive_member) {
-			munmap(obj->data, obj->size);
+			free(obj->data);
 		}
 		free(obj->filename);
 		free(obj);

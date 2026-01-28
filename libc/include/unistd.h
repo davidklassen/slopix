@@ -2,6 +2,7 @@
 #define UNISTD_H
 
 typedef unsigned long size_t;
+typedef long ssize_t;
 
 #ifdef __chibicc__
 #define __attribute__(x)
@@ -19,7 +20,7 @@ int exec(const char *name);
 int poll(int fd, long timeout_ms);
 void poweroff(void);
 void *sbrk(long n);
-int open(const char *path, int flags);
+int open(const char *path, int flags, ...);
 int close(int fd);
 int dup(int fd);
 int mkdir(const char *path);
@@ -38,5 +39,11 @@ int setpgid(int pid, int pgid);
 int getpgid(int pid);
 int tcsetpgrp(int fd, int pgid);
 int tcgetpgrp(int fd);
+int access(const char *path, int mode);
+
+#define F_OK 0
+#define R_OK 4
+#define W_OK 2
+#define X_OK 1
 
 #endif
