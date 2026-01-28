@@ -192,7 +192,8 @@ static void handle_directive(Token *tok) {
 		return;
 	}
 
-	if (strcmp(dir, ".zero") == 0) {
+	if (strcmp(dir, ".zero") == 0 || strcmp(dir, ".space") == 0 ||
+	    strcmp(dir, ".skip") == 0) {
 		Token *t = tok->next;
 		if (t->kind == TOK_NUMBER) {
 			advance_lc(t->val);
@@ -476,7 +477,8 @@ static void handle_directive_p2(Token *tok) {
 		return;
 	}
 
-	if (strcmp(dir, ".zero") == 0) {
+	if (strcmp(dir, ".zero") == 0 || strcmp(dir, ".space") == 0 ||
+	    strcmp(dir, ".skip") == 0) {
 		Token *t = tok->next;
 		if (t->kind == TOK_NUMBER && sec) {
 			section_emit_zeros(sec, (size_t)t->val);
