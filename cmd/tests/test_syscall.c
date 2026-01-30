@@ -474,6 +474,20 @@ TEST(tcsetpgrp_tcgetpgrp) {
 	return 0;
 }
 
+TEST(tcsetraw_tcgetraw) {
+	ASSERT_EQ(tcgetraw(0), 0, "raw mode off initially");
+	ASSERT_EQ(tcsetraw(0, 1), 0, "tcsetraw succeeds");
+	ASSERT_EQ(tcgetraw(0), 1, "raw mode on");
+	ASSERT_EQ(tcsetraw(0, 0), 0, "tcsetraw off");
+	ASSERT_EQ(tcgetraw(0), 0, "raw mode off again");
+	return 0;
+}
+
+TEST(tcsetraw_invalid_fd) {
+	ASSERT_EQ(tcsetraw(99, 1), -1, "invalid fd fails");
+	return 0;
+}
+
 TEST_SUITE(syscalls) {
 	RUN_TEST(write_returns_count);
 	RUN_TEST(read_poll);
@@ -517,4 +531,6 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(getpgid_returns_correct);
 	RUN_TEST(child_new_pgrp);
 	RUN_TEST(tcsetpgrp_tcgetpgrp);
+	RUN_TEST(tcsetraw_tcgetraw);
+	RUN_TEST(tcsetraw_invalid_fd);
 }

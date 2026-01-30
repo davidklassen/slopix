@@ -7,6 +7,15 @@
 struct devsw devsw[NDEV];
 
 static int fg_pgid = 0;
+static int console_raw_mode = 0;
+
+void console_set_raw(int raw) {
+	console_raw_mode = (raw != 0);
+}
+
+int console_get_raw(void) {
+	return console_raw_mode;
+}
 
 void console_set_fg_pgid(int pgid) {
 	if (pgid >= 0) {

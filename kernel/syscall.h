@@ -36,6 +36,8 @@
 #define SYS_getpgid   32
 #define SYS_tcsetpgrp 33
 #define SYS_tcgetpgrp 34
+#define SYS_tcsetraw  35
+#define SYS_tcgetraw  36
 
 struct procinfo {
 	int pid;

@@ -44,6 +44,8 @@ int setpgid(int pid, int pgid);
 int getpgid(int pid);
 int tcsetpgrp(int fd, int pgid);
 int tcgetpgrp(int fd);
+int tcsetraw(int fd, int raw);
+int tcgetraw(int fd);
 int access(const char *path, int mode);
 
 #define F_OK 0

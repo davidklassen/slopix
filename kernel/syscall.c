@@ -1013,6 +1013,21 @@ static long sys_tcgetpgrp(int fd) {
 	return console_get_fg_pgid();
 }
 
+static long sys_tcsetraw(int fd, int raw) {
+	if (fd < 0 || fd > 2) {
+		return -1;
+	}
+	extern void console_set_raw(int raw);
+	console_set_raw(raw);
+	return 0;
+}
+
+static long sys_tcgetraw(int fd) {
+	(void)fd;
+	extern int console_get_raw(void);
+	return console_get_raw();
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -1273,6 +1288,12 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_tcgetpgrp:
 		ret = sys_tcgetpgrp((int)tf->regs[0]);
+		break;
+	case SYS_tcsetraw:
+		ret = sys_tcsetraw((int)tf->regs[0], (int)tf->regs[1]);
+		break;
+	case SYS_tcgetraw:
+		ret = sys_tcgetraw((int)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

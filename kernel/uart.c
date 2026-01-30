@@ -66,19 +66,21 @@ void uart_irq_handler(void) {
 	while (!(UART_REG(UART_FR_OFFSET) & UART_FR_RXFE)) {
 		char c = UART_REG(UART_DR_OFFSET) & 0xFF;
 
-		if (c == 0x03) {
-			int pgid = console_get_fg_pgid();
-			if (pgid > 0) {
-				proc_signal_pgrp(pgid, SIGINT);
+		if (!console_get_raw()) {
+			if (c == 0x03) {
+				int pgid = console_get_fg_pgid();
+				if (pgid > 0) {
+					proc_signal_pgrp(pgid, SIGINT);
+				}
+				continue;
 			}
-			continue;
-		}
-		if (c == 0x1A) {
-			int pgid = console_get_fg_pgid();
-			if (pgid > 0) {
-				proc_signal_pgrp(pgid, SIGTSTP);
+			if (c == 0x1A) {
+				int pgid = console_get_fg_pgid();
+				if (pgid > 0) {
+					proc_signal_pgrp(pgid, SIGTSTP);
+				}
+				continue;
 			}
-			continue;
 		}
 
 		unsigned int next = (uart_rx.head + 1) % UART_RX_BUF_SIZE;

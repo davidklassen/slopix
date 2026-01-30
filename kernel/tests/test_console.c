@@ -1,6 +1,7 @@
 #ifdef RUN_TESTS
 
 #include "test.h"
+#include "console.h"
 #include "file.h"
 
 TEST(console_devsw_registered) {
@@ -62,12 +63,27 @@ TEST(console_filewrite_not_writable) {
 	return 0;
 }
 
+TEST(console_raw_mode_default) {
+	ASSERT_EQ(console_get_raw(), 0, "raw mode off by default");
+	return 0;
+}
+
+TEST(console_raw_mode_set) {
+	console_set_raw(1);
+	ASSERT_EQ(console_get_raw(), 1, "raw mode on");
+	console_set_raw(0);
+	ASSERT_EQ(console_get_raw(), 0, "raw mode off");
+	return 0;
+}
+
 TEST_SUITE(console) {
 	RUN_TEST(console_devsw_registered);
 	RUN_TEST(console_write_basic);
 	RUN_TEST(console_file_device_type);
 	RUN_TEST(console_filewrite);
 	RUN_TEST(console_filewrite_not_writable);
+	RUN_TEST(console_raw_mode_default);
+	RUN_TEST(console_raw_mode_set);
 }
 
 #endif
