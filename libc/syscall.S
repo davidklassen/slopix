@@ -2,7 +2,7 @@
 .global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
 .global stat, getcwd, lseek, rename, mmap, munmap
 .global kill, getprocs, getppid, waitpid
-.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw
+.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate
 
 write:
 	mov x8, #0
@@ -186,5 +186,10 @@ tcsetraw:
 
 tcgetraw:
 	mov x8, #36
+	svc #0
+	ret
+
+ftruncate:
+	mov x8, #37
 	svc #0
 	ret

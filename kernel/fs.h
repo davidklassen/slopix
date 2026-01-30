@@ -93,6 +93,7 @@ unsigned int fs_bmap(struct inode *ip, unsigned int bn);
 int fs_readi(struct inode *ip, char *dst, unsigned int off, unsigned int n);
 int fs_writei(struct inode *ip, const char *src, unsigned int off, unsigned int n);
 void fs_itrunc(struct inode *ip);
+int fs_itrunc_to(struct inode *ip, unsigned int len);
 void fs_stati(struct inode *ip, struct stat *st);
 struct inode *fs_ialloc(unsigned int dev, unsigned short type);
 int fs_dirlink(struct inode *dp, char *name, unsigned int inum);

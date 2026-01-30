@@ -290,6 +290,62 @@ TEST(large_file_unlink) {
 	return 0;
 }
 
+TEST(ftruncate_shrink) {
+	int fd = open("/test_trunc.txt", O_CREAT | O_RDWR);
+	write(fd, "hello world", 11);
+	ASSERT_EQ(ftruncate(fd, 5), 0, "ftruncate succeeds");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.st_size, 5, "size is 5");
+	close(fd);
+	unlink("/test_trunc.txt");
+	return 0;
+}
+
+TEST(ftruncate_to_zero) {
+	int fd = open("/test_trunc2.txt", O_CREAT | O_RDWR);
+	write(fd, "test", 4);
+	ASSERT_EQ(ftruncate(fd, 0), 0, "truncate to zero");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.st_size, 0, "size is 0");
+	close(fd);
+	unlink("/test_trunc2.txt");
+	return 0;
+}
+
+TEST(ftruncate_same_size) {
+	int fd = open("/test_trunc3.txt", O_CREAT | O_RDWR);
+	write(fd, "hello", 5);
+	ASSERT_EQ(ftruncate(fd, 5), 0, "same size ok");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.st_size, 5, "size unchanged");
+	close(fd);
+	unlink("/test_trunc3.txt");
+	return 0;
+}
+
+TEST(ftruncate_readonly_fails) {
+	int fd = open("/test_trunc4.txt", O_CREAT | O_WRONLY);
+	write(fd, "test", 4);
+	close(fd);
+	fd = open("/test_trunc4.txt", O_RDONLY);
+	ASSERT_EQ(ftruncate(fd, 2), -1, "readonly fails");
+	close(fd);
+	unlink("/test_trunc4.txt");
+	return 0;
+}
+
+TEST(ftruncate_extend_fails) {
+	int fd = open("/test_trunc5.txt", O_CREAT | O_RDWR);
+	write(fd, "hi", 2);
+	ASSERT_EQ(ftruncate(fd, 10), -1, "extend fails");
+	close(fd);
+	unlink("/test_trunc5.txt");
+	return 0;
+}
+
 TEST_SUITE(filesys) {
 	RUN_TEST(open_file);
 	RUN_TEST(open_nonexistent);
@@ -313,4 +369,9 @@ TEST_SUITE(filesys) {
 	RUN_TEST(large_file_write);
 	RUN_TEST(large_file_read);
 	RUN_TEST(large_file_unlink);
+	RUN_TEST(ftruncate_shrink);
+	RUN_TEST(ftruncate_to_zero);
+	RUN_TEST(ftruncate_same_size);
+	RUN_TEST(ftruncate_readonly_fails);
+	RUN_TEST(ftruncate_extend_fails);
 }

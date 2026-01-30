@@ -1028,6 +1028,30 @@ static long sys_tcgetraw(int fd) {
 	return console_get_raw();
 }
 
+static long sys_ftruncate(int fd, long length) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0) {
+		return -1;
+	}
+	if (f->type != FD_INODE || f->ip == 0) {
+		return -1;
+	}
+	if (!f->writable) {
+		return -1;
+	}
+	if (length < 0) {
+		return -1;
+	}
+
+	fs_ilock(f->ip);
+	int ret = fs_itrunc_to(f->ip, (unsigned int)length);
+	fs_iunlock(f->ip);
+	return ret;
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -1294,6 +1318,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_tcgetraw:
 		ret = sys_tcgetraw((int)tf->regs[0]);
+		break;
+	case SYS_ftruncate:
+		ret = sys_ftruncate((int)tf->regs[0], (long)tf->regs[1]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

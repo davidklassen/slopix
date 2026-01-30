@@ -408,6 +408,118 @@ void fs_itrunc(struct inode *ip) {
 	fs_iupdate(ip);
 }
 
+int fs_itrunc_to(struct inode *ip, unsigned int len) {
+	if (len > ip->size) {
+		return -1;
+	}
+	if (len == ip->size) {
+		return 0;
+	}
+	if (len == 0) {
+		fs_itrunc(ip);
+		return 0;
+	}
+
+	unsigned int last_block = (len - 1) / BSIZE;
+	unsigned int first_free = last_block + 1;
+
+	unsigned int partial = len % BSIZE;
+	if (partial != 0 && last_block < NDIRECT && ip->addrs[last_block]) {
+		struct buf *bp = bio_read(ip->dev, ip->addrs[last_block]);
+		if (bp) {
+			memset(bp->data + partial, 0, BSIZE - partial);
+			bio_write(bp);
+			bio_release(bp);
+		}
+	}
+
+	for (unsigned int i = first_free; i < NDIRECT; i++) {
+		if (ip->addrs[i]) {
+			bfree(ip->dev, ip->addrs[i]);
+			ip->addrs[i] = 0;
+		}
+	}
+
+	if (first_free <= NDIRECT + NINDIRECT - 1 && ip->addrs[NDIRECT]) {
+		struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT]);
+		if (bp) {
+			unsigned int *a = (unsigned int *)bp->data;
+			unsigned int start = (first_free > NDIRECT) ? first_free - NDIRECT : 0;
+			int modified = 0;
+			for (unsigned int j = start; j < NINDIRECT; j++) {
+				if (a[j]) {
+					bfree(ip->dev, a[j]);
+					a[j] = 0;
+					modified = 1;
+				}
+			}
+			if (modified && start > 0) {
+				bio_write(bp);
+			}
+			bio_release(bp);
+			if (start == 0) {
+				bfree(ip->dev, ip->addrs[NDIRECT]);
+				ip->addrs[NDIRECT] = 0;
+			}
+		}
+	}
+
+	if (first_free <= NDIRECT + NINDIRECT + NDINDIRECT - 1 && ip->addrs[NDIRECT + 1]) {
+		struct buf *bp = bio_read(ip->dev, ip->addrs[NDIRECT + 1]);
+		if (bp) {
+			unsigned int *a = (unsigned int *)bp->data;
+			unsigned int dind_start = (first_free > NDIRECT + NINDIRECT) ? first_free - NDIRECT - NINDIRECT : 0;
+			unsigned int start_idx1 = dind_start / NINDIRECT;
+			unsigned int start_idx2 = dind_start % NINDIRECT;
+			int all_freed = 1;
+			for (unsigned int i = 0; i < NINDIRECT; i++) {
+				if (a[i] == 0) {
+					continue;
+				}
+				if (i < start_idx1) {
+					all_freed = 0;
+					continue;
+				}
+				struct buf *bp2 = bio_read(ip->dev, a[i]);
+				if (bp2) {
+					unsigned int *a2 = (unsigned int *)bp2->data;
+					unsigned int start2 = (i == start_idx1) ? start_idx2 : 0;
+					int inner_all_freed = 1;
+					for (unsigned int j = 0; j < NINDIRECT; j++) {
+						if (a2[j] == 0) {
+							continue;
+						}
+						if (j < start2) {
+							inner_all_freed = 0;
+							continue;
+						}
+						bfree(ip->dev, a2[j]);
+						a2[j] = 0;
+					}
+					if (inner_all_freed) {
+						bio_release(bp2);
+						bfree(ip->dev, a[i]);
+						a[i] = 0;
+					} else {
+						bio_write(bp2);
+						bio_release(bp2);
+						all_freed = 0;
+					}
+				}
+			}
+			bio_release(bp);
+			if (all_freed) {
+				bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+				ip->addrs[NDIRECT + 1] = 0;
+			}
+		}
+	}
+
+	ip->size = len;
+	fs_iupdate(ip);
+	return 0;
+}
+
 void fs_stati(struct inode *ip, struct stat *st) {
 	st->st_dev = ip->dev;
 	st->st_ino = ip->inum;
