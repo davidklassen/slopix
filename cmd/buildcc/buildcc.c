@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 	printf("building %s (using %s)...\n", out, cc);
 
 	for (int i = 0; srcs[i]; i++) {
-		snprintf(cmd, sizeof(cmd), "%s -I/src/cc/include -I/src/libc -S -o /tmp/%s.s /src/cc/%s.c", cc, srcs[i], srcs[i]);
+		snprintf(cmd, sizeof(cmd), "%s -I/src/libc -S -o /tmp/%s.s /src/cc/%s.c", cc, srcs[i], srcs[i]);
 		if (run(cmd) < 0) {
 			return 1;
 		}

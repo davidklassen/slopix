@@ -75,7 +75,6 @@ static void add_default_include_paths(char *argv0) {
 	(void)argv0;
 
 	strarray_push(&include_paths, "/src/libc");
-	strarray_push(&include_paths, "/src/cc/include");
 
 	for (int i = 0; i < include_paths.len; i++) {
 		strarray_push(&std_include_paths, include_paths.data[i]);

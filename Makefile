@@ -58,7 +58,6 @@ disk.img: $(MKFS) cmd
 		:dir:/src/libc \
 		:dir:/src/ld \
 		:dir:/src/cc \
-		:dir:/src/cc/include \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
@@ -88,7 +87,10 @@ disk.img: $(MKFS) cmd
 		cmd/as.elf:/bin/as \
 		cmd/ld.elf:/bin/ld \
 		cmd/cc.elf:/bin/cc \
+		cmd/ar.elf:/bin/ar \
 		cmd/buildcc.elf:/bin/buildcc \
+		cmd/buildlibc.elf:/bin/buildlibc \
+		cmd/editor.elf:/bin/editor \
 		libc/libc.a:/lib/libc.a \
 		cmd/cat/cat.c:/src/cat.c \
 		cmd/cp/cp.c:/src/cp.c \
@@ -105,22 +107,38 @@ disk.img: $(MKFS) cmd
 		cmd/sleep/sleep.c:/src/sleep.c \
 		cmd/touch/touch.c:/src/touch.c \
 		cmd/wc/wc.c:/src/wc.c \
+		libc/crt0.S:/src/libc/crt0.S \
 		libc/ctype.c:/src/libc/ctype.c \
+		libc/errno.c:/src/libc/errno.c \
+		libc/libgen.c:/src/libc/libgen.c \
+		libc/malloc.c:/src/libc/malloc.c \
 		libc/stdio.c:/src/libc/stdio.c \
+		libc/stdio_file.c:/src/libc/stdio_file.c \
+		libc/stdlib.c:/src/libc/stdlib.c \
 		libc/string.c:/src/libc/string.c \
 		libc/syscall.S:/src/libc/syscall.S \
+		libc/test.c:/src/libc/test.c \
+		libc/time.c:/src/libc/time.c \
 		libc/include/assert.h:/src/libc/assert.h \
 		libc/include/ctype.h:/src/libc/ctype.h \
 		libc/include/errno.h:/src/libc/errno.h \
 		libc/include/fcntl.h:/src/libc/fcntl.h \
+		libc/include/float.h:/src/libc/float.h \
 		libc/include/inttypes.h:/src/libc/inttypes.h \
 		libc/include/libgen.h:/src/libc/libgen.h \
 		libc/include/signal.h:/src/libc/signal.h \
+		libc/include/stdalign.h:/src/libc/stdalign.h \
 		libc/include/stdarg.h:/src/libc/stdarg.h \
+		libc/include/stdatomic.h:/src/libc/stdatomic.h \
+		libc/include/stdbool.h:/src/libc/stdbool.h \
+		libc/include/stddef.h:/src/libc/stddef.h \
+		libc/include/stdint.h:/src/libc/stdint.h \
+		libc/include/stdnoreturn.h:/src/libc/stdnoreturn.h \
 		libc/include/stdio.h:/src/libc/stdio.h \
 		libc/include/stdlib.h:/src/libc/stdlib.h \
 		libc/include/string.h:/src/libc/string.h \
 		libc/include/strings.h:/src/libc/strings.h \
+		libc/include/test.h:/src/libc/test.h \
 		libc/include/time.h:/src/libc/time.h \
 		libc/include/unistd.h:/src/libc/unistd.h \
 		:dir:/src/libc/sys \
@@ -138,16 +156,7 @@ disk.img: $(MKFS) cmd
 		cmd/cc/strings.c:/src/cc/strings.c \
 		cmd/cc/hashmap.c:/src/cc/hashmap.c \
 		cmd/cc/chibicc.h:/src/cc/chibicc.h \
-		cmd/cc/hello.c:/src/cc/hello.c \
-		cmd/cc/include/assert.h:/src/cc/include/assert.h \
-		cmd/cc/include/float.h:/src/cc/include/float.h \
-		cmd/cc/include/stdalign.h:/src/cc/include/stdalign.h \
-		cmd/cc/include/stdarg.h:/src/cc/include/stdarg.h \
-		cmd/cc/include/stdatomic.h:/src/cc/include/stdatomic.h \
-		cmd/cc/include/stdbool.h:/src/cc/include/stdbool.h \
-		cmd/cc/include/stddef.h:/src/cc/include/stddef.h \
-		cmd/cc/include/stdint.h:/src/cc/include/stdint.h \
-		cmd/cc/include/stdnoreturn.h:/src/cc/include/stdnoreturn.h
+		cmd/cc/hello.c:/src/cc/hello.c
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 2048 \

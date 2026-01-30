@@ -7,7 +7,7 @@ CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf cmp.elf \
 	touch.elf wc.elf head.elf grep.elf sed.elf ps.elf kill.elf sleep.elf tests.elf \
-	as.elf ld.elf cc.elf buildcc.elf
+	as.elf ld.elf cc.elf ar.elf buildcc.elf buildlibc.elf editor.elf
 
 all: $(PROGS)
 
@@ -80,7 +80,16 @@ kill.elf: kill/kill.o
 sleep.elf: sleep/sleep.o
 	$(LD) -o $@ $< $(LIBC)
 
+ar.elf: ar/ar.o
+	$(LD) -o $@ $< $(LIBC)
+
 buildcc.elf: buildcc/buildcc.o
+	$(LD) -o $@ $< $(LIBC)
+
+buildlibc.elf: buildlibc/buildlibc.o
+	$(LD) -o $@ $< $(LIBC)
+
+editor.elf: editor/editor.o
 	$(LD) -o $@ $< $(LIBC)
 
 tests.elf:

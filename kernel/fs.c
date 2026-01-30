@@ -409,10 +409,7 @@ void fs_itrunc(struct inode *ip) {
 }
 
 int fs_itrunc_to(struct inode *ip, unsigned int len) {
-	if (len > ip->size) {
-		return -1;
-	}
-	if (len == ip->size) {
+	if (len >= ip->size) {
 		return 0;
 	}
 	if (len == 0) {

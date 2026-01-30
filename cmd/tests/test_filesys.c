@@ -337,10 +337,13 @@ TEST(ftruncate_readonly_fails) {
 	return 0;
 }
 
-TEST(ftruncate_extend_fails) {
+TEST(ftruncate_extend_noop) {
 	int fd = open("/test_trunc5.txt", O_CREAT | O_RDWR);
 	write(fd, "hi", 2);
-	ASSERT_EQ(ftruncate(fd, 10), -1, "extend fails");
+	ASSERT_EQ(ftruncate(fd, 10), 0, "extend returns success");
+	struct stat st;
+	fstat(fd, &st);
+	ASSERT_EQ(st.st_size, 2, "size unchanged");
 	close(fd);
 	unlink("/test_trunc5.txt");
 	return 0;
@@ -373,5 +376,5 @@ TEST_SUITE(filesys) {
 	RUN_TEST(ftruncate_to_zero);
 	RUN_TEST(ftruncate_same_size);
 	RUN_TEST(ftruncate_readonly_fails);
-	RUN_TEST(ftruncate_extend_fails);
+	RUN_TEST(ftruncate_extend_noop);
 }
