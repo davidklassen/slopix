@@ -55,9 +55,30 @@ disk.img: $(MKFS) cmd
 		:dir:/lib \
 		:dir:/tmp \
 		:dir:/src \
+		:dir:/src/cmd \
+		:dir:/src/cmd/cat \
+		:dir:/src/cmd/cp \
+		:dir:/src/cmd/echo \
+		:dir:/src/cmd/grep \
+		:dir:/src/cmd/sed \
+		:dir:/src/cmd/head \
+		:dir:/src/cmd/kill \
+		:dir:/src/cmd/ls \
+		:dir:/src/cmd/mkdir \
+		:dir:/src/cmd/mv \
+		:dir:/src/cmd/ps \
+		:dir:/src/cmd/rm \
+		:dir:/src/cmd/sleep \
+		:dir:/src/cmd/touch \
+		:dir:/src/cmd/wc \
+		:dir:/src/cmd/ld \
+		:dir:/src/cmd/cc \
+		:dir:/src/cmd/buildcc \
+		:dir:/src/cmd/buildlibc \
+		:dir:/src/cmd/ar \
 		:dir:/src/libc \
-		:dir:/src/ld \
-		:dir:/src/cc \
+		:dir:/src/libc/include \
+		:dir:/src/libc/include/sys \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
@@ -92,21 +113,36 @@ disk.img: $(MKFS) cmd
 		cmd/buildlibc.elf:/bin/buildlibc \
 		cmd/editor.elf:/bin/editor \
 		libc/libc.a:/lib/libc.a \
-		cmd/cat/cat.c:/src/cat.c \
-		cmd/cp/cp.c:/src/cp.c \
-		cmd/echo/echo.c:/src/echo.c \
-		cmd/grep/grep.c:/src/grep.c \
-		cmd/sed/sed.c:/src/sed.c \
-		cmd/head/head.c:/src/head.c \
-		cmd/kill/kill.c:/src/kill.c \
-		cmd/ls/ls.c:/src/ls.c \
-		cmd/mkdir/mkdir.c:/src/mkdir.c \
-		cmd/mv/mv.c:/src/mv.c \
-		cmd/ps/ps.c:/src/ps.c \
-		cmd/rm/rm.c:/src/rm.c \
-		cmd/sleep/sleep.c:/src/sleep.c \
-		cmd/touch/touch.c:/src/touch.c \
-		cmd/wc/wc.c:/src/wc.c \
+		cmd/cat/cat.c:/src/cmd/cat/cat.c \
+		cmd/cp/cp.c:/src/cmd/cp/cp.c \
+		cmd/echo/echo.c:/src/cmd/echo/echo.c \
+		cmd/grep/grep.c:/src/cmd/grep/grep.c \
+		cmd/sed/sed.c:/src/cmd/sed/sed.c \
+		cmd/head/head.c:/src/cmd/head/head.c \
+		cmd/kill/kill.c:/src/cmd/kill/kill.c \
+		cmd/ls/ls.c:/src/cmd/ls/ls.c \
+		cmd/mkdir/mkdir.c:/src/cmd/mkdir/mkdir.c \
+		cmd/mv/mv.c:/src/cmd/mv/mv.c \
+		cmd/ps/ps.c:/src/cmd/ps/ps.c \
+		cmd/rm/rm.c:/src/cmd/rm/rm.c \
+		cmd/sleep/sleep.c:/src/cmd/sleep/sleep.c \
+		cmd/touch/touch.c:/src/cmd/touch/touch.c \
+		cmd/wc/wc.c:/src/cmd/wc/wc.c \
+		cmd/ld/hello.S:/src/cmd/ld/hello.S \
+		cmd/cc/main.c:/src/cmd/cc/main.c \
+		cmd/cc/tokenize.c:/src/cmd/cc/tokenize.c \
+		cmd/cc/preprocess.c:/src/cmd/cc/preprocess.c \
+		cmd/cc/parse.c:/src/cmd/cc/parse.c \
+		cmd/cc/type.c:/src/cmd/cc/type.c \
+		cmd/cc/codegen.c:/src/cmd/cc/codegen.c \
+		cmd/cc/unicode.c:/src/cmd/cc/unicode.c \
+		cmd/cc/strings.c:/src/cmd/cc/strings.c \
+		cmd/cc/hashmap.c:/src/cmd/cc/hashmap.c \
+		cmd/cc/chibicc.h:/src/cmd/cc/chibicc.h \
+		cmd/cc/hello.c:/src/cmd/cc/hello.c \
+		cmd/buildcc/buildcc.c:/src/cmd/buildcc/buildcc.c \
+		cmd/buildlibc/buildlibc.c:/src/cmd/buildlibc/buildlibc.c \
+		cmd/ar/ar.c:/src/cmd/ar/ar.c \
 		libc/crt0.S:/src/libc/crt0.S \
 		libc/ctype.c:/src/libc/ctype.c \
 		libc/errno.c:/src/libc/errno.c \
@@ -119,44 +155,31 @@ disk.img: $(MKFS) cmd
 		libc/syscall.S:/src/libc/syscall.S \
 		libc/test.c:/src/libc/test.c \
 		libc/time.c:/src/libc/time.c \
-		libc/include/assert.h:/src/libc/assert.h \
-		libc/include/ctype.h:/src/libc/ctype.h \
-		libc/include/errno.h:/src/libc/errno.h \
-		libc/include/fcntl.h:/src/libc/fcntl.h \
-		libc/include/float.h:/src/libc/float.h \
-		libc/include/inttypes.h:/src/libc/inttypes.h \
-		libc/include/libgen.h:/src/libc/libgen.h \
-		libc/include/signal.h:/src/libc/signal.h \
-		libc/include/stdalign.h:/src/libc/stdalign.h \
-		libc/include/stdarg.h:/src/libc/stdarg.h \
-		libc/include/stdatomic.h:/src/libc/stdatomic.h \
-		libc/include/stdbool.h:/src/libc/stdbool.h \
-		libc/include/stddef.h:/src/libc/stddef.h \
-		libc/include/stdint.h:/src/libc/stdint.h \
-		libc/include/stdnoreturn.h:/src/libc/stdnoreturn.h \
-		libc/include/stdio.h:/src/libc/stdio.h \
-		libc/include/stdlib.h:/src/libc/stdlib.h \
-		libc/include/string.h:/src/libc/string.h \
-		libc/include/strings.h:/src/libc/strings.h \
-		libc/include/test.h:/src/libc/test.h \
-		libc/include/time.h:/src/libc/time.h \
-		libc/include/unistd.h:/src/libc/unistd.h \
-		:dir:/src/libc/sys \
-		libc/include/sys/mman.h:/src/libc/sys/mman.h \
-		libc/include/sys/stat.h:/src/libc/sys/stat.h \
-		libc/include/sys/wait.h:/src/libc/sys/wait.h \
-		cmd/ld/hello.S:/src/ld/hello.S \
-		cmd/cc/main.c:/src/cc/main.c \
-		cmd/cc/tokenize.c:/src/cc/tokenize.c \
-		cmd/cc/preprocess.c:/src/cc/preprocess.c \
-		cmd/cc/parse.c:/src/cc/parse.c \
-		cmd/cc/type.c:/src/cc/type.c \
-		cmd/cc/codegen.c:/src/cc/codegen.c \
-		cmd/cc/unicode.c:/src/cc/unicode.c \
-		cmd/cc/strings.c:/src/cc/strings.c \
-		cmd/cc/hashmap.c:/src/cc/hashmap.c \
-		cmd/cc/chibicc.h:/src/cc/chibicc.h \
-		cmd/cc/hello.c:/src/cc/hello.c
+		libc/include/assert.h:/src/libc/include/assert.h \
+		libc/include/ctype.h:/src/libc/include/ctype.h \
+		libc/include/errno.h:/src/libc/include/errno.h \
+		libc/include/fcntl.h:/src/libc/include/fcntl.h \
+		libc/include/float.h:/src/libc/include/float.h \
+		libc/include/inttypes.h:/src/libc/include/inttypes.h \
+		libc/include/libgen.h:/src/libc/include/libgen.h \
+		libc/include/signal.h:/src/libc/include/signal.h \
+		libc/include/stdalign.h:/src/libc/include/stdalign.h \
+		libc/include/stdarg.h:/src/libc/include/stdarg.h \
+		libc/include/stdatomic.h:/src/libc/include/stdatomic.h \
+		libc/include/stdbool.h:/src/libc/include/stdbool.h \
+		libc/include/stddef.h:/src/libc/include/stddef.h \
+		libc/include/stdint.h:/src/libc/include/stdint.h \
+		libc/include/stdnoreturn.h:/src/libc/include/stdnoreturn.h \
+		libc/include/stdio.h:/src/libc/include/stdio.h \
+		libc/include/stdlib.h:/src/libc/include/stdlib.h \
+		libc/include/string.h:/src/libc/include/string.h \
+		libc/include/strings.h:/src/libc/include/strings.h \
+		libc/include/test.h:/src/libc/include/test.h \
+		libc/include/time.h:/src/libc/include/time.h \
+		libc/include/unistd.h:/src/libc/include/unistd.h \
+		libc/include/sys/mman.h:/src/libc/include/sys/mman.h \
+		libc/include/sys/stat.h:/src/libc/include/sys/stat.h \
+		libc/include/sys/wait.h:/src/libc/include/sys/wait.h
 
 disk-test.img: $(MKFS) cmd
 	$(MKFS) $@ -s 2048 \
