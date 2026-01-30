@@ -17,6 +17,7 @@ extern int errno;
 #define EISDIR	21 /* Is a directory */
 #define EINVAL	22 /* Invalid argument */
 #define ENOSPC	28 /* No space left on device */
+#define ENOTTY	25 /* Inappropriate ioctl for device */
 
 char *strerror(int errnum);
 

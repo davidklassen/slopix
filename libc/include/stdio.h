@@ -23,6 +23,9 @@ extern FILE *stdout;
 extern FILE *stderr;
 
 typedef unsigned long size_t;
+typedef long ssize_t;
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 
 int puts(const char *s);
 int printf(const char *fmt, ...);
@@ -47,5 +50,7 @@ int vsprintf(char *str, const char *fmt, va_list ap);
 int vsnprintf(char *str, size_t size, const char *fmt, va_list ap);
 
 FILE *open_memstream(char **ptr, size_t *sizeloc);
+
+void perror(const char *s);
 
 #endif

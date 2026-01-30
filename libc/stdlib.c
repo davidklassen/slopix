@@ -203,6 +203,10 @@ int access(const char *path, int mode) {
 	return 0;
 }
 
+int isatty(int fd) {
+	return fd >= 0 && fd <= 2;
+}
+
 extern int _wait_syscall(void);
 
 int wait(int *wstatus) {

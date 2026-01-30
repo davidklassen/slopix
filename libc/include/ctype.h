@@ -11,5 +11,6 @@ int isupper(int c);
 int islower(int c);
 int tolower(int c);
 int toupper(int c);
+int isprint(int c);
 
 #endif

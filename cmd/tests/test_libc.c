@@ -655,6 +655,36 @@ TEST(localtime_zeroed) {
 	return 0;
 }
 
+TEST(isprint_printable) {
+	ASSERT(isprint(' '), "space is printable");
+	ASSERT(isprint('a'), "a is printable");
+	ASSERT(isprint('~'), "~ is printable");
+	return 0;
+}
+
+TEST(isprint_not_printable) {
+	ASSERT(!isprint('\0'), "null not printable");
+	ASSERT(!isprint('\n'), "newline not printable");
+	ASSERT(!isprint(0x1f), "control char not printable");
+	ASSERT(!isprint(0x7f), "DEL not printable");
+	return 0;
+}
+
+TEST(isatty_console) {
+	ASSERT(isatty(0), "stdin is tty");
+	ASSERT(isatty(1), "stdout is tty");
+	ASSERT(isatty(2), "stderr is tty");
+	return 0;
+}
+
+TEST(isatty_file) {
+	int fd = open("/tmp_isatty", O_CREAT | O_WRONLY);
+	ASSERT(!isatty(fd), "file is not tty");
+	close(fd);
+	unlink("/tmp_isatty");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -748,4 +778,8 @@ TEST_SUITE(libc) {
 	RUN_TEST(time_sets_tloc);
 	RUN_TEST(localtime_returns_valid);
 	RUN_TEST(localtime_zeroed);
+	RUN_TEST(isprint_printable);
+	RUN_TEST(isprint_not_printable);
+	RUN_TEST(isatty_console);
+	RUN_TEST(isatty_file);
 }

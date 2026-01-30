@@ -51,4 +51,10 @@ int access(const char *path, int mode);
 #define W_OK 2
 #define X_OK 1
 
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
+int isatty(int fd);
+
 #endif

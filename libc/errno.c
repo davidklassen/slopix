@@ -17,6 +17,7 @@ static const char *error_messages[] = {
     [20] = "Not a directory",
     [21] = "Is a directory",
     [22] = "Invalid argument",
+    [25] = "Inappropriate ioctl for device",
     [28] = "No space left on device",
 };
 

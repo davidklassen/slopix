@@ -929,3 +929,51 @@ int sprintf(char *str, const char *fmt, ...) {
 	va_end(ap);
 	return result;
 }
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+	if (!lineptr || !n || !stream) {
+		return -1;
+	}
+
+	size_t pos = 0;
+	size_t cap = *n;
+	char *buf = *lineptr;
+
+	if (!buf || cap == 0) {
+		cap = 128;
+		buf = malloc(cap);
+		if (!buf) {
+			return -1;
+		}
+	}
+
+	int c;
+	while ((c = fgetc(stream)) != EOF) {
+		if (pos + 1 >= cap) {
+			size_t newcap = cap * 2;
+			char *newbuf = realloc(buf, newcap);
+			if (!newbuf) {
+				*lineptr = buf;
+				*n = cap;
+				return -1;
+			}
+			buf = newbuf;
+			cap = newcap;
+		}
+		buf[pos++] = (char)c;
+		if (c == '\n') {
+			break;
+		}
+	}
+
+	if (pos == 0 && c == EOF) {
+		*lineptr = buf;
+		*n = cap;
+		return -1;
+	}
+
+	buf[pos] = '\0';
+	*lineptr = buf;
+	*n = cap;
+	return (ssize_t)pos;
+}

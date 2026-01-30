@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -864,6 +865,79 @@ TEST(write_stdio_read_raw) {
 	return 0;
 }
 
+TEST(getline_basic) {
+	FILE *f = fopen("/test_getline.txt", "w");
+	fprintf(f, "hello\nworld\n");
+	fclose(f);
+
+	f = fopen("/test_getline.txt", "r");
+	char *line = NULL;
+	size_t n = 0;
+
+	ssize_t len = getline(&line, &n, f);
+	ASSERT_EQ((int)len, 6, "first line length");
+	ASSERT_EQ(strcmp(line, "hello\n"), 0, "first line content");
+
+	len = getline(&line, &n, f);
+	ASSERT_EQ((int)len, 6, "second line length");
+	ASSERT_EQ(strcmp(line, "world\n"), 0, "second line content");
+
+	len = getline(&line, &n, f);
+	ASSERT_EQ((int)len, -1, "EOF returns -1");
+
+	free(line);
+	fclose(f);
+	unlink("/test_getline.txt");
+	return 0;
+}
+
+TEST(getline_no_newline) {
+	FILE *f = fopen("/test_getline2.txt", "w");
+	fprintf(f, "no newline");
+	fclose(f);
+
+	f = fopen("/test_getline2.txt", "r");
+	char *line = NULL;
+	size_t n = 0;
+	ssize_t len = getline(&line, &n, f);
+	ASSERT_EQ((int)len, 10, "line without newline");
+	ASSERT_EQ(strcmp(line, "no newline"), 0, "content");
+
+	free(line);
+	fclose(f);
+	unlink("/test_getline2.txt");
+	return 0;
+}
+
+TEST(getline_long_line) {
+	FILE *f = fopen("/test_getline3.txt", "w");
+	for (int i = 0; i < 200; i++) {
+		fputc('x', f);
+	}
+	fputc('\n', f);
+	fclose(f);
+
+	f = fopen("/test_getline3.txt", "r");
+	char *line = NULL;
+	size_t n = 0;
+	ssize_t len = getline(&line, &n, f);
+	ASSERT_EQ((int)len, 201, "long line length");
+	ASSERT(n >= 201, "buffer grew");
+
+	free(line);
+	fclose(f);
+	unlink("/test_getline3.txt");
+	return 0;
+}
+
+TEST(perror_basic) {
+	errno = ENOENT;
+	perror("test");
+	errno = 0;
+	perror(NULL);
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -919,4 +993,8 @@ TEST_SUITE(stdio) {
 	RUN_TEST(write_stdio_read_raw);
 	RUN_TEST(large_file_read);
 	RUN_TEST(large_file_read_content);
+	RUN_TEST(getline_basic);
+	RUN_TEST(getline_no_newline);
+	RUN_TEST(getline_long_line);
+	RUN_TEST(perror_basic);
 }
