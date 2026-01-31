@@ -110,7 +110,7 @@ disk.img: $(MKFS) cmd
 		cmd/ar.elf:/bin/ar \
 		cmd/buildcc.elf:/bin/buildcc \
 		cmd/buildlibc.elf:/bin/buildlibc \
-		cmd/editor.elf:/bin/editor \
+		cmd/ed.elf:/bin/ed \
 		libc/libc.a:/lib/libc.a \
 		cmd/cat/cat.c:/src/cmd/cat/cat.c \
 		cmd/cp/cp.c:/src/cmd/cp/cp.c \
