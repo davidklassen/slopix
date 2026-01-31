@@ -1,0 +1,7 @@
+build
+.build
+.git
+disk.img
+docsearch.db
+.vscode
+.idea

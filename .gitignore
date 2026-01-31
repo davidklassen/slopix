@@ -5,6 +5,9 @@
 docsearch.db*
 .claude/
 
+.build/
+build/
+
 tools/mkfs/mkfs
 tools/mkramfs/mkramfs
 tools/cc/chibicc

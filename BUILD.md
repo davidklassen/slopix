@@ -257,18 +257,11 @@ Simple commands (cat, ls, etc.) have no `build.c` - `/bin/build` uses fallback.
 Simple exclusion list for syncing source to `build/src/`:
 
 ```
-# Build artifacts
 build
 .build
-
-# Git
 .git
-
-# Generated files
 disk.img
 docsearch.db
-
-# IDE/editor
 .vscode
 .idea
 ```
@@ -595,9 +588,9 @@ the build will fail. Run full build first to ensure dependencies are in place.
 4. Create `.buildignore`
 
 **Verification:**
-- [ ] `lib/` directory exists
-- [ ] `.gitignore` updated
-- [ ] `.buildignore` created
+- [x] `lib/` directory exists
+- [x] `.gitignore` updated
+- [x] `.buildignore` created
 
 ### Phase 2: Consolidate Headers
 
