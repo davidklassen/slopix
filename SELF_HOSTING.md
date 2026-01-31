@@ -3,6 +3,8 @@
 This document describes the path toward a self-hosted slopix system where the OS
 can compile itself from within itself.
 
+For build system design and implementation details, see [BUILD.md](BUILD.md).
+
 ## Vision
 
 Boot slopix, modify source code on disk, recompile the kernel and userspace
@@ -18,13 +20,12 @@ the system.
 - `/bin/cc` - C compiler (chibicc port)
 - `/bin/as` - AArch64 assembler
 - `/bin/ld` - ELF linker
-- `/bin/buildcc` - Bootstrap helper that recompiles cc using cc
+- `/bin/ar` - Archive tool
+- `/bin/build` - Generic build tool (see BUILD.md)
 - `/lib/libc.a` - C standard library
-- `/src/cc/` - Complete compiler source code
-- `/src/libc/` - Complete libc source code
-- `/src/*.c` - Utility source files
+- `/src/` - Complete source tree (cmd/, libc/, lib/)
 
-Running `/bin/buildcc` inside slopix compiles a new C compiler entirely within
+Running `/bin/build` in `/src/cmd/cc` recompiles the C compiler entirely within
 the system. This proves the toolchain works end-to-end.
 
 ### What Requires Cross-Compilation
@@ -37,65 +38,41 @@ aarch64-elf-ld   → link with linker script
 aarch64-elf-objcopy → convert ELF to raw binary
 ```
 
-The slopix toolchain cannot currently build the kernel.
+The slopix toolchain cannot currently build the kernel due to missing features
+(see Gaps section below).
 
 ## Architecture
 
-### Build Script Approach
+### Build System
 
 Slopix has no shell scripting. Build automation uses **C programs** that
-fork/exec the toolchain:
+fork/exec the toolchain. See [BUILD.md](BUILD.md) for the complete design.
+
+**Key concepts:**
+
+- `/bin/build` - Generic build tool that compiles and runs `build.c` files
+- `build.c` - Per-directory build script (C program, not manifest)
+- `.build/` - Intermediate artifacts (object files)
+- `build/` - Output artifacts (binaries, libraries)
+- Hierarchical builds with artifact bubbling
+
+**Example build.c:**
 
 ```c
-// Pattern from buildcc.c
-for (int i = 0; srcs[i]; i++) {
-    snprintf(cmd, sizeof(cmd), "/bin/cc -S -o /tmp/%s.s /src/%s.c",
-             srcs[i], srcs[i]);
-    run(cmd);  // fork + exec + wait
+#include "build.h"
 
-    snprintf(cmd, sizeof(cmd), "/bin/as -o /tmp/%s.o /tmp/%s.s",
-             srcs[i], srcs[i]);
-    run(cmd);
+static const char *srcs[] = {"main", "tokenize", "parse", NULL};
+
+int main() {
+    for (int i = 0; srcs[i]; i++) {
+        if (compile(srcs[i]) != 0) return 1;
+    }
+    return link_objs("build/bin/cc", srcs);
 }
-snprintf(cmd, sizeof(cmd), "/bin/ld -o %s /tmp/*.o /lib/libc.a", output);
-run(cmd);
 ```
 
-This replaces make/shell scripts with explicit C code.
-
-### Proposed Build Programs
-
-| Program | Purpose |
-|---------|---------|
-| `buildcc` | Recompile the C compiler (exists) |
-| `buildas` | Recompile the assembler |
-| `buildld` | Recompile the linker |
-| `buildlibc` | Recompile the C library |
-| `buildcmd` | Recompile userspace utilities |
-| `buildkernel` | Recompile the kernel (requires toolchain work) |
-| `buildall` | Orchestrate full system rebuild |
-
-Each program knows its source files and build flags. No configuration files
-needed - the build logic is the program.
-
-### Alternative: Generic Build Tool
-
-A single `build` program that reads a simple manifest:
-
-```
-# kernel.build
-cc -I. -ffreestanding boot.S -o boot.o
-cc -I. -ffreestanding kernel.c -o kernel.o
-...
-ld -T linker.ld -o kernel.elf *.o
-objcopy -O binary kernel.elf kernel.bin
-```
-
-Pros: More flexible, single tool to maintain
-Cons: Need to implement a parser, another mini-language
-
-**Recommendation:** Start with dedicated build programs (buildcc pattern).
-They're simpler and sufficient for bootstrapping. A generic tool can come later.
+This replaces make/shell scripts with explicit C code, while providing
+a uniform interface (`/bin/build`) across all components.
 
 ## Gaps: Kernel Compilation
 
@@ -261,37 +238,30 @@ using AArch64 calling convention knowledge.
 
 ## Gaps: Build Infrastructure
 
-### No Dependency Tracking
+Most build infrastructure gaps are addressed by [BUILD.md](BUILD.md):
 
-Build programs always rebuild everything. For small codebase this is acceptable.
-Later optimization: stat() files, compare mtimes, skip unchanged.
+- **Temporary files** → Solved: `.build/` directory for intermediates
+- **Output organization** → Solved: `build/` directory mirrors target filesystem
+- **Cleanup** → Solved: `/bin/build clean` removes artifacts
 
-### No Parallel Builds
+**Remaining limitations (deferred):**
 
-Single-threaded fork/exec/wait loop. Could parallelize with multiple children
-but adds complexity. Not critical for bootstrap.
-
-### Temporary File Management
-
-Build programs use `/tmp`. Need to clean up on failure. Consider:
-- Dedicated `/build` directory
-- Cleanup on program start
-- Unique subdirs per build
+- **No dependency tracking** - Always rebuild everything (mtime not available)
+- **No parallel builds** - Sequential execution (acceptable for small codebase)
+- **exec() limitations** - Single command string, no quoting for spaces
 
 ## Implementation Plan
 
-### Phase 1: Userspace Build Programs
+### Build System (see BUILD.md)
 
-Create build programs for components that already work:
+The build system migration is tracked in [BUILD.md](BUILD.md) Phases 1-6.
+Once complete, userspace is fully self-hosting with `/bin/build`.
 
-1. `buildas` - Recompile assembler
-2. `buildld` - Recompile linker
-3. `buildlibc` - Recompile C library
-4. `buildcmd` - Recompile utilities
+### Kernel Self-Hosting
 
-**Validates:** Build program pattern works for all userspace.
+After build system is in place, kernel self-hosting requires toolchain work:
 
-### Phase 2: Assembler Enhancements
+**Phase K1: Assembler Enhancements**
 
 Add missing directives to `cmd/as`:
 
@@ -302,7 +272,7 @@ Add missing directives to `cmd/as`:
 
 **Validates:** Can assemble kernel boot code.
 
-### Phase 3: Compiler Enhancements
+**Phase K2: Compiler Enhancements**
 
 Add inline assembly support to `cmd/cc`:
 
@@ -312,7 +282,7 @@ Add inline assembly support to `cmd/cc`:
 
 **Validates:** Can compile kernel C code.
 
-### Phase 4: Linker Enhancements
+**Phase K3: Linker Enhancements**
 
 Extend `cmd/ld` for kernel linking:
 
@@ -323,7 +293,7 @@ Extend `cmd/ld` for kernel linking:
 
 **Or:** Simpler `-T kernel` mode with hardcoded layout.
 
-### Phase 5: Binary Output
+**Phase K4: Binary Output**
 
 Add objcopy functionality:
 
@@ -332,25 +302,16 @@ Add objcopy functionality:
 
 **Validates:** Can produce bootable kernel.bin.
 
-### Phase 6: Kernel Build Program
+**Phase K5: Kernel Build**
 
-Create `buildkernel`:
+Create `kernel/build.c`:
 
 1. Compile kernel .c files
 2. Assemble kernel .S files
 3. Link with kernel layout
 4. Convert to binary
-5. Install to /boot/kernel.bin
 
-### Phase 7: Integration
-
-Create `buildall`:
-
-1. Build toolchain (cc, as, ld)
-2. Build libc
-3. Build userspace
-4. Build kernel
-5. Report results
+After this phase, `/bin/build` in `/src` builds the entire system.
 
 ## Testing Strategy
 
@@ -422,36 +383,40 @@ UEFI boot instead of raw binary. UEFI can load ELF directly.
 
 2. **Inline asm syntax** - Follow GCC exactly or simplified subset?
 
-3. **Build parallelism** - Worth the complexity for faster builds?
-
-4. **Incremental builds** - Dependency tracking worth implementing?
-
-5. **Error recovery** - What happens if build fails mid-way? Rollback?
+Build infrastructure questions (parallelism, incremental builds, error recovery)
+are addressed in [BUILD.md](BUILD.md).
 
 ## Current File Inventory
 
 ### Source Files on Disk Image
 
+With BUILD.md's `--sync-src`, the full source tree is copied:
+
 ```
-/src/cc/           - Compiler (9 .c files, 1 .h, 13 headers in include/)
-/src/libc/         - C library (4 .c files, 1 .S, 15 headers)
-/src/ld/           - Linker test program
-/src/*.c           - Utility sources (cat, cp, grep, sed, etc.)
+/src/lib/          - Build utilities (build.h)
+/src/libc/         - C library sources and headers
+/src/cmd/          - All command sources
+  /src/cmd/cc/     - Compiler
+  /src/cmd/as/     - Assembler
+  /src/cmd/ld/     - Linker
+  /src/cmd/ar/     - Archive tool
+  /src/cmd/build/  - Build tool
+  /src/cmd/*/      - Utilities (cat, ls, shell, etc.)
+/src/build.c       - Root build script
 ```
 
-### What's Missing from Disk
-
-For full kernel self-hosting, need to add:
+### What's Missing (for kernel self-hosting)
 
 ```
 /src/kernel/       - All kernel sources (.c and .S)
-/src/kernel/tests/ - Kernel test sources
-/src/as/           - Assembler sources
-/src/ld/           - Linker sources (full, not just test)
 ```
+
+Kernel sources can be added to the sync once the toolchain supports
+building the kernel (inline asm, linker scripts, etc.).
 
 ## References
 
+- [BUILD.md](BUILD.md) - Build system design
 - chibicc: https://github.com/rui314/chibicc
 - ARM64 ABI: https://github.com/ARM-software/abi-aa
 - ELF specification: https://refspecs.linuxfoundation.org/elf/elf.pdf
