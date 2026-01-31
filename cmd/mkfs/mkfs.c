@@ -96,6 +96,10 @@ static void rinode(uint32_t inum, struct dinode *ip) {
 
 static uint32_t ialloc(uint16_t type) {
 	uint32_t inum = freeinode++;
+	if (inum >= sb.ninodes) {
+		fprintf(stderr, "mkfs: out of inodes (max %d)\n", sb.ninodes);
+		exit(1);
+	}
 	struct dinode din;
 
 	memset(&din, 0, sizeof(din));
@@ -336,9 +340,21 @@ static void load_buildignore(const char *srcpath) {
 }
 
 static int should_ignore(const char *name) {
+	size_t namelen = strlen(name);
 	for (int i = 0; i < ignore_count; i++) {
-		if (strncmp(name, ignore_patterns[i], strlen(ignore_patterns[i])) == 0) {
-			return 1;
+		const char *pat = ignore_patterns[i];
+		size_t patlen = strlen(pat);
+		if (pat[0] == '*' && patlen > 1) {
+			const char *suffix = pat + 1;
+			size_t suffixlen = patlen - 1;
+			if (namelen >= suffixlen &&
+			    strcmp(name + namelen - suffixlen, suffix) == 0) {
+				return 1;
+			}
+		} else {
+			if (strncmp(name, pat, patlen) == 0) {
+				return 1;
+			}
 		}
 	}
 	return 0;

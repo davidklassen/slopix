@@ -18,10 +18,7 @@ int main(void) {
 	if (build_subdir("ar") != 0) {
 		return 1;
 	}
-	if (build_subdir("buildcc") != 0) {
-		return 1;
-	}
-	if (build_subdir("buildlibc") != 0) {
+	if (build_subdir("build") != 0) {
 		return 1;
 	}
 	if (build_subdir("cat") != 0) {

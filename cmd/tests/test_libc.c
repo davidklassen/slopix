@@ -716,10 +716,75 @@ TEST(isatty_file) {
 	return 0;
 }
 
-TEST(getenv_returns_null) {
-	ASSERT_NULL(getenv("PATH"), "PATH returns NULL");
-	ASSERT_NULL(getenv("HOME"), "HOME returns NULL");
+TEST(getenv_unset) {
+	ASSERT_NULL(getenv("NONEXISTENT_VAR"), "unset var returns NULL");
 	ASSERT_NULL(getenv(""), "empty name returns NULL");
+	ASSERT_NULL(getenv(NULL), "NULL name returns NULL");
+	return 0;
+}
+
+TEST(setenv_basic) {
+	ASSERT_EQ(setenv("TEST_VAR", "hello", 1), 0, "setenv returns 0");
+	char *val = getenv("TEST_VAR");
+	ASSERT_NOT_NULL(val, "getenv finds it");
+	ASSERT_EQ(strcmp(val, "hello"), 0, "value matches");
+	unsetenv("TEST_VAR");
+	return 0;
+}
+
+TEST(setenv_overwrite) {
+	setenv("TEST_VAR", "first", 1);
+	setenv("TEST_VAR", "second", 1);
+	char *val = getenv("TEST_VAR");
+	ASSERT_EQ(strcmp(val, "second"), 0, "overwritten");
+	unsetenv("TEST_VAR");
+	return 0;
+}
+
+TEST(setenv_no_overwrite) {
+	setenv("TEST_VAR", "first", 1);
+	setenv("TEST_VAR", "second", 0);
+	char *val = getenv("TEST_VAR");
+	ASSERT_EQ(strcmp(val, "first"), 0, "not overwritten");
+	unsetenv("TEST_VAR");
+	return 0;
+}
+
+TEST(setenv_invalid) {
+	ASSERT_EQ(setenv("", "value", 1), -1, "empty name fails");
+	ASSERT_EQ(setenv("A=B", "value", 1), -1, "name with = fails");
+	return 0;
+}
+
+TEST(unsetenv_basic) {
+	setenv("TEST_VAR", "value", 1);
+	ASSERT_NOT_NULL(getenv("TEST_VAR"), "set before unset");
+	ASSERT_EQ(unsetenv("TEST_VAR"), 0, "unsetenv returns 0");
+	ASSERT_NULL(getenv("TEST_VAR"), "unset after unsetenv");
+	return 0;
+}
+
+TEST(unsetenv_nonexistent) {
+	ASSERT_EQ(unsetenv("NONEXISTENT_VAR"), 0, "unset nonexistent ok");
+	return 0;
+}
+
+TEST(unsetenv_invalid) {
+	ASSERT_EQ(unsetenv(""), -1, "empty name fails");
+	ASSERT_EQ(unsetenv("A=B"), -1, "name with = fails");
+	return 0;
+}
+
+TEST(setenv_multiple) {
+	setenv("VAR1", "one", 1);
+	setenv("VAR2", "two", 1);
+	setenv("VAR3", "three", 1);
+	ASSERT_EQ(strcmp(getenv("VAR1"), "one"), 0, "var1");
+	ASSERT_EQ(strcmp(getenv("VAR2"), "two"), 0, "var2");
+	ASSERT_EQ(strcmp(getenv("VAR3"), "three"), 0, "var3");
+	unsetenv("VAR1");
+	unsetenv("VAR2");
+	unsetenv("VAR3");
 	return 0;
 }
 
@@ -822,5 +887,13 @@ TEST_SUITE(libc) {
 	RUN_TEST(isprint_not_printable);
 	RUN_TEST(isatty_console);
 	RUN_TEST(isatty_file);
-	RUN_TEST(getenv_returns_null);
+	RUN_TEST(getenv_unset);
+	RUN_TEST(setenv_basic);
+	RUN_TEST(setenv_overwrite);
+	RUN_TEST(setenv_no_overwrite);
+	RUN_TEST(setenv_invalid);
+	RUN_TEST(unsetenv_basic);
+	RUN_TEST(unsetenv_nonexistent);
+	RUN_TEST(unsetenv_invalid);
+	RUN_TEST(setenv_multiple);
 }

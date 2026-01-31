@@ -250,9 +250,83 @@ void _assert_fail(const char *expr, const char *file, int line) {
 	_exit(1);
 }
 
+#define ENV_MAX 64
+static char *environ_storage[ENV_MAX];
+static int environ_count = 0;
+
 char *getenv(const char *name) {
-	(void)name;
+	if (name == NULL || name[0] == '\0') {
+		return NULL;
+	}
+	size_t namelen = strlen(name);
+	for (int i = 0; i < environ_count; i++) {
+		if (environ_storage[i] != NULL &&
+		    strncmp(environ_storage[i], name, namelen) == 0 &&
+		    environ_storage[i][namelen] == '=') {
+			return environ_storage[i] + namelen + 1;
+		}
+	}
 	return NULL;
+}
+
+int setenv(const char *name, const char *value, int overwrite) {
+	if (name == NULL || name[0] == '\0' || strchr(name, '=') != NULL) {
+		return -1;
+	}
+	size_t namelen = strlen(name);
+	size_t vallen = strlen(value);
+
+	for (int i = 0; i < environ_count; i++) {
+		if (environ_storage[i] != NULL &&
+		    strncmp(environ_storage[i], name, namelen) == 0 &&
+		    environ_storage[i][namelen] == '=') {
+			if (!overwrite) {
+				return 0;
+			}
+			free(environ_storage[i]);
+			char *entry = malloc(namelen + 1 + vallen + 1);
+			if (entry == NULL) {
+				return -1;
+			}
+			memcpy(entry, name, namelen);
+			entry[namelen] = '=';
+			memcpy(entry + namelen + 1, value, vallen + 1);
+			environ_storage[i] = entry;
+			return 0;
+		}
+	}
+
+	if (environ_count >= ENV_MAX) {
+		return -1;
+	}
+	char *entry = malloc(namelen + 1 + vallen + 1);
+	if (entry == NULL) {
+		return -1;
+	}
+	memcpy(entry, name, namelen);
+	entry[namelen] = '=';
+	memcpy(entry + namelen + 1, value, vallen + 1);
+	environ_storage[environ_count++] = entry;
+	return 0;
+}
+
+int unsetenv(const char *name) {
+	if (name == NULL || name[0] == '\0' || strchr(name, '=') != NULL) {
+		return -1;
+	}
+	size_t namelen = strlen(name);
+	for (int i = 0; i < environ_count; i++) {
+		if (environ_storage[i] != NULL &&
+		    strncmp(environ_storage[i], name, namelen) == 0 &&
+		    environ_storage[i][namelen] == '=') {
+			free(environ_storage[i]);
+			environ_storage[i] = environ_storage[environ_count - 1];
+			environ_storage[environ_count - 1] = NULL;
+			environ_count--;
+			return 0;
+		}
+	}
+	return 0;
 }
 
 extern int _mkdir_syscall(const char *path);
