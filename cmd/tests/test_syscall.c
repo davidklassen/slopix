@@ -35,7 +35,7 @@ TEST(bad_read_pointer) {
 TEST(stat_file) {
 	struct stat st;
 	ASSERT_EQ(stat("/hello", &st), 0, "stat hello");
-	ASSERT_EQ(st.st_mode, 1, "hello is file");
+	ASSERT(S_ISREG(st.st_mode), "hello is file");
 	return 0;
 }
 
@@ -79,7 +79,7 @@ TEST(rename_file) {
 }
 
 TEST(rename_dir_basic) {
-	ASSERT_EQ(mkdir("/olddir"), 0, "mkdir olddir");
+	ASSERT_EQ(mkdir("/olddir", 0755), 0, "mkdir olddir");
 	int fd = open("/olddir/file", O_CREAT | O_WRONLY);
 	write(fd, "test", 4);
 	close(fd);
@@ -87,7 +87,7 @@ TEST(rename_dir_basic) {
 	struct stat st;
 	ASSERT_EQ(stat("/olddir", &st), -1, "old dir gone");
 	ASSERT_EQ(stat("/newdir", &st), 0, "new dir exists");
-	ASSERT_EQ(st.st_mode, 2, "is directory");
+	ASSERT(S_ISDIR(st.st_mode), "is directory");
 	ASSERT_EQ(stat("/newdir/file", &st), 0, "file inside moved");
 	unlink("/newdir/file");
 	unlink("/newdir");
@@ -95,9 +95,9 @@ TEST(rename_dir_basic) {
 }
 
 TEST(rename_dir_dotdot) {
-	ASSERT_EQ(mkdir("/parent"), 0, "mkdir parent");
-	ASSERT_EQ(mkdir("/parent/child"), 0, "mkdir child");
-	ASSERT_EQ(mkdir("/other"), 0, "mkdir other");
+	ASSERT_EQ(mkdir("/parent", 0755), 0, "mkdir parent");
+	ASSERT_EQ(mkdir("/parent/child", 0755), 0, "mkdir child");
+	ASSERT_EQ(mkdir("/other", 0755), 0, "mkdir other");
 
 	// Move /parent/child to /other/moved
 	ASSERT_EQ(rename("/parent/child", "/other/moved"), 0, "rename across");
@@ -117,8 +117,8 @@ TEST(rename_dir_dotdot) {
 }
 
 TEST(rename_dir_cycle) {
-	ASSERT_EQ(mkdir("/a"), 0, "mkdir a");
-	ASSERT_EQ(mkdir("/a/b"), 0, "mkdir b");
+	ASSERT_EQ(mkdir("/a", 0755), 0, "mkdir a");
+	ASSERT_EQ(mkdir("/a/b", 0755), 0, "mkdir b");
 
 	// Try to move /a into /a/b - should fail (cycle)
 	ASSERT_EQ(rename("/a", "/a/b/a"), -1, "cycle rejected");
@@ -260,29 +260,31 @@ TEST(waitpid_returns_status) {
 	if (child_pid == 0) {
 		exit(42);
 	}
-	int status = waitpid(child_pid, 0);
+	int status;
+	int pid = waitpid(child_pid, &status, 0);
+	ASSERT(pid > 0, "waitpid returns child pid");
 	ASSERT(WIFEXITED(status), "child exited normally");
 	ASSERT_EQ(WEXITSTATUS(status), 42, "waitpid returns exit status");
 	return 0;
 }
 
 TEST(waitpid_nonexistent) {
-	ASSERT_EQ(waitpid(9999, 0), -1, "waitpid nonexistent returns -1");
+	ASSERT_EQ(waitpid(9999, NULL, 0), -1, "waitpid nonexistent returns -1");
 	return 0;
 }
 
 TEST(waitpid_zero_no_children) {
-	ASSERT_EQ(waitpid(0, 0), -1, "waitpid(0) with no children returns -1");
+	ASSERT_EQ(waitpid(0, NULL, 0), -1, "waitpid(0) with no children returns -1");
 	return 0;
 }
 
 TEST(waitpid_any_no_children) {
-	ASSERT_EQ(waitpid(-1, 0), -1, "waitpid(-1) with no children returns -1");
+	ASSERT_EQ(waitpid(-1, NULL, 0), -1, "waitpid(-1) with no children returns -1");
 	return 0;
 }
 
 TEST(waitpid_not_child) {
-	ASSERT_EQ(waitpid(1, 0), -1, "waitpid for init fails");
+	ASSERT_EQ(waitpid(1, NULL, 0), -1, "waitpid for init fails");
 	return 0;
 }
 
@@ -299,12 +301,14 @@ TEST(waitpid_specific_child) {
 	}
 
 	sleep(10);
-	int status = waitpid(child2, 0);
+	int status;
+	int pid = waitpid(child2, &status, 0);
+	ASSERT(pid > 0, "waitpid returned child2 pid");
 	ASSERT(WIFEXITED(status), "child2 exited normally");
 	ASSERT_EQ(WEXITSTATUS(status), 2, "got child2 status");
 
 	kill(child1, SIGKILL);
-	status = waitpid(child1, 0);
+	waitpid(child1, &status, 0);
 	ASSERT(!WIFEXITED(status), "child1 was killed");
 	return 0;
 }

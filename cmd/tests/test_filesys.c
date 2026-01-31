@@ -33,7 +33,7 @@ TEST(fstat_file) {
 	int r = fstat(fd, &st);
 	ASSERT_EQ(r, 0, "fstat succeeds");
 	ASSERT(st.st_size > 0, "file has size > 0");
-	ASSERT_EQ(st.st_mode, 1, "type is T_FILE (1)");
+	ASSERT(S_ISREG(st.st_mode), "type is regular file");
 	close(fd);
 	return 0;
 }
@@ -136,13 +136,13 @@ TEST(create_file) {
 }
 
 TEST(mkdir_basic) {
-	int r = mkdir("/testdir");
+	int r = mkdir("/testdir", 0755);
 	ASSERT_EQ(r, 0, "mkdir succeeds");
 	int fd = open("/testdir", O_RDONLY);
 	ASSERT(fd >= 0, "can open directory");
 	struct stat st;
 	fstat(fd, &st);
-	ASSERT_EQ(st.st_mode, 2, "type is T_DIR");
+	ASSERT(S_ISDIR(st.st_mode), "type is directory");
 	close(fd);
 	unlink("/testdir");
 	return 0;
@@ -165,7 +165,7 @@ TEST(link_unlink) {
 }
 
 TEST(chdir_basic) {
-	mkdir("/chdirtest");
+	mkdir("/chdirtest", 0755);
 	ASSERT_EQ(chdir("/chdirtest"), 0, "chdir succeeds");
 
 	int fd = open("localfile", O_CREAT | O_WRONLY);
@@ -184,8 +184,8 @@ TEST(unlink_nonexistent) {
 }
 
 TEST(mkdir_duplicate) {
-	ASSERT_EQ(mkdir("/dupdir"), 0, "first mkdir succeeds");
-	ASSERT_EQ(mkdir("/dupdir"), -1, "duplicate mkdir fails");
+	ASSERT_EQ(mkdir("/dupdir", 0755), 0, "first mkdir succeeds");
+	ASSERT_EQ(mkdir("/dupdir", 0755), -1, "duplicate mkdir fails");
 	unlink("/dupdir");
 	return 0;
 }

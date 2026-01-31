@@ -65,7 +65,7 @@ TEST(file_stat_from_inode) {
 	struct stat st;
 	int r = filestat(f, &st);
 	ASSERT_EQ(r, 0, "filestat should succeed");
-	ASSERT_EQ(st.st_mode, T_FILE, "stat type should be T_FILE");
+	ASSERT_EQ(st.st_mode, S_IFREG, "stat type should be S_IFREG");
 	ASSERT_EQ(st.st_ino, ip->inum, "stat ino should match");
 
 	fileclose(f);

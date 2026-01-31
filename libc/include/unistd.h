@@ -7,6 +7,7 @@
 
 typedef unsigned long size_t;
 typedef long ssize_t;
+typedef unsigned short mode_t;
 
 #ifdef __chibicc__
 #define __attribute__(x)
@@ -28,7 +29,7 @@ void *sbrk(long n);
 int open(const char *path, int flags, ...);
 int close(int fd);
 int dup(int fd);
-int mkdir(const char *path);
+int mkdir(const char *path, mode_t mode);
 int mknod(const char *path, int major, int minor);
 int link(const char *oldpath, const char *newpath);
 int unlink(const char *path);
@@ -39,7 +40,7 @@ char *getcwd(char *buf, unsigned long size);
 int rename(const char *oldpath, const char *newpath);
 int kill(int pid, int sig);
 int getppid(void);
-int waitpid(int pid, int options);
+int waitpid(int pid, int *wstatus, int options);
 int setpgid(int pid, int pgid);
 int getpgid(int pid);
 int tcsetpgrp(int fd, int pgid);
@@ -59,5 +60,9 @@ int access(const char *path, int mode);
 #define STDERR_FILENO 2
 
 int isatty(int fd);
+
+struct stat;
+int lstat(const char *path, struct stat *st);
+int rmdir(const char *path);
 
 #endif

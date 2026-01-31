@@ -1052,6 +1052,70 @@ static long sys_ftruncate(int fd, long length) {
 	return ret;
 }
 
+struct linux_dirent {
+	unsigned long d_ino;
+	unsigned long d_off;
+	unsigned short d_reclen;
+	char d_name[];
+};
+
+static long sys_getdents(int fd, char *buf, unsigned int count) {
+	if (fd < 0 || fd >= NOFILE) {
+		return -1;
+	}
+	struct file *f = current->ofile[fd];
+	if (f == 0 || f->type != FD_INODE) {
+		return -1;
+	}
+	if (vmm_validate(current->pagetable, (unsigned long)buf, count, 1) < 0) {
+		return -1;
+	}
+
+	fs_ilock(f->ip);
+	if (f->ip->type != T_DIR) {
+		fs_iunlock(f->ip);
+		return -1;
+	}
+
+	unsigned int bpos = 0;
+	struct dirent de;
+	while (f->off < f->ip->size && bpos < count) {
+		if (fs_readi(f->ip, (char *)&de, f->off, sizeof(de)) != sizeof(de)) {
+			break;
+		}
+		f->off += sizeof(de);
+
+		if (de.inum == 0) {
+			continue;
+		}
+
+		int namelen = 0;
+		while (namelen < DIRSIZ && de.name[namelen]) {
+			namelen++;
+		}
+		unsigned short reclen =
+		    (sizeof(unsigned long) * 2 + sizeof(unsigned short) + namelen + 1 + 7) & ~7;
+
+		if (bpos + reclen > count) {
+			f->off -= sizeof(de);
+			break;
+		}
+
+		struct linux_dirent *ld = (struct linux_dirent *)(buf + bpos);
+		ld->d_ino = de.inum;
+		ld->d_off = f->off;
+		ld->d_reclen = reclen;
+		for (int i = 0; i < namelen; i++) {
+			ld->d_name[i] = de.name[i];
+		}
+		ld->d_name[namelen] = '\0';
+		bpos += reclen;
+	}
+
+	fs_iunlock(f->ip);
+	return bpos;
+}
+
 static struct sleeplock rename_lock = SLEEPLOCK_INIT("rename");
 
 static long sys_rename(const char *oldpath, const char *newpath) {
@@ -1321,6 +1385,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_ftruncate:
 		ret = sys_ftruncate((int)tf->regs[0], (long)tf->regs[1]);
+		break;
+	case SYS_getdents:
+		ret = sys_getdents((int)tf->regs[0], (char *)tf->regs[1], (unsigned int)tf->regs[2]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

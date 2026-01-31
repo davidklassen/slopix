@@ -227,7 +227,7 @@ TEST(fs_stati) {
 	fs_ilock(ip);
 	struct stat st;
 	fs_stati(ip, &st);
-	ASSERT_EQ(st.st_mode, T_FILE, "stat type should be T_FILE");
+	ASSERT_EQ(st.st_mode, S_IFREG, "stat type should be S_IFREG");
 	ASSERT_EQ(st.st_ino, ip->inum, "stat ino should match inode");
 	ASSERT_EQ(st.st_size, ip->size, "stat size should match inode");
 	ASSERT(st.st_size > 0, "file should have content");

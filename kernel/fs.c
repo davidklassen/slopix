@@ -520,7 +520,23 @@ int fs_itrunc_to(struct inode *ip, unsigned int len) {
 void fs_stati(struct inode *ip, struct stat *st) {
 	st->st_dev = ip->dev;
 	st->st_ino = ip->inum;
-	st->st_mode = ip->type;
+	switch (ip->type) {
+	case T_FILE:
+		st->st_mode = S_IFREG;
+		break;
+	case T_DIR:
+		st->st_mode = S_IFDIR;
+		break;
+	case T_DEVICE:
+		st->st_mode = S_IFCHR;
+		break;
+	case T_BDEVICE:
+		st->st_mode = S_IFBLK;
+		break;
+	default:
+		st->st_mode = 0;
+		break;
+	}
 	st->st_nlink = ip->nlink;
 	st->st_size = ip->size;
 }

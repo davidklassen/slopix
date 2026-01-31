@@ -5,7 +5,7 @@ AR = $(CROSS)ar
 
 CFLAGS = -Iinclude
 
-OBJ = crt0.o syscall.o stdio.o stdio_file.o string.o ctype.o test.o malloc.o stdlib.o errno.o libgen.o time.o
+OBJ = crt0.o syscall.o stdio.o stdio_file.o string.o ctype.o test.o malloc.o stdlib.o errno.o libgen.o time.o dirent.o
 
 all: libc.a
 

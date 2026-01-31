@@ -12,6 +12,7 @@ extern void test_suite_codegen(void);
 extern void test_suite_malloc(void);
 extern void test_suite_stdio(void);
 extern void test_suite_libgen(void);
+extern void test_suite_dirent(void);
 
 int main(void) {
 	RUN_SUITE(libc);
@@ -26,6 +27,7 @@ int main(void) {
 	RUN_SUITE(malloc);
 	RUN_SUITE(stdio);
 	RUN_SUITE(libgen);
+	RUN_SUITE(dirent);
 	TEST_REPORT();
 	TEST_EXIT();
 	return 0;

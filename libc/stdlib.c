@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define ATEXIT_MAX 32
@@ -252,4 +253,30 @@ void _assert_fail(const char *expr, const char *file, int line) {
 char *getenv(const char *name) {
 	(void)name;
 	return NULL;
+}
+
+extern int _mkdir_syscall(const char *path);
+int mkdir(const char *path, mode_t mode) {
+	(void)mode;
+	return _mkdir_syscall(path);
+}
+
+extern int _waitpid_syscall(int pid, int options);
+int waitpid(int pid, int *wstatus, int options) {
+	int ret = _waitpid_syscall(pid, options);
+	if (ret < 0) {
+		return -1;
+	}
+	if (wstatus) {
+		*wstatus = ret & 0xffff;
+	}
+	return ret >> 16;
+}
+
+int lstat(const char *path, struct stat *st) {
+	return stat(path, st);
+}
+
+int rmdir(const char *path) {
+	return unlink(path);
 }

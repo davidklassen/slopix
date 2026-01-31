@@ -24,6 +24,12 @@
 #define T_DEVICE  3
 #define T_BDEVICE 4
 
+#define S_IFMT	0170000
+#define S_IFREG 0100000
+#define S_IFDIR 0040000
+#define S_IFCHR 0020000
+#define S_IFBLK 0060000
+
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR	 0x002

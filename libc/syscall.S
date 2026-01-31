@@ -1,8 +1,8 @@
 .global write, _exit, read, sleep, getpid, fork, _wait_syscall, exec, poll, poweroff, sbrk
-.global open, close, fstat, dup, mkdir, mknod, link, unlink, chdir, pipe
+.global open, close, fstat, dup, _mkdir_syscall, mknod, link, unlink, chdir, pipe
 .global stat, getcwd, lseek, rename, mmap, munmap
-.global kill, getprocs, getppid, waitpid
-.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate
+.global kill, getprocs, getppid, _waitpid_syscall
+.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate, getdents
 
 write:
 	mov x8, #0
@@ -79,7 +79,7 @@ dup:
 	svc #0
 	ret
 
-mkdir:
+_mkdir_syscall:
 	mov x8, #15
 	svc #0
 	ret
@@ -154,7 +154,7 @@ getppid:
 	svc #0
 	ret
 
-waitpid:
+_waitpid_syscall:
 	mov x8, #30
 	svc #0
 	ret
@@ -191,5 +191,10 @@ tcgetraw:
 
 ftruncate:
 	mov x8, #37
+	svc #0
+	ret
+
+getdents:
+	mov x8, #38
 	svc #0
 	ret

@@ -3,11 +3,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define T_DIR	  2
-#define T_DEVICE  3
-#define T_BDEVICE 4
-#define BSIZE	  1024
-#define FSMAGIC	  0x10203040
+#define BSIZE	1024
+#define FSMAGIC 0x10203040
 
 TEST(null_read_eof) {
 	int fd = open("/dev/null", O_RDONLY);
@@ -33,7 +30,7 @@ TEST(console_exists) {
 	struct stat st;
 	int r = stat("/dev/console", &st);
 	ASSERT_EQ(r, 0, "stat /dev/console");
-	ASSERT_EQ(st.st_mode, T_DEVICE, "console is T_DEVICE");
+	ASSERT(S_ISCHR(st.st_mode), "console is character device");
 	return 0;
 }
 
@@ -65,7 +62,7 @@ TEST(dev_dir_exists) {
 	struct stat st;
 	int r = stat("/dev", &st);
 	ASSERT_EQ(r, 0, "stat /dev");
-	ASSERT_EQ(st.st_mode, T_DIR, "/dev is T_DIR");
+	ASSERT(S_ISDIR(st.st_mode), "/dev is directory");
 	return 0;
 }
 

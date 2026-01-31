@@ -109,9 +109,9 @@ static void update_jobs(void) {
 		if (jobs[i].state == JOB_FREE || jobs[i].state == JOB_DONE) {
 			continue;
 		}
-		int ret = waitpid(jobs[i].pgid, WNOHANG | WUNTRACED);
-		if (ret > 0) {
-			int status = ret & 0xffff;
+		int status;
+		int pid = waitpid(jobs[i].pgid, &status, WNOHANG | WUNTRACED);
+		if (pid > 0) {
 			if (WIFSTOPPED(status)) {
 				jobs[i].state = JOB_STOPPED;
 			} else {
@@ -662,11 +662,11 @@ static int builtin_fg(int argc, char **argv) {
 	}
 
 	tcsetpgrp(0, j->pgid);
-	int ret = waitpid(j->pgid, WUNTRACED);
+	int status;
+	int pid = waitpid(j->pgid, &status, WUNTRACED);
 	tcsetpgrp(0, shell_pgid);
 
-	if (ret > 0) {
-		int status = ret & 0xffff;
+	if (pid > 0) {
 		if (WIFSTOPPED(status)) {
 			j->state = JOB_STOPPED;
 			printf("\n[%d] stopped  %s\n", j->jid, j->cmd);
@@ -782,7 +782,8 @@ int main(void) {
 						printf("[%d] %d\n", jid, child_pid);
 					} else {
 						tcsetpgrp(0, child_pid);
-						int status = waitpid(child_pid, WUNTRACED);
+						int status;
+						waitpid(child_pid, &status, WUNTRACED);
 						if (WIFSTOPPED(status)) {
 							int jid = add_job(child_pid, cmdstr);
 							printf("\n[%d] stopped  %s\n", jid, cmdstr);
