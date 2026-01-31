@@ -121,7 +121,22 @@ static long sys_exec(const char *cmdline) {
 	unsigned long brk = 0;
 	pte_t *new_pt = 0;
 
-	if (argv[0][0] == '/') {
+	// Check for explicit initramfs: prefix
+	if (strncmp(argv[0], "initramfs:", 10) == 0) {
+		struct initramfs_entry entry;
+		if (initramfs_find(argv[0] + 10, &entry) < 0) {
+			return -1;
+		}
+		new_pt = vmm_create();
+		if (!new_pt) {
+			return -1;
+		}
+		if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
+			vmm_free(new_pt);
+			return -1;
+		}
+	} else {
+		// All other paths: look on disk
 		struct inode *ip = fs_namei(argv[0]);
 		if (ip == 0) {
 			return -1;
@@ -142,19 +157,6 @@ static long sys_exec(const char *cmdline) {
 			return -1;
 		}
 		fs_iunlockput(ip);
-	} else {
-		struct initramfs_entry entry;
-		if (initramfs_find(argv[0], &entry) < 0) {
-			return -1;
-		}
-		new_pt = vmm_create();
-		if (!new_pt) {
-			return -1;
-		}
-		if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
-			vmm_free(new_pt);
-			return -1;
-		}
 	}
 
 	paddr_t stack_pa = 0;

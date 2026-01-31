@@ -1,11 +1,16 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+extern int exec(const char *cmdline);
+
+#ifndef ATEXIT_MAX
 #define ATEXIT_MAX 32
+#endif
 static void (*atexit_funcs[ATEXIT_MAX])(void);
 static int atexit_count = 0;
 
@@ -227,8 +232,23 @@ int execvp(const char *file, char *const argv[]) {
 	char cmdline[512];
 	int pos = 0;
 
-	for (int i = 0; argv[i]; i++) {
-		if (i > 0 && pos < 511) {
+	// If file has no '/', search /bin/ (simple PATH behavior)
+	const char *path = file;
+	char pathbuf[256];
+	if (strchr(file, '/') == NULL) {
+		snprintf(pathbuf, sizeof(pathbuf), "/bin/%s", file);
+		path = pathbuf;
+	}
+
+	// Build cmdline with resolved path as first arg
+	const char *p = path;
+	while (*p && pos < 511) {
+		cmdline[pos++] = *p++;
+	}
+
+	// Append remaining args
+	for (int i = 1; argv[i]; i++) {
+		if (pos < 511) {
 			cmdline[pos++] = ' ';
 		}
 		const char *arg = argv[i];

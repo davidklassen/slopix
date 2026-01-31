@@ -83,7 +83,7 @@ kernel/kernel-test.bin:
 	$(MAKE) -C kernel kernel-test.bin
 
 disk.img: .bin/mkfs userspace
-	$(MKFS) $@ -s 8192 -i 512 \
+	$(MKFS) $@ -s 102400 -i 1024 \
 		:dir:/dev \
 		:dir:/bin \
 		:dir:/lib \

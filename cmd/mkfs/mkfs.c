@@ -113,15 +113,21 @@ static uint32_t ialloc(uint16_t type) {
 
 static void balloc(uint32_t used) {
 	unsigned char buf[BSIZE];
+	uint32_t bpb = BSIZE * 8;
 
 	printf("balloc: marking %d blocks as used\n", used);
-	assert(used < BSIZE * 8);
 
-	memset(buf, 0, BSIZE);
-	for (uint32_t i = 0; i < used; i++) {
-		buf[i / 8] |= (1 << (i % 8));
+	for (uint32_t b = 0; b < used; b += bpb) {
+		memset(buf, 0, BSIZE);
+		uint32_t end = b + bpb;
+		if (end > used) {
+			end = used;
+		}
+		for (uint32_t i = b; i < end; i++) {
+			buf[(i - b) / 8] |= (1 << ((i - b) % 8));
+		}
+		wsect(sb.bmapstart + b / bpb, buf);
 	}
-	wsect(sb.bmapstart, buf);
 }
 
 static void iappend(uint32_t inum, void *data, uint32_t n) {
@@ -550,7 +556,7 @@ int main(int argc, char **argv) {
 	}
 
 	uint32_t ninodeblocks = (ninodes + IPB - 1) / IPB;
-	uint32_t nbitmap = 1;
+	uint32_t nbitmap = (size + BSIZE * 8 - 1) / (BSIZE * 8);
 	uint32_t nmeta = 2 + ninodeblocks + nbitmap;
 	uint32_t nblocks = size - nmeta;
 

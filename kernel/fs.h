@@ -61,7 +61,7 @@ struct dirent {
 	char name[DIRSIZ];
 };
 
-#define NINODE 50
+#define NINODE 200
 
 struct inode {
 	unsigned int dev;

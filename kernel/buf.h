@@ -2,7 +2,7 @@
 #define BUF_H
 
 #define BSIZE		  1024
-#define NBUF		  16
+#define NBUF		  64
 #define SECTORS_PER_BLOCK 2
 
 struct buf {

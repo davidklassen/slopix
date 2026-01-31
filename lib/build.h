@@ -397,7 +397,14 @@ static const char *basename_c(const char *path) {
 int compile(const char *src) {
 	const char *cc = get_env_or("CC", "cc");
 	const char *as = get_env_or("AS", "as");
-	const char *include_path = get_env_or("INCLUDE_PATH", "");
+	const char *include_path = getenv("INCLUDE_PATH");
+	if (include_path == NULL || include_path[0] == '\0') {
+		if (file_exists("/src/libc/include")) {
+			include_path = "/src/libc/include";
+		} else {
+			include_path = "";
+		}
+	}
 
 	if (mkdir_p(".build/obj") < 0) {
 		log_error("cannot create .build/obj");
@@ -474,7 +481,14 @@ static const char *make_objpath(const char *base) {
 
 int link_objs(const char *out, const char **objs) {
 	const char *ld = get_env_or("LD", "ld");
-	const char *lib_path = get_env_or("LIB_PATH", "");
+	const char *lib_path = getenv("LIB_PATH");
+	if (lib_path == NULL || lib_path[0] == '\0') {
+		if (file_exists("/lib/libc.a")) {
+			lib_path = "/lib";
+		} else {
+			lib_path = "";
+		}
+	}
 
 	Cmd cmd = {0};
 	cmd_append(&cmd, ld, "-o", out, NULL);

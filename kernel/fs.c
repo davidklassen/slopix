@@ -146,13 +146,14 @@ static unsigned int balloc(unsigned int dev) {
 				bp->data[bi / 8] |= m;
 				bio_write(bp);
 				bio_release(bp);
-				struct buf *zbp = bio_read(dev, b + bi);
+				unsigned int blkno = b + bi;
+				struct buf *zbp = bio_read(dev, blkno);
 				if (zbp) {
 					memset(zbp->data, 0, BSIZE);
 					bio_write(zbp);
 					bio_release(zbp);
 				}
-				return b + bi;
+				return blkno;
 			}
 		}
 		bio_release(bp);
