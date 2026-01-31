@@ -1,6 +1,6 @@
 CROSS = aarch64-elf-
 ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
-AS = $(ROOT)/tools/as/as
+AS ?= $(ROOT)/.build/host/as
 AR = $(CROSS)ar
 
 CFLAGS = -Iinclude

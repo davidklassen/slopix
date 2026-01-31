@@ -685,6 +685,13 @@ TEST(isatty_file) {
 	return 0;
 }
 
+TEST(getenv_returns_null) {
+	ASSERT_NULL(getenv("PATH"), "PATH returns NULL");
+	ASSERT_NULL(getenv("HOME"), "HOME returns NULL");
+	ASSERT_NULL(getenv(""), "empty name returns NULL");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -782,4 +789,5 @@ TEST_SUITE(libc) {
 	RUN_TEST(isprint_not_printable);
 	RUN_TEST(isatty_console);
 	RUN_TEST(isatty_file);
+	RUN_TEST(getenv_returns_null);
 }

@@ -179,7 +179,7 @@ slopix/
 │   └── ...
 ├── kernel/                # Stays separate - uses Makefile + GCC
 │
-├── Makefile               # Host bootstrap and kernel only
+├── Makefile               # Bootstraps build tool and builds kernel
 ├── .buildignore           # Exclusions for /src sync
 │
 ├── .build/                # Intermediate artifacts (gitignored)
@@ -289,45 +289,46 @@ using the same `.buildignore` logic.
 
 #### Bootstrap (Host Only)
 
-The Makefile handles one-time bootstrap using the system C compiler:
+The Makefile bootstraps only the build tool using the system C compiler:
 
 ```
 Host GCC/Clang compiles:
-  cmd/cc/       → .build/host/cc
-  cmd/as/       → .build/host/as
-  cmd/ld/       → .build/host/ld
-  cmd/ar/       → .build/host/ar
   cmd/build/    → .build/host/build
-  cmd/mkfs/     → .build/host/mkfs
-  cmd/mkramfs/  → .build/host/mkramfs
 ```
 
-The toolchain (cc, as, ld, ar) produces AArch64 output.
-mkfs/mkramfs are pure host tools for disk image creation.
-Bootstrap only needs to run once (or when sources change).
+That's it. The build tool then bootstraps everything else.
 
 #### On Host (Cross-Compilation)
 
-After bootstrap:
+After Makefile bootstrap, the build tool handles everything in two stages:
 
 ```
-1. Build userspace
-   CC=.build/host/cc AS=.build/host/as ... .build/host/build
-   → libc/build.c builds, artifacts bubble up
-   → cmd/build.c builds all commands, artifacts bubble up
-   → final build/ contains everything
+1. Bootstrap host tools (using system compiler)
+   CC=gcc LD=gcc AR=ar LIB_PATH= .build/host/build
+   → builds .build/host/cc, .build/host/as, .build/host/ld, etc.
+   → uses system libc (LIB_PATH empty skips libc.a)
 
-2. Create disk image (Makefile)
-   mkfs disk.img --sync-src . ...
+2. Build userspace (using host cross-tools)
+   CC=.build/host/cc AS=.build/host/as LD=.build/host/ld \
+   LIB_PATH=build/lib .build/host/build
+   → libc/build.c builds libc.a
+   → cmd/build.c builds all commands (aarch64 binaries)
+   → final build/ contains everything for disk image
+
+3. Create disk image (Makefile)
+   .build/host/mkfs disk.img --sync-src . ...
    → copies build/bin/* to /bin/
    → copies build/lib/* to /lib/
    → syncs source to /src/
-   (mkfs/mkramfs are NOT copied - they create the image)
 
-3. Build kernel (Makefile)
+4. Build kernel (Makefile)
    aarch64-elf-gcc compiles kernel/ → kernel.bin
-   Kernel cmdline: init=/bin/init (init is a regular program in /bin/)
 ```
+
+The key insight: host tools are native binaries (x86_64/arm64) that run on the
+host but produce aarch64 output. Building them uses the system compiler, not
+the cross-compiler. The same build.c files work for both stages - only the
+environment variables differ.
 
 #### On Slopix (Self-Hosted)
 
@@ -367,7 +368,11 @@ Environment variables use standard Unix inheritance. When you run
 `CC=/custom/cc /bin/build`, the custom CC is visible to all child processes
 including compiled build.c programs (via `getenv()`).
 
-On host, Makefile sets these to `.build/host/*` paths before running build.
+**Host bootstrap**: Use `CC=gcc LD=gcc AR=ar LIB_PATH=` to build host tools.
+The empty `LIB_PATH` tells `link_objs()` to skip libc.a (system libc is used).
+
+**Cross-compilation**: Use `CC=.build/host/cc AS=.build/host/as ...` to build
+aarch64 binaries using the host cross-tools.
 
 Userspace is compiled with `cmd/cc` (the slopix C compiler):
 - On host: `.build/host/cc` runs on macOS/Linux, produces aarch64 code
@@ -424,8 +429,12 @@ int  build_subdir(const char *dir);
 /* Leaf build helpers */
 int  compile(const char *src);       /* cc -S → .build/obj/, as -o → .build/obj/ */
 int  assemble(const char *src);      /* as -o .build/obj/<src>.o <src>.S */
-int  link_objs(const char *out, const char **objs);    /* ld -o out objs... */
+int  link_objs(const char *out, const char **objs);    /* ld -o out objs... [libc.a] */
 int  archive_objs(const char *out, const char **objs); /* ar rcs out objs... */
+
+/* Note: link_objs() appends $LIB_PATH/libc.a only if LIB_PATH is set.
+ * When LIB_PATH is empty (host bootstrap), system libc is used implicitly
+ * via LD=gcc. This allows the same build.c to work for both host and target. */
 
 /* File operations */
 int  mkdir_p(const char *path);
@@ -557,11 +566,13 @@ int main() {
 ## Build Dependencies
 
 ```
-cc, as, ld, ar (bootstrap - need previous generation)
+build (Makefile bootstraps with system compiler)
    ↓
-libc.a
+cc, as, ld, ar, mkfs, mkramfs (build bootstraps with CC=gcc)
    ↓
-build, all other programs (cat, shell, etc.)
+libc.a (build with CC=.build/host/cc)
+   ↓
+all other programs (cat, shell, etc.)
 ```
 
 Kernel is separate (host GCC for now).
@@ -617,20 +628,21 @@ mkfs/mkramfs are regular programs - they get build.c files and are installed
 to `/bin/` like everything else. They're also bootstrapped for host use.
 
 **Verification:**
-- [ ] Host cc/as/ld build from cmd/ sources
-- [ ] Host mkfs/mkramfs build from cmd/
-- [ ] `tools/` directory removed
-- [ ] `make test` passes
+- [x] Host cc/as/ld build from cmd/ sources
+- [x] Host mkfs/mkramfs build from cmd/
+- [x] `tools/` directory removed
+- [x] `make test` passes
 
 ### Phase 4: Build Infrastructure
 
 1. Create `lib/build.h` with nob-style utilities
 2. Create `cmd/build/build.c` - the `/bin/build` tool
-3. Update Makefile to bootstrap `/bin/build` for host
+3. Update Makefile to bootstrap only `.build/host/build` (minimal bootstrap)
 4. Add `--sync-src` option to mkfs
 
 **Verification:**
 - [ ] `.build/host/build` compiles and runs
+- [ ] `CC=gcc .build/host/build` bootstraps host tools
 - [ ] `mkfs --sync-src` works
 
 ### Phase 5: Add build.c Files

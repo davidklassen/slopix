@@ -248,3 +248,8 @@ void _assert_fail(const char *expr, const char *file, int line) {
 	write(2, "\n", 1);
 	_exit(1);
 }
+
+char *getenv(const char *name) {
+	(void)name;
+	return NULL;
+}

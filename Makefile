@@ -1,12 +1,22 @@
 ROOT = $(CURDIR)
 
-MKFS = $(ROOT)/tools/mkfs/mkfs
-MKRAMFS = $(ROOT)/tools/mkramfs/mkramfs
+# Host tools built in .build/host/
+HOSTCC ?= cc
+HOST_CFLAGS = -std=c11 -g -Wall -Wextra -O0
+
+MKFS = $(ROOT)/.build/host/mkfs
+MKRAMFS = $(ROOT)/.build/host/mkramfs
 LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
-CC = $(ROOT)/tools/cc/chibicc
-AS = $(ROOT)/tools/as/as
-LD = $(ROOT)/tools/ld/ld
+CC = $(ROOT)/.build/host/cc
+AS = $(ROOT)/.build/host/as
+LD = $(ROOT)/.build/host/ld
+
+# Environment for cross-compiler
+export CC_INCLUDE_PATH = $(LIBC_INCLUDE)
+export CC_AS = $(AS)
+export CC_LD = $(LD)
+export CC_LIBC = $(LIBC)
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
@@ -20,25 +30,55 @@ PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 
 all: kernel/kernel.bin
 
-$(MKFS) $(MKRAMFS):
-	$(MAKE) -C tools
+# Host CC from cmd/cc/
+CC_SRCS = main.c tokenize.c preprocess.c parse.c type.c codegen.c \
+          unicode.c strings.c hashmap.c
+CC_OBJS = $(addprefix .build/host/cc.d/,$(CC_SRCS:.c=.o))
 
-$(LIBC): tools/cc/chibicc
-	$(MAKE) -C libc CC=$(CC)
+.build/host/cc: $(CC_OBJS) | .build/host
+	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
 
-tools/cc/chibicc:
-	$(MAKE) -C tools/cc
+.build/host/cc.d/%.o: cmd/cc/%.c cmd/cc/chibicc.h | .build/host/cc.d
+	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
 
-$(AS):
-	$(MAKE) -C tools/as
+# Host AS from cmd/as/
+AS_SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
+AS_OBJS = $(addprefix .build/host/as.d/,$(AS_SRCS:.c=.o))
 
-$(LD):
-	$(MAKE) -C tools/ld
+.build/host/as: $(AS_OBJS) | .build/host
+	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
 
-cmd: $(LIBC) tools/cc/chibicc $(AS) $(LD)
+.build/host/as.d/%.o: cmd/as/%.c cmd/as/as.h | .build/host/as.d
+	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
+
+# Host LD from cmd/ld/
+LD_SRCS = main.c elf_read.c symbol.c section.c reloc.c output.c archive.c
+LD_OBJS = $(addprefix .build/host/ld.d/,$(LD_SRCS:.c=.o))
+
+.build/host/ld: $(LD_OBJS) | .build/host
+	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
+
+.build/host/ld.d/%.o: cmd/ld/%.c cmd/ld/ld.h | .build/host/ld.d
+	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
+
+# Host mkfs and mkramfs
+.build/host/mkfs: cmd/mkfs/mkfs.c | .build/host
+	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
+
+.build/host/mkramfs: cmd/mkramfs/mkramfs.c | .build/host
+	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
+
+# Directory creation
+.build/host .build/host/cc.d .build/host/as.d .build/host/ld.d:
+	mkdir -p $@
+
+$(LIBC): .build/host/cc .build/host/as
+	$(MAKE) -C libc CC=$(CC) AS=$(AS)
+
+cmd: $(LIBC) .build/host/cc .build/host/as .build/host/ld
 	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 
-initramfs-test.bin: $(MKRAMFS) cmd
+initramfs-test.bin: .build/host/mkramfs cmd
 	$(MKRAMFS) $@ $(addprefix cmd/,$(PROGS))
 
 kernel/kernel.bin:
@@ -47,7 +87,7 @@ kernel/kernel.bin:
 kernel/kernel-test.bin:
 	$(MAKE) -C kernel kernel-test.bin
 
-disk.img: $(MKFS) cmd
+disk.img: .build/host/mkfs cmd
 	$(MKFS) $@ -s 8192 \
 		:dir:/dev \
 		:dir:/bin \
@@ -180,7 +220,7 @@ disk.img: $(MKFS) cmd
 		libc/include/sys/stat.h:/src/libc/include/sys/stat.h \
 		libc/include/sys/wait.h:/src/libc/include/sys/wait.h
 
-disk-test.img: $(MKFS) cmd
+disk-test.img: .build/host/mkfs cmd
 	$(MKFS) $@ -s 2048 \
 		:dir:/dev \
 		:cdev:/dev/console:1:0 \
@@ -198,7 +238,7 @@ test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
 	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
 clean:
-	$(MAKE) -C tools clean
+	rm -rf .build/
 	$(MAKE) -C libc clean
 	$(MAKE) -C cmd clean
 	$(MAKE) -C kernel clean
@@ -210,5 +250,4 @@ tidy:
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
 	clang-format -i cmd/cc/*.c cmd/cc/*.h
-	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
-	clang-format -i tools/cc/*.c tools/cc/*.h
+	clang-format -i cmd/mkfs/*.c cmd/mkramfs/*.c

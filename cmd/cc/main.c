@@ -51,6 +51,11 @@ static void version(void) {
 	exit(0);
 }
 
+static char *get_env_or_default(const char *name, const char *defval) {
+	char *val = getenv(name);
+	return val ? val : (char *)defval;
+}
+
 static bool take_arg(char *arg) {
 	char *x[] = {
 	    "-o",
@@ -74,7 +79,12 @@ static bool take_arg(char *arg) {
 static void add_default_include_paths(char *argv0) {
 	(void)argv0;
 
-	strarray_push(&include_paths, "/src/libc/include");
+	char *include_path = getenv("CC_INCLUDE_PATH");
+	if (include_path) {
+		strarray_push(&include_paths, include_path);
+	} else {
+		strarray_push(&include_paths, "/src/libc/include");
+	}
 
 	for (int i = 0; i < include_paths.len; i++) {
 		strarray_push(&std_include_paths, include_paths.data[i]);
@@ -605,7 +615,8 @@ static void cc1(void) {
 }
 
 static void assemble(char *input, char *output) {
-	char *cmd[] = {"/bin/as", input, "-o", output, NULL};
+	char *as_path = get_env_or_default("CC_AS", "/bin/as");
+	char *cmd[] = {as_path, input, "-o", output, NULL};
 	run_subprocess(cmd);
 }
 
@@ -615,14 +626,17 @@ bool file_exists(char *path) {
 }
 
 static void run_linker(StringArray *inputs, char *output) {
+	char *ld_path = get_env_or_default("CC_LD", "/bin/ld");
+	char *libc_path = get_env_or_default("CC_LIBC", "/lib/libc.a");
+
 	StringArray args = {};
-	strarray_push(&args, "/bin/ld");
+	strarray_push(&args, ld_path);
 	strarray_push(&args, "-o");
 	strarray_push(&args, output);
 	for (int i = 0; i < inputs->len; i++) {
 		strarray_push(&args, inputs->data[i]);
 	}
-	strarray_push(&args, "/lib/libc.a");
+	strarray_push(&args, libc_path);
 	strarray_push(&args, NULL);
 	run_subprocess(args.data);
 }

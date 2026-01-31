@@ -28,4 +28,6 @@ int mkstemp(char *templ);
 
 int atexit(void (*func)(void));
 
+char *getenv(const char *name);
+
 #endif
