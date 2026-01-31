@@ -865,6 +865,65 @@ TEST(write_stdio_read_raw) {
 	return 0;
 }
 
+TEST(fgets_basic) {
+	FILE *f = fopen("/test_fgets.txt", "w");
+	fprintf(f, "hello\nworld\n");
+	fclose(f);
+
+	f = fopen("/test_fgets.txt", "r");
+	char buf[32];
+
+	char *r = fgets(buf, sizeof(buf), f);
+	ASSERT(r != NULL, "fgets returns buf");
+	ASSERT_EQ(strcmp(buf, "hello\n"), 0, "first line");
+
+	r = fgets(buf, sizeof(buf), f);
+	ASSERT(r != NULL, "fgets returns buf");
+	ASSERT_EQ(strcmp(buf, "world\n"), 0, "second line");
+
+	r = fgets(buf, sizeof(buf), f);
+	ASSERT_EQ(r, NULL, "EOF returns NULL");
+
+	fclose(f);
+	unlink("/test_fgets.txt");
+	return 0;
+}
+
+TEST(fgets_truncate) {
+	FILE *f = fopen("/test_fgets2.txt", "w");
+	fprintf(f, "longline\n");
+	fclose(f);
+
+	f = fopen("/test_fgets2.txt", "r");
+	char buf[5];
+
+	char *r = fgets(buf, sizeof(buf), f);
+	ASSERT(r != NULL, "fgets returns buf");
+	ASSERT_EQ(strcmp(buf, "long"), 0, "truncated to size-1");
+	ASSERT_EQ(buf[4], '\0', "null terminated");
+
+	fclose(f);
+	unlink("/test_fgets2.txt");
+	return 0;
+}
+
+TEST(fgets_no_newline) {
+	FILE *f = fopen("/test_fgets3.txt", "w");
+	fprintf(f, "end");
+	fclose(f);
+
+	f = fopen("/test_fgets3.txt", "r");
+	char buf[32];
+
+	char *r = fgets(buf, sizeof(buf), f);
+	ASSERT(r != NULL, "fgets returns buf");
+	ASSERT_EQ(strcmp(buf, "end"), 0, "no newline");
+
+	fclose(f);
+	unlink("/test_fgets3.txt");
+	return 0;
+}
+
 TEST(getline_basic) {
 	FILE *f = fopen("/test_getline.txt", "w");
 	fprintf(f, "hello\nworld\n");
@@ -993,6 +1052,9 @@ TEST_SUITE(stdio) {
 	RUN_TEST(write_stdio_read_raw);
 	RUN_TEST(large_file_read);
 	RUN_TEST(large_file_read_content);
+	RUN_TEST(fgets_basic);
+	RUN_TEST(fgets_truncate);
+	RUN_TEST(fgets_no_newline);
 	RUN_TEST(getline_basic);
 	RUN_TEST(getline_no_newline);
 	RUN_TEST(getline_long_line);

@@ -21,6 +21,7 @@ char *strdup(const char *s);
 char *strndup(const char *s, size_t n);
 char *strrchr(const char *s, int c);
 char *strtok(char *str, const char *delim);
+char *strtok_r(char *str, const char *delim, char **saveptr);
 int strcasecmp(const char *s1, const char *s2);
 int strncasecmp(const char *s1, const char *s2, size_t n);
 

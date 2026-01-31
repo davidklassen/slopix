@@ -292,7 +292,7 @@ static int build_fallback(const char *prefix) {
 }
 
 int main(int argc, char **argv) {
-	const char *prefix_arg = "build/bin";
+	const char *prefix_arg = ".build/out/bin";
 	const char *dir = NULL;
 	int do_clean = 0;
 

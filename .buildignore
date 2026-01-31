@@ -1,6 +1,7 @@
 build
 .build
 .git
+.bin
 disk.img
 docsearch.db
 .vscode

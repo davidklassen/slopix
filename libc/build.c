@@ -24,7 +24,7 @@ static const char *asm_srcs[] = {
 
 int main(void) {
 	mkdir_p(".build/obj");
-	mkdir_p("build/lib");
+	mkdir_p(".build/out/lib");
 
 	for (int i = 0; c_srcs[i]; i++) {
 		char src[64];
@@ -59,5 +59,5 @@ int main(void) {
 	    NULL,
 	};
 
-	return archive_objs("build/lib/libc.a", all_objs);
+	return archive_objs(".build/out/lib/libc.a", all_objs);
 }

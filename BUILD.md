@@ -664,10 +664,10 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 4. Create root `build.c`
 
 **Verification:**
-- [ ] `.bin/build --prefix=.bin cmd/cc` produces `.bin/cc`
-- [ ] Cross-compile: `CC=.bin/cc ... .bin/build libc` produces `build/lib/libc.a`
-- [ ] Cross-compile: `CC=.bin/cc ... .bin/build cmd` builds all commands
-- [ ] Cross-compile: `CC=.bin/cc ... .bin/build` at root builds everything
+- [x] `.bin/build --prefix=.bin cmd/cc` produces `.bin/cc`
+- [x] Cross-compile: `CC=.bin/cc ... .bin/build libc` produces `build/lib/libc.a`
+- [x] Cross-compile: `CC=.bin/cc ... .bin/build cmd` builds all commands
+- [x] Cross-compile: `CC=.bin/cc ... .bin/build` at root builds everything
 
 ### Phase 6: Migrate and Verify
 

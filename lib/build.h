@@ -329,7 +329,7 @@ static const char *get_env_or(const char *name, const char *def) {
 }
 
 const char *get_bin_prefix(void) {
-	return get_env_or("BUILD_PREFIX", "build/bin");
+	return get_env_or("BUILD_PREFIX", ".build/out/bin");
 }
 
 int build_subdir(const char *dir) {
@@ -356,12 +356,11 @@ int build_subdir(const char *dir) {
 		return ret;
 	}
 
-	if (file_exists("build")) {
-		char srcbuild[512], dstbuild[512];
-		snprintf(srcbuild, sizeof(srcbuild), "%s/%s/build", origdir, dir);
-		snprintf(dstbuild, sizeof(dstbuild), "%s/build", origdir);
+	if (file_exists(".build/out")) {
+		char dstout[512];
+		snprintf(dstout, sizeof(dstout), "%s/.build/out", origdir);
 
-		DIR *d = opendir("build");
+		DIR *d = opendir(".build/out");
 		if (d != NULL) {
 			struct dirent *ent;
 			while ((ent = readdir(d)) != NULL) {
@@ -369,9 +368,9 @@ int build_subdir(const char *dir) {
 					continue;
 				}
 				char src[512], dst[512];
-				snprintf(src, sizeof(src), "build/%s", ent->d_name);
-				snprintf(dst, sizeof(dst), "%s/%s", dstbuild, ent->d_name);
-				mkdir_p(dstbuild);
+				snprintf(src, sizeof(src), ".build/out/%s", ent->d_name);
+				snprintf(dst, sizeof(dst), "%s/%s", dstout, ent->d_name);
+				mkdir_p(dstout);
 				if (move_recursive(src, dst) < 0) {
 					log_error("failed to move %s to %s", src, dst);
 				}
@@ -381,7 +380,6 @@ int build_subdir(const char *dir) {
 	}
 
 	remove_recursive(".build");
-	remove_recursive("build");
 
 	if (chdir(origdir) < 0) {
 		log_error("chdir back to '%s' failed", origdir);

@@ -177,6 +177,37 @@ int fgetc(FILE *stream) {
 	return (unsigned char)stream->rbuf[stream->rbuf_pos++];
 }
 
+char *fgets(char *s, int size, FILE *stream) {
+	if (!s || size <= 0 || !stream) {
+		return NULL;
+	}
+	int i = 0;
+	int c;
+	while (i < size - 1 && (c = fgetc(stream)) != EOF) {
+		s[i++] = (char)c;
+		if (c == '\n') {
+			break;
+		}
+	}
+	if (i == 0) {
+		return NULL;
+	}
+	s[i] = '\0';
+	return s;
+}
+
+int fputs(const char *s, FILE *stream) {
+	if (!s || !stream) {
+		return EOF;
+	}
+	while (*s) {
+		if (fputc(*s++, stream) == EOF) {
+			return EOF;
+		}
+	}
+	return 0;
+}
+
 size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream) {
 	if (!stream || !ptr || size == 0 || count == 0) {
 		return 0;

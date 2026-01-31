@@ -438,6 +438,37 @@ TEST(strtok_leading_delim) {
 	return 0;
 }
 
+TEST(strtok_r_basic) {
+	char buf[] = "a,b,c";
+	char *saveptr;
+	char *tok = strtok_r(buf, ",", &saveptr);
+	ASSERT_EQ(strcmp(tok, "a"), 0, "first token");
+	tok = strtok_r(0, ",", &saveptr);
+	ASSERT_EQ(strcmp(tok, "b"), 0, "second token");
+	tok = strtok_r(0, ",", &saveptr);
+	ASSERT_EQ(strcmp(tok, "c"), 0, "third token");
+	tok = strtok_r(0, ",", &saveptr);
+	ASSERT_EQ(tok, 0, "null after end");
+	return 0;
+}
+
+TEST(strtok_r_nested) {
+	char buf1[] = "a:b c:d";
+	char buf2[16];
+	char *saveptr1, *saveptr2;
+	char *outer = strtok_r(buf1, " ", &saveptr1);
+	strcpy(buf2, outer);
+	char *inner = strtok_r(buf2, ":", &saveptr2);
+	ASSERT_EQ(strcmp(inner, "a"), 0, "first inner");
+	inner = strtok_r(0, ":", &saveptr2);
+	ASSERT_EQ(strcmp(inner, "b"), 0, "second inner");
+	outer = strtok_r(0, " ", &saveptr1);
+	strcpy(buf2, outer);
+	inner = strtok_r(buf2, ":", &saveptr2);
+	ASSERT_EQ(strcmp(inner, "c"), 0, "third inner");
+	return 0;
+}
+
 TEST(strcasecmp_equal) {
 	ASSERT_EQ(strcasecmp("hello", "hello"), 0, "equal lowercase");
 	ASSERT_EQ(strcasecmp("HELLO", "hello"), 0, "upper vs lower");
@@ -756,6 +787,8 @@ TEST_SUITE(libc) {
 	RUN_TEST(strtok_basic);
 	RUN_TEST(strtok_multiple_delims);
 	RUN_TEST(strtok_leading_delim);
+	RUN_TEST(strtok_r_basic);
+	RUN_TEST(strtok_r_nested);
 	RUN_TEST(strcasecmp_equal);
 	RUN_TEST(strcasecmp_less);
 	RUN_TEST(strcasecmp_greater);

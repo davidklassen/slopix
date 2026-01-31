@@ -7,7 +7,7 @@ HOST_CFLAGS = -std=c11 -g -Wall -Wextra -Werror -O0
 BUILD = $(ROOT)/.bin/build
 MKFS = $(ROOT)/.bin/mkfs
 MKRAMFS = $(ROOT)/.bin/mkramfs
-LIBC = $(ROOT)/libc/libc.a
+LIBC = $(ROOT)/.build/out/lib/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
 CC = $(ROOT)/.bin/cc
 AS = $(ROOT)/.bin/as
@@ -27,7 +27,7 @@ PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf \
 	touch.elf wc.elf head.elf grep.elf ps.elf kill.elf sleep.elf tests.elf
 
-.PHONY: all clean run test tidy cmd
+.PHONY: all clean run test tidy cmd userspace
 
 all: kernel/kernel.bin
 
@@ -59,14 +59,26 @@ all: kernel/kernel.bin
 .bin:
 	mkdir -p $@
 
-$(LIBC): .bin/cc .bin/as
-	$(MAKE) -C libc CC=$(CC) AS=$(AS)
+# Step 3: Build userspace (cross-compile libc + all commands)
+# Uses root build.c which handles artifact bubbling to .build/out/
+userspace: .bin/cc .bin/as .bin/ld .bin/ar
+	BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(ROOT)/.bin/ar \
+	INCLUDE_PATH=$(LIBC_INCLUDE) LIB_PATH=$(ROOT)/.build/out/lib \
+	BUILD_INCLUDE=$(ROOT)/lib \
+	$(BUILD)
 
-cmd: $(LIBC) .bin/cc .bin/as .bin/ld
-	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
+# Aliases for backwards compatibility
+$(LIBC): userspace
+cmd: userspace
 
 initramfs-test.bin: .bin/mkramfs cmd
-	$(MKRAMFS) $@ $(addprefix cmd/,$(PROGS))
+	$(MKRAMFS) $@ \
+		.build/out/bin/init .build/out/bin/shell .build/out/bin/cursor_blink \
+		.build/out/bin/echo .build/out/bin/ticker .build/out/bin/shutdown \
+		.build/out/bin/true .build/out/bin/false .build/out/bin/cat .build/out/bin/ls \
+		.build/out/bin/mkdir .build/out/bin/rm .build/out/bin/cp .build/out/bin/mv \
+		.build/out/bin/touch .build/out/bin/wc .build/out/bin/head .build/out/bin/grep \
+		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
 
 kernel/kernel.bin:
 	$(MAKE) -C kernel kernel.bin
@@ -108,37 +120,37 @@ disk.img: .bin/mkfs cmd
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
-		cmd/init.elf:/init \
-		cmd/shell.elf:/bin/shell \
-		cmd/echo.elf:/bin/echo \
-		cmd/shutdown.elf:/bin/shutdown \
-		cmd/true.elf:/bin/true \
-		cmd/false.elf:/bin/false \
-		cmd/ticker.elf:/bin/ticker \
-		cmd/cursor_blink.elf:/bin/cursor_blink \
-		cmd/cat.elf:/bin/cat \
-		cmd/ls.elf:/bin/ls \
-		cmd/mkdir.elf:/bin/mkdir \
-		cmd/rm.elf:/bin/rm \
-		cmd/cp.elf:/bin/cp \
-		cmd/mv.elf:/bin/mv \
-		cmd/cmp.elf:/bin/cmp \
-		cmd/touch.elf:/bin/touch \
-		cmd/wc.elf:/bin/wc \
-		cmd/head.elf:/bin/head \
-		cmd/grep.elf:/bin/grep \
-		cmd/sed.elf:/bin/sed \
-		cmd/ps.elf:/bin/ps \
-		cmd/kill.elf:/bin/kill \
-		cmd/sleep.elf:/bin/sleep \
-		cmd/as.elf:/bin/as \
-		cmd/ld.elf:/bin/ld \
-		cmd/cc.elf:/bin/cc \
-		cmd/ar.elf:/bin/ar \
-		cmd/buildcc.elf:/bin/buildcc \
-		cmd/buildlibc.elf:/bin/buildlibc \
-		cmd/ed.elf:/bin/ed \
-		libc/libc.a:/lib/libc.a \
+		.build/out/bin/init:/init \
+		.build/out/bin/shell:/bin/shell \
+		.build/out/bin/echo:/bin/echo \
+		.build/out/bin/shutdown:/bin/shutdown \
+		.build/out/bin/true:/bin/true \
+		.build/out/bin/false:/bin/false \
+		.build/out/bin/ticker:/bin/ticker \
+		.build/out/bin/cursor_blink:/bin/cursor_blink \
+		.build/out/bin/cat:/bin/cat \
+		.build/out/bin/ls:/bin/ls \
+		.build/out/bin/mkdir:/bin/mkdir \
+		.build/out/bin/rm:/bin/rm \
+		.build/out/bin/cp:/bin/cp \
+		.build/out/bin/mv:/bin/mv \
+		.build/out/bin/cmp:/bin/cmp \
+		.build/out/bin/touch:/bin/touch \
+		.build/out/bin/wc:/bin/wc \
+		.build/out/bin/head:/bin/head \
+		.build/out/bin/grep:/bin/grep \
+		.build/out/bin/sed:/bin/sed \
+		.build/out/bin/ps:/bin/ps \
+		.build/out/bin/kill:/bin/kill \
+		.build/out/bin/sleep:/bin/sleep \
+		.build/out/bin/as:/bin/as \
+		.build/out/bin/ld:/bin/ld \
+		.build/out/bin/cc:/bin/cc \
+		.build/out/bin/ar:/bin/ar \
+		.build/out/bin/buildcc:/bin/buildcc \
+		.build/out/bin/buildlibc:/bin/buildlibc \
+		.build/out/bin/ed:/bin/ed \
+		.build/out/lib/libc.a:/lib/libc.a \
 		cmd/cat/cat.c:/src/cmd/cat/cat.c \
 		cmd/cp/cp.c:/src/cmd/cp/cp.c \
 		cmd/echo/echo.c:/src/cmd/echo/echo.c \
@@ -215,8 +227,8 @@ disk-test.img: .bin/mkfs cmd
 		:bdev:/dev/disk:1:0 \
 		testdata/hello.txt:/hello \
 		testdata/large.txt:/large \
-		cmd/true.elf:/true \
-		cmd/false.elf:/false
+		.build/out/bin/true:/true \
+		.build/out/bin/false:/false
 
 run: clean disk.img kernel/kernel.bin
 	$(QEMU_DISK) -kernel kernel/kernel.bin -append "init=/init"
@@ -225,10 +237,7 @@ test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
 	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
 clean:
-	rm -rf .bin/ .build/ build/
-	rm -rf cmd/*/.build libc/.build
-	$(MAKE) -C libc clean
-	$(MAKE) -C cmd clean
+	rm -rf .bin/ .build/
 	$(MAKE) -C kernel clean
 	rm -f disk.img disk-test.img initramfs-test.bin
 
@@ -239,4 +248,3 @@ tidy:
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
 	clang-format -i cmd/cc/*.c cmd/cc/*.h
-	clang-format -i cmd/mkfs/*.c cmd/mkramfs/*.c cmd/build/*.c

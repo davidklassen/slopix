@@ -21,7 +21,7 @@ static const char *srcs[] = {
 
 int main(void) {
 	mkdir_p(".build/obj");
-	mkdir_p("build/bin");
+	mkdir_p(".build/out/bin");
 
 	for (int i = 0; srcs[i]; i++) {
 		char src[64];
@@ -31,5 +31,5 @@ int main(void) {
 		}
 	}
 
-	return link_objs("build/bin/tests", srcs);
+	return link_objs(".build/out/bin/tests", srcs);
 }

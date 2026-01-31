@@ -210,39 +210,41 @@ char *strndup(const char *s, size_t n) {
 	return dup;
 }
 
-static char *strtok_state;
-
-char *strtok(char *str, const char *delim) {
-	if (str) {
-		strtok_state = str;
-	}
-	if (!strtok_state) {
+char *strtok_r(char *str, const char *delim, char **saveptr) {
+	char *s = str ? str : *saveptr;
+	if (!s) {
 		return 0;
 	}
 
-	while (*strtok_state && strchr(delim, *strtok_state)) {
-		strtok_state++;
+	while (*s && strchr(delim, *s)) {
+		s++;
 	}
 
-	if (*strtok_state == '\0') {
-		strtok_state = 0;
+	if (*s == '\0') {
+		*saveptr = 0;
 		return 0;
 	}
 
-	char *token_start = strtok_state;
+	char *token_start = s;
 
-	while (*strtok_state && !strchr(delim, *strtok_state)) {
-		strtok_state++;
+	while (*s && !strchr(delim, *s)) {
+		s++;
 	}
 
-	if (*strtok_state) {
-		*strtok_state = '\0';
-		strtok_state++;
+	if (*s) {
+		*s = '\0';
+		*saveptr = s + 1;
 	} else {
-		strtok_state = 0;
+		*saveptr = 0;
 	}
 
 	return token_start;
+}
+
+static char *strtok_state;
+
+char *strtok(char *str, const char *delim) {
+	return strtok_r(str, delim, &strtok_state);
 }
 
 int strcasecmp(const char *s1, const char *s2) {
