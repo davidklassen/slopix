@@ -6,10 +6,20 @@ Bare-metal AArch64 kernel for QEMU virt — 100% written by AI.
 
 An experiment in vibe-coding an operating system from scratch. Every line of code was written by [Claude Code](https://claude.ai/claude-code) — no human-written code, just prompts and direction.
 
-## Prerequisites
+## Development Environment Setup
 
-- `aarch64-elf-gcc` toolchain
-- `qemu-system-aarch64`
+### macOS
+
+```bash
+brew install aarch64-elf-gcc qemu
+```
+
+### Ubuntu
+
+```bash
+sudo apt update
+sudo apt install gcc-aarch64-linux-gnu qemu-system-arm
+```
 
 ## Run
 
