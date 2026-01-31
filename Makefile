@@ -1,16 +1,17 @@
 ROOT = $(CURDIR)
 
-# Host tools built in .build/host/
+# Host tools built in .bin/
 HOSTCC ?= cc
 HOST_CFLAGS = -std=c11 -g -Wall -Wextra -Werror -O0
 
-MKFS = $(ROOT)/.build/host/mkfs
-MKRAMFS = $(ROOT)/.build/host/mkramfs
+BUILD = $(ROOT)/.bin/build
+MKFS = $(ROOT)/.bin/mkfs
+MKRAMFS = $(ROOT)/.bin/mkramfs
 LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
-CC = $(ROOT)/.build/host/cc
-AS = $(ROOT)/.build/host/as
-LD = $(ROOT)/.build/host/ld
+CC = $(ROOT)/.bin/cc
+AS = $(ROOT)/.bin/as
+LD = $(ROOT)/.bin/ld
 
 # Environment for cross-compiler
 export CC_INCLUDE_PATH = $(LIBC_INCLUDE)
@@ -30,58 +31,41 @@ PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 
 all: kernel/kernel.bin
 
-# Host CC from cmd/cc/
-CC_SRCS = main.c tokenize.c preprocess.c parse.c type.c codegen.c \
-          unicode.c strings.c hashmap.c
-CC_OBJS = $(addprefix .build/host/cc.d/,$(CC_SRCS:.c=.o))
+# Step 1: Bootstrap build tool with system compiler
+.bin/build: cmd/build/main.c lib/build.h | .bin
+	$(HOSTCC) -I lib $(HOST_CFLAGS) -o $@ cmd/build/main.c
 
-.build/host/cc: $(CC_OBJS) | .build/host
-	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
+# Step 2: Build host cross-toolchain using build tool
+# LD=cc is needed because host ld doesn't link libc implicitly
+.bin/cc: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/cc
 
-.build/host/cc.d/%.o: cmd/cc/%.c cmd/cc/chibicc.h | .build/host/cc.d
-	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
+.bin/as: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/as
 
-# Host AS from cmd/as/
-AS_SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
-AS_OBJS = $(addprefix .build/host/as.d/,$(AS_SRCS:.c=.o))
+.bin/ld: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ld
 
-.build/host/as: $(AS_OBJS) | .build/host
-	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
+.bin/ar: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ar
 
-.build/host/as.d/%.o: cmd/as/%.c cmd/as/as.h | .build/host/as.d
-	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
+.bin/mkfs: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkfs
 
-# Host LD from cmd/ld/
-LD_SRCS = main.c elf_read.c symbol.c section.c reloc.c output.c archive.c
-LD_OBJS = $(addprefix .build/host/ld.d/,$(LD_SRCS:.c=.o))
-
-.build/host/ld: $(LD_OBJS) | .build/host
-	$(HOSTCC) $(HOST_CFLAGS) -o $@ $^
-
-.build/host/ld.d/%.o: cmd/ld/%.c cmd/ld/ld.h | .build/host/ld.d
-	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
-
-# Host mkfs, mkramfs, and build
-.build/host/mkfs: cmd/mkfs/mkfs.c | .build/host
-	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
-
-.build/host/build: cmd/build/main.c | .build/host
-	$(HOSTCC) $(HOST_CFLAGS) -o $@ $<
-
-.build/host/mkramfs: cmd/mkramfs/mkramfs.c | .build/host
-	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
+.bin/mkramfs: .bin/build | .bin
+	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkramfs
 
 # Directory creation
-.build/host .build/host/cc.d .build/host/as.d .build/host/ld.d:
+.bin:
 	mkdir -p $@
 
-$(LIBC): .build/host/cc .build/host/as
+$(LIBC): .bin/cc .bin/as
 	$(MAKE) -C libc CC=$(CC) AS=$(AS)
 
-cmd: $(LIBC) .build/host/cc .build/host/as .build/host/ld
+cmd: $(LIBC) .bin/cc .bin/as .bin/ld
 	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 
-initramfs-test.bin: .build/host/mkramfs cmd
+initramfs-test.bin: .bin/mkramfs cmd
 	$(MKRAMFS) $@ $(addprefix cmd/,$(PROGS))
 
 kernel/kernel.bin:
@@ -90,7 +74,7 @@ kernel/kernel.bin:
 kernel/kernel-test.bin:
 	$(MAKE) -C kernel kernel-test.bin
 
-disk.img: .build/host/mkfs cmd
+disk.img: .bin/mkfs cmd
 	$(MKFS) $@ -s 8192 \
 		:dir:/dev \
 		:dir:/bin \
@@ -223,7 +207,7 @@ disk.img: .build/host/mkfs cmd
 		libc/include/sys/stat.h:/src/libc/include/sys/stat.h \
 		libc/include/sys/wait.h:/src/libc/include/sys/wait.h
 
-disk-test.img: .build/host/mkfs cmd
+disk-test.img: .bin/mkfs cmd
 	$(MKFS) $@ -s 2048 \
 		:dir:/dev \
 		:cdev:/dev/console:1:0 \
@@ -241,7 +225,8 @@ test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
 	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
 clean:
-	rm -rf .build/
+	rm -rf .bin/ .build/ build/
+	rm -rf cmd/*/.build libc/.build
 	$(MAKE) -C libc clean
 	$(MAKE) -C cmd clean
 	$(MAKE) -C kernel clean
@@ -254,4 +239,4 @@ tidy:
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
 	clang-format -i cmd/cc/*.c cmd/cc/*.h
-	clang-format -i cmd/mkfs/*.c cmd/mkramfs/*.c
+	clang-format -i cmd/mkfs/*.c cmd/mkramfs/*.c cmd/build/*.c

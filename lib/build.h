@@ -34,6 +34,8 @@ void cmd_append(Cmd *c, ...);
 void cmd_reset(Cmd *c);
 int cmd_run(Cmd *c);
 
+const char *get_bin_prefix(void);
+
 int build_subdir(const char *dir);
 
 int compile(const char *src);
@@ -326,6 +328,10 @@ static const char *get_env_or(const char *name, const char *def) {
 	return val;
 }
 
+const char *get_bin_prefix(void) {
+	return get_env_or("BUILD_PREFIX", "build/bin");
+}
+
 int build_subdir(const char *dir) {
 	char origdir[512];
 	if (getcwd(origdir, sizeof(origdir)) == NULL) {
@@ -458,6 +464,16 @@ int assemble(const char *src) {
 	return ret;
 }
 
+static char objbufs[32][256];
+static int objbuf_idx = 0;
+
+static const char *make_objpath(const char *base) {
+	snprintf(objbufs[objbuf_idx], sizeof(objbufs[0]), ".build/obj/%s.o", base);
+	const char *result = objbufs[objbuf_idx];
+	objbuf_idx = (objbuf_idx + 1) % 32;
+	return result;
+}
+
 int link_objs(const char *out, const char **objs) {
 	const char *ld = get_env_or("LD", "ld");
 	const char *lib_path = get_env_or("LIB_PATH", "");
@@ -466,7 +482,7 @@ int link_objs(const char *out, const char **objs) {
 	cmd_append(&cmd, ld, "-o", out, NULL);
 
 	for (int i = 0; objs[i] != NULL; i++) {
-		cmd_append(&cmd, objs[i], NULL);
+		cmd_append(&cmd, make_objpath(objs[i]), NULL);
 	}
 
 	if (lib_path[0]) {
@@ -488,7 +504,7 @@ int archive_objs(const char *out, const char **objs) {
 	cmd_append(&cmd, ar, "rcs", out, NULL);
 
 	for (int i = 0; objs[i] != NULL; i++) {
-		cmd_append(&cmd, objs[i], NULL);
+		cmd_append(&cmd, make_objpath(objs[i]), NULL);
 	}
 
 	int ret = cmd_run(&cmd);

@@ -108,15 +108,21 @@ cd /src && /bin/build            # finds build.c → builds everything
 
 Each directory is autonomous. `/bin/build` knows nothing about specific projects.
 
-**Clean command**: `/bin/build clean` removes `.build/` and `build/` in current directory.
+**Options:**
+- `/bin/build clean` - removes `.build/` and `build/` in current directory
+- `/bin/build --prefix=<path>` - output binaries to `<path>/` instead of `build/bin/`
+
+The `--prefix` option is used for host bootstrap to output to `.bin/` instead of
+the default `build/bin/`. The prefix is passed to the compiled build.c via the
+`BUILD_PREFIX` environment variable.
 
 **Fallback behavior** (no build.c):
 - Find `*.c` file in current directory
 - If zero or multiple `.c` files found: error (use build.c for complex cases)
 - Compile: `$CC -I$INCLUDE_PATH -S -o .build/<name>.s <name>.c`
 - Assemble: `$AS -o .build/<name>.o .build/<name>.s`
-- Link: `$LD -o build/bin/<dirname> .build/<name>.o $LIB_PATH/libc.a`
-- Output to `build/bin/<dirname>` (e.g., `cmd/cat/` → `build/bin/cat`)
+- Link: `$LD -o $BUILD_PREFIX/<dirname> .build/<name>.o $LIB_PATH/libc.a`
+- Output to `$BUILD_PREFIX/<dirname>` (default: `build/bin/<dirname>`)
 
 **Cache behavior**: The `.build/build` binary is always recompiled from build.c.
 When slopix gains mtime support, this can be optimized to skip recompilation
@@ -179,18 +185,19 @@ slopix/
 │   └── ...
 ├── kernel/                # Stays separate - uses Makefile + GCC
 │
-├── Makefile               # Bootstraps build tool and builds kernel
+├── Makefile               # Builds kernel (userspace via .bin/build)
 ├── .buildignore           # Exclusions for /src sync
 │
+├── .bin/                  # Host-native binaries (gitignored)
+│   ├── build              # Build tool (runs on host)
+│   ├── cc                 # Cross-compiler (host binary → aarch64 output)
+│   ├── as                 # Cross-assembler
+│   ├── ld                 # Cross-linker
+│   ├── ar                 # Archive tool
+│   ├── mkfs               # Disk image creator
+│   └── mkramfs            # Initramfs creator
+│
 ├── .build/                # Intermediate artifacts (gitignored)
-│   ├── host/              # Host binaries (cross-toolchain)
-│   │   ├── cc
-│   │   ├── as
-│   │   ├── ld
-│   │   ├── ar
-│   │   ├── build
-│   │   ├── mkfs
-│   │   └── mkramfs
 │   └── obj/               # Object files
 │
 └── build/                 # Staging root - mirrors / (gitignored)
@@ -287,48 +294,50 @@ using the same `.buildignore` logic.
 
 ### Build Flow
 
-#### Bootstrap (Host Only)
-
-The Makefile bootstraps only the build tool using the system C compiler:
-
-```
-Host GCC/Clang compiles:
-  cmd/build/    → .build/host/build
-```
-
-That's it. The build tool then bootstraps everything else.
-
 #### On Host (Cross-Compilation)
 
-After Makefile bootstrap, the build tool handles everything in two stages:
+Host build has three distinct steps:
 
 ```
-1. Bootstrap host tools (using system compiler)
-   CC=gcc LD=gcc AR=ar LIB_PATH= .build/host/build
-   → builds .build/host/cc, .build/host/as, .build/host/ld, etc.
-   → uses system libc (LIB_PATH empty skips libc.a)
+Step 1: Build the build tool
+   cc -I lib cmd/build/main.c -o .bin/build
+   → uses system compiler and libc
+   → outputs to .bin/ (non-default location)
 
-2. Build userspace (using host cross-tools)
-   CC=.build/host/cc AS=.build/host/as LD=.build/host/ld \
-   LIB_PATH=build/lib .build/host/build
-   → libc/build.c builds libc.a
-   → cmd/build.c builds all commands (aarch64 binaries)
+Step 2: Build cross-toolchain
+   for tool in cc as ld ar; do
+       .bin/build --prefix=.bin cmd/$tool
+   done
+   → uses system compiler and libc (CC=cc, LD=cc by default)
+   → outputs to .bin/ via --prefix
+   → .bin/cc, .bin/as, .bin/ld are native binaries that emit aarch64
+
+Step 3: Build userspace (cross-compile)
+   BUILD=.bin/build \
+   CC=.bin/cc AS=.bin/as LD=.bin/ld AR=.bin/ar \
+   INCLUDE_PATH=libc/include LIB_PATH=build/lib \
+   .bin/build
+   → .bin/build compiles root build.c with system cc → .build/build
+   → .build/build inherits env, uses cross-toolchain
+   → libc/build.c builds libc.a → build/lib/libc.a
+   → cmd/build.c builds all commands → build/bin/*
    → final build/ contains everything for disk image
 
-3. Create disk image (Makefile)
-   .build/host/mkfs disk.img --sync-src . ...
+Step 4: Create disk image
+   .bin/mkfs disk.img --sync-src . ...
    → copies build/bin/* to /bin/
    → copies build/lib/* to /lib/
    → syncs source to /src/
 
-4. Build kernel (Makefile)
+Step 5: Build kernel
    aarch64-elf-gcc compiles kernel/ → kernel.bin
+   → requires GCC (inline asm, linker scripts)
 ```
 
-The key insight: host tools are native binaries (x86_64/arm64) that run on the
-host but produce aarch64 output. Building them uses the system compiler, not
-the cross-compiler. The same build.c files work for both stages - only the
-environment variables differ.
+**Key insight**: build.c files are always compiled with the system compiler
+(native binaries), but they use `$CC`/`$AS`/`$LD` from environment to compile
+the actual source files. This allows the same build.c to work for both host
+bootstrap (Step 2) and cross-compilation (Step 3).
 
 #### On Slopix (Self-Hosted)
 
@@ -360,6 +369,7 @@ matching slopix filesystem layout:
 | `LD` | `/bin/ld` | Linker |
 | `AR` | `/bin/ar` | Archive tool |
 | `BUILD` | `/bin/build` | Build tool (for build_subdir) |
+| `BUILD_PREFIX` | `build/bin` | Output directory for binaries |
 | `INCLUDE_PATH` | `/src/libc/include` | Header search path (for compiled programs) |
 | `BUILD_INCLUDE` | `/src/lib` | Build.h search path (for build.c files) |
 | `LIB_PATH` | `/lib` | Library search path (for libc.a) |
@@ -368,14 +378,15 @@ Environment variables use standard Unix inheritance. When you run
 `CC=/custom/cc /bin/build`, the custom CC is visible to all child processes
 including compiled build.c programs (via `getenv()`).
 
-**Host bootstrap**: Use `CC=gcc LD=gcc AR=ar LIB_PATH=` to build host tools.
-The empty `LIB_PATH` tells `link_objs()` to skip libc.a (system libc is used).
+**Host bootstrap (Step 2)**: Use `.bin/build --prefix=.bin` to build host tools.
+The `--prefix` sets `BUILD_PREFIX=.bin`. Default `CC=cc` and `LD=cc` use system
+compiler. Empty `LIB_PATH` (default on host) means system libc is used implicitly.
 
-**Cross-compilation**: Use `CC=.build/host/cc AS=.build/host/as ...` to build
-aarch64 binaries using the host cross-tools.
+**Cross-compilation (Step 3)**: Use `CC=.bin/cc AS=.bin/as LD=.bin/ld ...` to
+cross-compile aarch64 binaries using the host-built toolchain.
 
 Userspace is compiled with `cmd/cc` (the slopix C compiler):
-- On host: `.build/host/cc` runs on macOS/Linux, produces aarch64 code
+- On host: `.bin/cc` runs on macOS/Linux, produces aarch64 code
 - On slopix: `/bin/cc` runs natively, produces aarch64 code
 - Same compiler, same flags, same output
 
@@ -400,7 +411,7 @@ Location: `lib/build.h` (project root) or `/src/lib/build.h` (on slopix disk)
 **Include path handling:**
 - Build.c files use: `#include "build.h"` (portable, no absolute paths)
 - On slopix: `/bin/build` passes `-I/src/lib` when compiling build.c
-- On host: `.build/host/build` passes `-I$PROJECT_ROOT/lib`
+- On host: `.bin/build` passes `-I$PROJECT_ROOT/lib`
 
 Minimal nob-style header for build programs:
 
@@ -566,13 +577,13 @@ int main() {
 ## Build Dependencies
 
 ```
-build (Makefile bootstraps with system compiler)
+.bin/build (system cc compiles cmd/build/main.c)
    ↓
-cc, as, ld, ar, mkfs, mkramfs (build bootstraps with CC=gcc)
+.bin/{cc,as,ld,ar,mkfs,mkramfs} (.bin/build --prefix=.bin with system cc)
    ↓
-libc.a (build with CC=.build/host/cc)
+build/lib/libc.a (cross-compile with CC=.bin/cc)
    ↓
-all other programs (cat, shell, etc.)
+build/bin/* (cross-compile with CC=.bin/cc, links libc.a)
 ```
 
 Kernel is separate (host GCC for now).
@@ -636,13 +647,13 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 ### Phase 4: Build Infrastructure
 
 1. Create `lib/build.h` with nob-style utilities
-2. Create `cmd/build/build.c` - the `/bin/build` tool
-3. Update Makefile to bootstrap only `.build/host/build` (minimal bootstrap)
-4. Add `--sync-src` option to mkfs
+2. Create `cmd/build/main.c` - the `/bin/build` tool
+3. Add `--sync-src` option to mkfs
+4. Add `--prefix` option to build tool
 
 **Verification:**
-- [x] `.build/host/build` compiles and runs
-- [ ] `CC=gcc .build/host/build` bootstraps host tools
+- [x] `cc -I lib cmd/build/main.c -o .bin/build` works
+- [x] `.bin/build --prefix=.bin cmd/cc` builds host cc
 - [x] `mkfs --sync-src` works
 
 ### Phase 5: Add build.c Files
@@ -653,10 +664,10 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 4. Create root `build.c`
 
 **Verification:**
-- [ ] `cd cmd/cc && .build/host/build` produces cc.elf
-- [ ] `cd libc && .build/host/build` produces libc.a
-- [ ] `cd cmd && .build/host/build` builds all commands
-- [ ] `.build/host/build` at root builds everything
+- [ ] `.bin/build --prefix=.bin cmd/cc` produces `.bin/cc`
+- [ ] Cross-compile: `CC=.bin/cc ... .bin/build libc` produces `build/lib/libc.a`
+- [ ] Cross-compile: `CC=.bin/cc ... .bin/build cmd` builds all commands
+- [ ] Cross-compile: `CC=.bin/cc ... .bin/build` at root builds everything
 
 ### Phase 6: Migrate and Verify
 
