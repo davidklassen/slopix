@@ -1,9 +1,11 @@
 #include <assert.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define ROOTINO 1
@@ -41,7 +43,7 @@ struct dinode {
 	uint32_t addrs[NDIRECT + 2];
 };
 
-struct dirent {
+struct fs_dirent {
 	uint16_t inum;
 	char name[DIRSIZ];
 };
@@ -224,7 +226,7 @@ static uint32_t lookup_dir(const char *path) {
 		}
 
 		int found = 0;
-		struct dirent de;
+		struct fs_dirent de;
 		for (uint32_t off = 0; off < din.size; off += sizeof(de)) {
 			char buf[BSIZE];
 			uint32_t bn = off / BSIZE;
@@ -262,7 +264,7 @@ static uint32_t lookup_dir(const char *path) {
 static uint32_t create_dir(uint32_t parent_inum, const char *name) {
 	uint32_t inum = ialloc(T_DIR);
 
-	struct dirent de;
+	struct fs_dirent de;
 	memset(&de, 0, sizeof(de));
 
 	de.inum = inum;
@@ -297,7 +299,7 @@ static uint32_t create_device(uint32_t parent_inum, const char *name, uint16_t t
 	din.size = 0;
 	winode(inum, &din);
 
-	struct dirent de;
+	struct fs_dirent de;
 	memset(&de, 0, sizeof(de));
 	de.inum = inum;
 	strncpy(de.name, name, DIRSIZ);
@@ -306,10 +308,176 @@ static uint32_t create_device(uint32_t parent_inum, const char *name, uint16_t t
 	return inum;
 }
 
+#define MAX_IGNORE 64
+static char *ignore_patterns[MAX_IGNORE];
+static int ignore_count = 0;
+
+static void load_buildignore(const char *srcpath) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/.buildignore", srcpath);
+
+	FILE *f = fopen(path, "r");
+	if (f == NULL) {
+		return;
+	}
+
+	char line[256];
+	while (fgets(line, sizeof(line), f) != NULL && ignore_count < MAX_IGNORE) {
+		size_t len = strlen(line);
+		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+			line[--len] = '\0';
+		}
+		if (len == 0 || line[0] == '#') {
+			continue;
+		}
+		ignore_patterns[ignore_count++] = strdup(line);
+	}
+	fclose(f);
+}
+
+static int should_ignore(const char *name) {
+	for (int i = 0; i < ignore_count; i++) {
+		if (strncmp(name, ignore_patterns[i], strlen(ignore_patterns[i])) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static uint32_t lookup_in_dir(uint32_t parent, const char *name) {
+	struct dinode din;
+	rinode(parent, &din);
+	if (din.type != T_DIR) {
+		return 0;
+	}
+
+	struct fs_dirent de;
+	for (uint32_t off = 0; off < din.size; off += sizeof(de)) {
+		char buf[BSIZE];
+		uint32_t bn = off / BSIZE;
+		uint32_t boff = off % BSIZE;
+		if (bn < NDIRECT) {
+			if (din.addrs[bn] == 0) {
+				break;
+			}
+			rsect(din.addrs[bn], buf);
+		} else {
+			uint32_t indirect[NINDIRECT];
+			if (din.addrs[NDIRECT] == 0) {
+				break;
+			}
+			rsect(din.addrs[NDIRECT], indirect);
+			if (indirect[bn - NDIRECT] == 0) {
+				break;
+			}
+			rsect(indirect[bn - NDIRECT], buf);
+		}
+		memcpy(&de, buf + boff, sizeof(de));
+		if (de.inum != 0 && strncmp(de.name, name, DIRSIZ) == 0) {
+			return de.inum;
+		}
+	}
+	return 0;
+}
+
+static uint32_t lookup_or_create_path(const char *path) {
+	if (path[0] == '/') {
+		path++;
+	}
+	if (path[0] == '\0') {
+		return ROOTINO;
+	}
+
+	uint32_t parent = ROOTINO;
+	char pathcopy[512];
+	strncpy(pathcopy, path, sizeof(pathcopy) - 1);
+	pathcopy[sizeof(pathcopy) - 1] = '\0';
+
+	char *saveptr;
+	char *component = strtok_r(pathcopy, "/", &saveptr);
+	while (component != NULL) {
+		uint32_t found = lookup_in_dir(parent, component);
+		if (found == 0) {
+			found = create_dir(parent, component);
+			printf("mkfs: created directory '%s' (inode %d)\n", component, found);
+		}
+		parent = found;
+		component = strtok_r(NULL, "/", &saveptr);
+	}
+	return parent;
+}
+
+static void copy_file_to_image(const char *hostpath, uint32_t parent, const char *name) {
+	int fd = open(hostpath, O_RDONLY);
+	if (fd < 0) {
+		perror(hostpath);
+		exit(1);
+	}
+
+	uint32_t inum = ialloc(T_FILE);
+
+	struct fs_dirent de;
+	memset(&de, 0, sizeof(de));
+	de.inum = inum;
+	strncpy(de.name, name, DIRSIZ);
+	iappend(parent, &de, sizeof(de));
+
+	char fbuf[BSIZE];
+	int n;
+	while ((n = read(fd, fbuf, sizeof(fbuf))) > 0) {
+		iappend(inum, fbuf, n);
+	}
+
+	printf("mkfs: synced '%s' (inode %d)\n", hostpath, inum);
+	close(fd);
+}
+
+static void sync_source_dir(const char *hostpath, const char *imgpath) {
+	DIR *d = opendir(hostpath);
+	if (d == NULL) {
+		perror(hostpath);
+		exit(1);
+	}
+
+	uint32_t parent = lookup_or_create_path(imgpath);
+
+	struct dirent *ent;
+	while ((ent = readdir(d)) != NULL) {
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+			continue;
+		}
+		if (should_ignore(ent->d_name)) {
+			continue;
+		}
+
+		char childhostpath[512], childimgpath[512];
+		snprintf(childhostpath, sizeof(childhostpath), "%s/%s", hostpath, ent->d_name);
+		snprintf(childimgpath, sizeof(childimgpath), "%s/%s", imgpath, ent->d_name);
+
+		struct stat st;
+		if (stat(childhostpath, &st) < 0) {
+			perror(childhostpath);
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
+			sync_source_dir(childhostpath, childimgpath);
+		} else if (S_ISREG(st.st_mode)) {
+			if (strlen(ent->d_name) >= DIRSIZ) {
+				fprintf(stderr, "mkfs: name too long '%s'\n", ent->d_name);
+				continue;
+			}
+			copy_file_to_image(childhostpath, parent, ent->d_name);
+		}
+	}
+	closedir(d);
+}
+
 static void usage(const char *prog) {
-	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...]\n", prog);
-	fprintf(stderr, "  -s blocks   Total filesystem size in blocks (default: 1024)\n");
-	fprintf(stderr, "  -i inodes   Number of inodes (default: 200)\n");
+	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...] [--sync-src path]\n", prog);
+	fprintf(stderr, "  -s blocks       Total filesystem size in blocks (default: 1024)\n");
+	fprintf(stderr, "  -i inodes       Number of inodes (default: 200)\n");
+	fprintf(stderr, "  --sync-src path Recursively copy source tree to /src/\n");
 	fprintf(stderr, "\nFile specifications:\n");
 	fprintf(stderr, "  hostfile:/imgpath        Copy host file to image path\n");
 	fprintf(stderr, "  :dir:/path               Create directory\n");
@@ -322,6 +490,7 @@ int main(int argc, char **argv) {
 	uint32_t size = 1024;
 	uint32_t ninodes = 200;
 	char *imgfile = NULL;
+	char *sync_src_path = NULL;
 	int i;
 
 	if (argc < 2) {
@@ -341,6 +510,11 @@ int main(int argc, char **argv) {
 				usage(argv[0]);
 			}
 			ninodes = atoi(argv[++i]);
+		} else if (strcmp(argv[i], "--sync-src") == 0) {
+			if (i + 1 >= argc) {
+				usage(argv[0]);
+			}
+			sync_src_path = argv[++i];
 		} else if (strchr(argv[i], ':') != NULL) {
 			break;
 		} else {
@@ -351,7 +525,7 @@ int main(int argc, char **argv) {
 	int file_start = i;
 
 	assert(BSIZE % sizeof(struct dinode) == 0);
-	assert(BSIZE % sizeof(struct dirent) == 0);
+	assert(BSIZE % sizeof(struct fs_dirent) == 0);
 
 	fsfd = open(imgfile, O_RDWR | O_CREAT | O_TRUNC, 0666);
 	if (fsfd < 0) {
@@ -389,7 +563,7 @@ int main(int argc, char **argv) {
 	uint32_t rootino = ialloc(T_DIR);
 	assert(rootino == ROOTINO);
 
-	struct dirent de;
+	struct fs_dirent de;
 	memset(&de, 0, sizeof(de));
 
 	de.inum = rootino;
@@ -402,6 +576,14 @@ int main(int argc, char **argv) {
 
 	for (int fi = file_start; fi < argc; fi++) {
 		char *arg = argv[fi];
+
+		if (strcmp(arg, "--sync-src") == 0) {
+			if (fi + 1 >= argc) {
+				usage(argv[0]);
+			}
+			sync_src_path = argv[++fi];
+			continue;
+		}
 
 		if (strncmp(arg, ":dir:", 5) == 0) {
 			char *path = arg + 5;
@@ -543,6 +725,11 @@ int main(int argc, char **argv) {
 
 		printf("mkfs: added '%s' as '%s' (inode %d)\n", hostpath, name, inum);
 		close(fd);
+	}
+
+	if (sync_src_path) {
+		load_buildignore(sync_src_path);
+		sync_source_dir(sync_src_path, "/src");
 	}
 
 	struct dinode din;

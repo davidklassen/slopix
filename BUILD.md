@@ -641,9 +641,9 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 4. Add `--sync-src` option to mkfs
 
 **Verification:**
-- [ ] `.build/host/build` compiles and runs
+- [x] `.build/host/build` compiles and runs
 - [ ] `CC=gcc .build/host/build` bootstraps host tools
-- [ ] `mkfs --sync-src` works
+- [x] `mkfs --sync-src` works
 
 ### Phase 5: Add build.c Files
 

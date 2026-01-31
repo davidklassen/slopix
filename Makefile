@@ -61,9 +61,12 @@ LD_OBJS = $(addprefix .build/host/ld.d/,$(LD_SRCS:.c=.o))
 .build/host/ld.d/%.o: cmd/ld/%.c cmd/ld/ld.h | .build/host/ld.d
 	$(HOSTCC) $(HOST_CFLAGS) -c -o $@ $<
 
-# Host mkfs and mkramfs
+# Host mkfs, mkramfs, and build
 .build/host/mkfs: cmd/mkfs/mkfs.c | .build/host
 	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
+
+.build/host/build: cmd/build/main.c | .build/host
+	$(HOSTCC) $(HOST_CFLAGS) -o $@ $<
 
 .build/host/mkramfs: cmd/mkramfs/mkramfs.c | .build/host
 	$(HOSTCC) -Wall -Wextra -Werror -O2 -o $@ $<
@@ -247,6 +250,7 @@ clean:
 tidy:
 	clang-format -i kernel/*.c kernel/*.h kernel/tests/*.c kernel/tests/*.h
 	clang-format -i libc/*.c libc/include/*.h
+	clang-format -i lib/*.h
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
 	clang-format -i cmd/cc/*.c cmd/cc/*.h
