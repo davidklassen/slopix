@@ -17,7 +17,6 @@ brew install aarch64-elf-gcc qemu
 ### Ubuntu
 
 ```bash
-sudo apt update
 sudo apt install gcc-aarch64-linux-gnu qemu-system-arm
 ```
 

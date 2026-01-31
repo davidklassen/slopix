@@ -159,19 +159,19 @@ void hashmap_test(void) {
 	}
 
 	for (int i = 0; i < 1000; i++) {
-		assert((size_t)hashmap_get(map, format("key %d", i)) == i);
+		assert((size_t)hashmap_get(map, format("key %d", i)) == (size_t)i);
 	}
 	for (int i = 1000; i < 1500; i++) {
 		assert(hashmap_get(map, "no such key") == NULL);
 	}
 	for (int i = 1500; i < 1600; i++) {
-		assert((size_t)hashmap_get(map, format("key %d", i)) == i);
+		assert((size_t)hashmap_get(map, format("key %d", i)) == (size_t)i);
 	}
 	for (int i = 1600; i < 2000; i++) {
 		assert(hashmap_get(map, "no such key") == NULL);
 	}
 	for (int i = 2000; i < 5000; i++) {
-		assert((size_t)hashmap_get(map, format("key %d", i)) == i);
+		assert((size_t)hashmap_get(map, format("key %d", i)) == (size_t)i);
 	}
 	for (int i = 5000; i < 6000; i++) {
 		assert(hashmap_get(map, "no such key") == NULL);

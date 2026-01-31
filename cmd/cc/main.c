@@ -68,7 +68,7 @@ static bool take_arg(char *arg) {
 	    "-Xlinker",
 	};
 
-	for (int i = 0; i < sizeof(x) / sizeof(*x); i++) {
+	for (size_t i = 0; i < sizeof(x) / sizeof(*x); i++) {
 		if (!strcmp(arg, x[i])) {
 			return true;
 		}

@@ -2,7 +2,7 @@ ROOT = $(CURDIR)
 
 # Host tools built in .build/host/
 HOSTCC ?= cc
-HOST_CFLAGS = -std=c11 -g -Wall -Wextra -O0
+HOST_CFLAGS = -std=c11 -g -Wall -Wextra -Werror -O0
 
 MKFS = $(ROOT)/.build/host/mkfs
 MKRAMFS = $(ROOT)/.build/host/mkramfs

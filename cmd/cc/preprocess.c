@@ -125,7 +125,7 @@ static Hideset *hideset_union(Hideset *hs1, Hideset *hs2) {
 
 static bool hideset_contains(Hideset *hs, char *s, int len) {
 	for (; hs; hs = hs->next) {
-		if (strlen(hs->name) == len && !strncmp(hs->name, s, len)) {
+		if (strlen(hs->name) == (size_t)len && !strncmp(hs->name, s, len)) {
 			return true;
 		}
 	}
@@ -487,7 +487,7 @@ read_macro_args(Token **rest, Token *tok, MacroParam *params, char *va_args_name
 
 static MacroArg *find_arg(MacroArg *args, Token *tok) {
 	for (MacroArg *ap = args; ap; ap = ap->next) {
-		if (tok->len == strlen(ap->name) && !strncmp(tok->loc, ap->name, tok->len)) {
+		if ((size_t)tok->len == strlen(ap->name) && !strncmp(tok->loc, ap->name, tok->len)) {
 			return ap;
 		}
 	}

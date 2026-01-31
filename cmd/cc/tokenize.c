@@ -176,7 +176,7 @@ static int read_punct(char *p) {
 	    "##",
 	};
 
-	for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+	for (size_t i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
 		if (startswith(p, kw[i])) {
 			return strlen(kw[i]);
 		}
@@ -237,7 +237,7 @@ static bool is_keyword(Token *tok) {
 		    "__attribute__",
 		};
 
-		for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+		for (size_t i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
 			hashmap_put(&map, kw[i], (void *)1);
 		}
 	}

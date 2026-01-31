@@ -1388,7 +1388,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
 	if (ty->kind == TY_ARRAY) {
 		Node *node = new_node(ND_NULL_EXPR, tok);
 		for (int i = 0; i < ty->array_len; i++) {
-			InitDesg desg2 = {desg, i};
+			InitDesg desg2 = {desg, i, NULL, NULL};
 			Node *rhs = create_lvar_init(init->children[i], ty->base, &desg2, tok);
 			node = new_binary(ND_COMMA, node, rhs, tok);
 		}
@@ -1399,7 +1399,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
 		Node *node = new_node(ND_NULL_EXPR, tok);
 
 		for (Member *mem = ty->members; mem; mem = mem->next) {
-			InitDesg desg2 = {desg, 0, mem};
+			InitDesg desg2 = {desg, 0, mem, NULL};
 			Node *rhs = create_lvar_init(init->children[mem->idx], mem->ty, &desg2, tok);
 			node = new_binary(ND_COMMA, node, rhs, tok);
 		}
@@ -1408,7 +1408,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
 
 	if (ty->kind == TY_UNION) {
 		Member *mem = init->mem ? init->mem : ty->members;
-		InitDesg desg2 = {desg, 0, mem};
+		InitDesg desg2 = {desg, 0, mem, NULL};
 		return create_lvar_init(init->children[mem->idx], mem->ty, &desg2, tok);
 	}
 
@@ -1595,7 +1595,7 @@ static bool is_typename(Token *tok) {
 		    "_Atomic",
 		};
 
-		for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+		for (size_t i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
 			hashmap_put(&map, kw[i], (void *)1);
 		}
 	}
@@ -1985,12 +1985,12 @@ static int64_t eval2(Node *node, char ***label) {
 		return eval(node->lhs) != eval(node->rhs);
 	case ND_LT:
 		if (node->lhs->ty->is_unsigned) {
-			return (uint64_t)eval(node->lhs) < eval(node->rhs);
+			return (uint64_t)eval(node->lhs) < (uint64_t)eval(node->rhs);
 		}
 		return eval(node->lhs) < eval(node->rhs);
 	case ND_LE:
 		if (node->lhs->ty->is_unsigned) {
-			return (uint64_t)eval(node->lhs) <= eval(node->rhs);
+			return (uint64_t)eval(node->lhs) <= (uint64_t)eval(node->rhs);
 		}
 		return eval(node->lhs) <= eval(node->rhs);
 	case ND_COND:
@@ -2043,6 +2043,8 @@ static int64_t eval2(Node *node, char ***label) {
 		return 0;
 	case ND_NUM:
 		return node->val;
+	default:
+		break;
 	}
 
 	error_tok(node->tok, "not a compile-time constant");
@@ -2060,6 +2062,8 @@ static int64_t eval_rval(Node *node, char ***label) {
 		return eval2(node->lhs, label);
 	case ND_MEMBER:
 		return eval_rval(node->lhs, label) + node->member->offset;
+	default:
+		break;
 	}
 
 	error_tok(node->tok, "invalid initializer");
@@ -2099,9 +2103,9 @@ static bool is_const_expr(Node *node) {
 		return is_const_expr(node->lhs);
 	case ND_NUM:
 		return true;
+	default:
+		return false;
 	}
-
-	return false;
 }
 
 int64_t const_expr(Token **rest, Token *tok) {
@@ -2141,6 +2145,8 @@ static double eval_double(Node *node) {
 		return eval(node->lhs);
 	case ND_NUM:
 		return node->fval;
+	default:
+		break;
 	}
 
 	error_tok(node->tok, "not a compile-time constant");
