@@ -1,15 +1,9 @@
 #ifndef ASSERT_H
 #define ASSERT_H
 
-#include <stdio.h>
-#include <unistd.h>
+void _assert_fail(const char *expr, const char *file, int line);
 
-#define assert(expr)                                                      \
-	do {                                                              \
-		if (!(expr)) {                                            \
-			fprintf(stderr, "assertion failed: %s\n", #expr); \
-			_exit(1);                                         \
-		}                                                         \
-	} while (0)
+#define assert(expr) \
+	((void)((expr) || (_assert_fail(#expr, __FILE__, __LINE__), 0)))
 
 #endif

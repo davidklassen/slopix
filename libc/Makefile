@@ -3,7 +3,7 @@ ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
 AS = $(ROOT)/tools/as/as
 AR = $(CROSS)ar
 
-CFLAGS = -I$(CC_INCLUDE) -Iinclude
+CFLAGS = -Iinclude
 
 OBJ = crt0.o syscall.o stdio.o stdio_file.o string.o ctype.o test.o malloc.o stdlib.o errno.o libgen.o time.o
 

@@ -2,7 +2,7 @@ ROOT = $(dir $(lastword $(MAKEFILE_LIST)))..
 AS ?= $(ROOT)/tools/as/as
 LD ?= $(ROOT)/tools/ld/ld
 
-CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
+CFLAGS = -I$(LIBC_INCLUDE)
 
 PROGS = init.elf shell.elf cursor_blink.elf echo.elf ticker.elf shutdown.elf \
 	true.elf false.elf cat.elf ls.elf mkdir.elf rm.elf cp.elf mv.elf cmp.elf \
@@ -93,19 +93,19 @@ editor.elf: editor/editor.o
 	$(LD) -o $@ $< $(LIBC)
 
 tests.elf:
-	$(MAKE) -C tests CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C tests CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 	cp tests/tests.elf $@
 
 as.elf:
-	$(MAKE) -C as CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C as CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 	cp as/as.elf $@
 
 ld.elf:
-	$(MAKE) -C ld CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C ld CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 	cp ld/ld.elf $@
 
 cc.elf:
-	$(MAKE) -C cc CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C cc CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 	cp cc/cc.elf $@
 
 %.o: %.c

@@ -600,9 +600,9 @@ the build will fail. Run full build first to ensure dependencies are in place.
 4. Update Makefiles to use single include path
 
 **Verification:**
-- [ ] All headers in `libc/include/`
-- [ ] `cmd/cc/include/` deleted
-- [ ] `make test` passes
+- [x] All headers in `libc/include/`
+- [x] `cmd/cc/include/` deleted
+- [x] `make test` passes
 
 ### Phase 3: Consolidate Sources
 

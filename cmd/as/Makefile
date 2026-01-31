@@ -1,7 +1,7 @@
 # Native assembler: compiled by chibicc, runs on slopix
-# CC, AS, LD, LIBC, LIBC_INCLUDE, CC_INCLUDE must be passed from parent
+# CC, AS, LD, LIBC, LIBC_INCLUDE must be passed from parent
 
-CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
+CFLAGS = -I$(LIBC_INCLUDE)
 
 SRCS = main.c lexer.c parser.c encode.c symtab.c section.c strtab.c reloc.c elf_write.c literal.c
 OBJS = $(SRCS:.c=.o)

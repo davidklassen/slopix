@@ -5,7 +5,6 @@ MKRAMFS = $(ROOT)/tools/mkramfs/mkramfs
 LIBC = $(ROOT)/libc/libc.a
 LIBC_INCLUDE = $(ROOT)/libc/include
 CC = $(ROOT)/tools/cc/chibicc
-CC_INCLUDE = $(ROOT)/cmd/cc/include
 AS = $(ROOT)/tools/as/as
 LD = $(ROOT)/tools/ld/ld
 
@@ -25,7 +24,7 @@ $(MKFS) $(MKRAMFS):
 	$(MAKE) -C tools
 
 $(LIBC): tools/cc/chibicc
-	$(MAKE) -C libc CC=$(CC) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C libc CC=$(CC)
 
 tools/cc/chibicc:
 	$(MAKE) -C tools/cc
@@ -37,7 +36,7 @@ $(LD):
 	$(MAKE) -C tools/ld
 
 cmd: $(LIBC) tools/cc/chibicc $(AS) $(LD)
-	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE) CC_INCLUDE=$(CC_INCLUDE)
+	$(MAKE) -C cmd CC=$(CC) AS=$(AS) LD=$(LD) LIBC=$(LIBC) LIBC_INCLUDE=$(LIBC_INCLUDE)
 
 initramfs-test.bin: $(MKRAMFS) cmd
 	$(MKRAMFS) $@ $(addprefix cmd/,$(PROGS))
@@ -210,6 +209,6 @@ tidy:
 	clang-format -i libc/*.c libc/include/*.h
 	clang-format -i cmd/*/*.c
 	clang-format -i cmd/tests/*.c
-	clang-format -i cmd/cc/*.c cmd/cc/*.h cmd/cc/include/*.h
+	clang-format -i cmd/cc/*.c cmd/cc/*.h
 	clang-format -i tools/mkfs/*.c tools/mkramfs/*.c
 	clang-format -i tools/cc/*.c tools/cc/*.h

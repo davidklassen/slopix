@@ -1,4 +1,4 @@
-CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
+CFLAGS = -I$(LIBC_INCLUDE)
 
 SRCS = main.c tokenize.c preprocess.c parse.c type.c codegen.c \
        unicode.c strings.c hashmap.c

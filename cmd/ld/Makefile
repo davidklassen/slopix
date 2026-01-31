@@ -1,7 +1,7 @@
 # Native linker: compiled by chibicc, runs on slopix
-# CC, AS, LD, LIBC, LIBC_INCLUDE, CC_INCLUDE must be passed from parent
+# CC, AS, LD, LIBC, LIBC_INCLUDE must be passed from parent
 
-CFLAGS = -I$(CC_INCLUDE) -I$(LIBC_INCLUDE)
+CFLAGS = -I$(LIBC_INCLUDE)
 
 SRCS = main.c elf_read.c symbol.c section.c reloc.c output.c archive.c
 OBJS = $(SRCS:.c=.o)
