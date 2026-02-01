@@ -3,7 +3,7 @@
 This document describes the path toward a self-hosted slopix system where the OS
 can compile itself from within itself.
 
-For build system design and implementation details, see [BUILD.md](BUILD.md).
+For build system design, see the Build System section in [DESIGN.md](DESIGN.md).
 
 ## Vision
 
@@ -21,7 +21,7 @@ the system.
 - `/bin/as` - AArch64 assembler
 - `/bin/ld` - ELF linker
 - `/bin/ar` - Archive tool
-- `/bin/build` - Generic build tool (see BUILD.md)
+- `/bin/build` - Generic build tool
 - `/lib/libc.a` - C standard library
 - `/src/` - Complete source tree (cmd/, libc/, lib/)
 
@@ -46,14 +46,15 @@ The slopix toolchain cannot currently build the kernel due to missing features
 ### Build System
 
 Slopix has no shell scripting. Build automation uses **C programs** that
-fork/exec the toolchain. See [BUILD.md](BUILD.md) for the complete design.
+fork/exec the toolchain. See the Build System section in [DESIGN.md](DESIGN.md)
+for the complete design.
 
 **Key concepts:**
 
 - `/bin/build` - Generic build tool that compiles and runs `build.c` files
 - `build.c` - Per-directory build script (C program, not manifest)
-- `.build/` - Intermediate artifacts (object files)
-- `build/` - Output artifacts (binaries, libraries)
+- `.build/obj/` - Intermediate artifacts (object files)
+- `.build/out/` - Output artifacts (binaries, libraries)
 - Hierarchical builds with artifact bubbling
 
 **Example build.c:**
@@ -67,7 +68,7 @@ int main() {
     for (int i = 0; srcs[i]; i++) {
         if (compile(srcs[i]) != 0) return 1;
     }
-    return link_objs("build/bin/cc", srcs);
+    return link_objs(".build/out/bin/cc", srcs);
 }
 ```
 
@@ -238,24 +239,18 @@ using AArch64 calling convention knowledge.
 
 ## Gaps: Build Infrastructure
 
-Most build infrastructure gaps are addressed by [BUILD.md](BUILD.md):
+The build system is complete. See [DESIGN.md](DESIGN.md) for details.
 
-- **Temporary files** → Solved: `.build/` directory for intermediates
-- **Output organization** → Solved: `build/` directory mirrors target filesystem
-- **Cleanup** → Solved: `/bin/build clean` removes artifacts
-
-**Remaining limitations (deferred):**
+**Known limitations (deferred):**
 
 - **No dependency tracking** - Always rebuild everything (mtime not available)
 - **No parallel builds** - Sequential execution (acceptable for small codebase)
-- **exec() limitations** - Single command string, no quoting for spaces
 
 ## Implementation Plan
 
-### Build System (see BUILD.md)
+### Build System ✓
 
-The build system migration is tracked in [BUILD.md](BUILD.md) Phases 1-6.
-Once complete, userspace is fully self-hosting with `/bin/build`.
+The build system is complete. Userspace is fully self-hosting with `/bin/build`.
 
 ### Kernel Self-Hosting
 
@@ -383,14 +378,11 @@ UEFI boot instead of raw binary. UEFI can load ELF directly.
 
 2. **Inline asm syntax** - Follow GCC exactly or simplified subset?
 
-Build infrastructure questions (parallelism, incremental builds, error recovery)
-are addressed in [BUILD.md](BUILD.md).
-
 ## Current File Inventory
 
 ### Source Files on Disk Image
 
-With BUILD.md's `-m` flag, the full source tree is copied:
+The full source tree is synced to the disk image via `mkfs -m`:
 
 ```
 /src/lib/          - Build utilities (build.h)
@@ -402,21 +394,18 @@ With BUILD.md's `-m` flag, the full source tree is copied:
   /src/cmd/ar/     - Archive tool
   /src/cmd/build/  - Build tool
   /src/cmd/*/      - Utilities (cat, ls, shell, etc.)
+/src/kernel/       - Kernel sources (.c and .S)
 /src/build.c       - Root build script
 ```
 
 ### What's Missing (for kernel self-hosting)
 
-```
-/src/kernel/       - All kernel sources (.c and .S)
-```
-
-Kernel sources can be added to the sync once the toolchain supports
-building the kernel (inline asm, linker scripts, etc.).
+Kernel sources are present but cannot be built yet due to toolchain gaps
+(inline asm, linker scripts, etc.). See Gaps section above.
 
 ## References
 
-- [BUILD.md](BUILD.md) - Build system design
+- [DESIGN.md](DESIGN.md) - System design including build system
 - chibicc: https://github.com/rui314/chibicc
 - ARM64 ABI: https://github.com/ARM-software/abi-aa
 - ELF specification: https://refspecs.linuxfoundation.org/elf/elf.pdf

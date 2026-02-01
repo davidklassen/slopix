@@ -679,6 +679,111 @@ For writes: data descriptor has no WRITE flag (device reads from buffer).
    - Free descriptors in chain
    - last_seen_used++
 
+## Build System
+
+nob-style build system: C programs as build scripts, no make/shell for userspace.
+Inspired by [nob.h](https://github.com/tsoding/nob.h).
+
+### Directory Structure
+
+```
+slopix/
+├── lib/build.h            # Shared build utilities (header-only)
+├── build.c                # Root build script
+├── libc/build.c           # Builds libc.a
+├── cmd/build.c            # Proxy: iterates all commands
+├── cmd/cc/build.c         # Leaf: builds multi-file program
+├── cmd/cat/cat.c          # Simple: no build.c, uses fallback
+│
+├── .bin/                  # Host-native tools (gitignored)
+│   ├── build              # Build tool
+│   ├── cc, as, ld, ar     # Cross-toolchain (host binary → aarch64)
+│   └── mkfs, mkramfs      # Disk image tools
+│
+├── .build/                # Build artifacts (gitignored)
+│   ├── out/               # Staging root (mirrors /)
+│   │   ├── bin/           # Compiled binaries
+│   │   ├── lib/libc.a     # C library
+│   │   └── include/       # Installed headers
+│   └── obj/               # Intermediate .s and .o files
+│
+├── Makefile               # Host bootstrap + kernel build
+└── kernel/Makefile        # Kernel build (GCC)
+```
+
+### Host Bootstrap (3 stages)
+
+```
+Stage 1: Build the build tool
+  cc -I lib cmd/build/main.c -o .bin/build
+
+Stage 2: Build cross-toolchain (host binaries that emit aarch64)
+  LD=cc .bin/build --prefix=.bin cmd/cc
+  LD=cc .bin/build --prefix=.bin cmd/as
+  LD=cc .bin/build --prefix=.bin cmd/ld
+  LD=cc .bin/build --prefix=.bin cmd/ar
+
+Stage 3: Cross-compile userspace
+  CC=.bin/cc AS=.bin/as LD=.bin/ld ... .bin/build
+  → libc.a to .build/out/lib/
+  → binaries to .build/out/bin/
+
+Stage 4: Create disk image
+  .bin/mkfs disk.img -m .build/out:/ -m cmd:src/cmd ...
+
+Stage 5: Build kernel (separate, uses GCC)
+  make -C kernel
+```
+
+### Self-Hosted Build (on slopix)
+
+```
+cd /src && /bin/build
+```
+
+Same build.c files, same flow. Environment defaults to slopix paths:
+- `CC=/bin/cc`, `AS=/bin/as`, `LD=/bin/ld`
+- `INCLUDE_PATH=/include`, `LIB_PATH=/lib`
+
+### Artifact Bubbling
+
+Each build outputs to local `.build/out/`. Parent builds collect from children:
+
+```c
+build_subdir("cc");
+// 1. cd cc && /bin/build
+// 2. move cc/.build/out/* → ./.build/out/*
+// 3. rm -r cc/.build/
+```
+
+### Environment Variables
+
+| Variable | Default (slopix) | Description |
+|----------|------------------|-------------|
+| `CC` | `/bin/cc` | C compiler |
+| `AS` | `/bin/as` | Assembler |
+| `LD` | `/bin/ld` | Linker |
+| `AR` | `/bin/ar` | Archive tool |
+| `BUILD` | `/bin/build` | Build tool |
+| `BUILD_PREFIX` | `.build/out/bin` | Binary output directory |
+| `INCLUDE_PATH` | `/include` | Headers for compiled programs |
+| `BUILD_INCLUDE` | `/include` | Headers for build.c files |
+| `LIB_PATH` | `/lib` | Library path (libc.a) |
+
+### Fallback Behavior
+
+Directories without `build.c` use automatic fallback:
+- Find single `.c` file
+- Compile with `$CC`, assemble with `$AS`, link with `$LD`
+- Output to `$BUILD_PREFIX/<dirname>`
+
+### Kernel Build
+
+Kernel stays separate (uses `aarch64-elf-gcc`):
+- Requires inline assembly, linker scripts
+- Built via `kernel/Makefile`, not build.c
+- Future: migrate when slopix toolchain supports these features
+
 ## References
 
 - [ARM Cortex-A Programmer's Guide](docs/ARMv8-A-Programmer-Guide/)
@@ -686,3 +791,4 @@ For writes: data descriptor has no WRITE flag (device reads from buffer).
 - [PL011 UART TRM](docs/DDI0183_pl011_uart/)
 - [Virtio Spec v1.2](https://docs.oasis-open.org/virtio/virtio/v1.2/)
 - [xv6 Book](docs/xv6-book-riscv/)
+- [nob.h](https://github.com/tsoding/nob.h) - Header-only C build system
