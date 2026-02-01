@@ -452,6 +452,17 @@ uint32_t encode_adr(int rd, int64_t offset);
 uint32_t encode_nop(void);
 uint32_t encode_svc(int imm16);
 
+// encode.c - system instructions
+uint32_t encode_isb(void);
+uint32_t encode_dsb_sy(void);
+uint32_t encode_tlbi_vmalle1(void);
+uint32_t encode_eret(void);
+uint32_t encode_wfe(void);
+int encode_sysreg(const char *name);
+uint32_t encode_msr_reg(int sysreg, int rt);
+uint32_t encode_mrs(int sysreg, int rt);
+uint32_t encode_msr_pstate(int op1, int op2, int imm4);
+
 // encode.c - floating-point
 uint32_t encode_fmov_gpr_to_fpr(int sf, int fd, int rn);
 uint32_t encode_fadd(int ftype, int fd, int fn, int fm);

@@ -704,6 +704,79 @@ static void handle_instruction(Token *tok) {
 		return;
 	}
 
+	if (strcasecmp(mnemonic, "isb") == 0) {
+		emit32(encode_isb());
+		return;
+	}
+
+	if (strcasecmp(mnemonic, "dsb") == 0) {
+		if (t->kind == TOK_IDENT && strcasecmp(t->str, "sy") == 0) {
+			emit32(encode_dsb_sy());
+			return;
+		}
+		error_tok(t, "only 'dsb sy' supported");
+	}
+
+	if (strcasecmp(mnemonic, "tlbi") == 0) {
+		if (t->kind == TOK_IDENT && strcasecmp(t->str, "vmalle1") == 0) {
+			emit32(encode_tlbi_vmalle1());
+			return;
+		}
+		error_tok(t, "only 'tlbi vmalle1' supported");
+	}
+
+	if (strcasecmp(mnemonic, "eret") == 0) {
+		emit32(encode_eret());
+		return;
+	}
+
+	if (strcasecmp(mnemonic, "wfe") == 0) {
+		emit32(encode_wfe());
+		return;
+	}
+
+	if (strcasecmp(mnemonic, "msr") == 0) {
+		if (t->kind == TOK_IDENT) {
+			if (strcasecmp(t->str, "daifset") == 0) {
+				t = expect_comma(t->next);
+				t = skip_hash(t);
+				emit32(encode_msr_pstate(3, 6, (int)t->val));
+				return;
+			}
+			if (strcasecmp(t->str, "daifclr") == 0) {
+				t = expect_comma(t->next);
+				t = skip_hash(t);
+				emit32(encode_msr_pstate(3, 7, (int)t->val));
+				return;
+			}
+			if (strcasecmp(t->str, "spsel") == 0) {
+				t = expect_comma(t->next);
+				t = skip_hash(t);
+				emit32(encode_msr_pstate(0, 5, (int)t->val));
+				return;
+			}
+			int sysreg = encode_sysreg(t->str);
+			if (sysreg < 0)
+				error_tok(t, "unknown system register");
+			t = expect_comma(t->next);
+			expect_register(t);
+			emit32(encode_msr_reg(sysreg, encode_gpr(t)));
+			return;
+		}
+		error_tok(t, "expected system register");
+	}
+
+	if (strcasecmp(mnemonic, "mrs") == 0) {
+		expect_register(t);
+		int rt = encode_gpr(t);
+		t = expect_comma(t->next);
+		int sysreg = encode_sysreg(t->str);
+		if (sysreg < 0)
+			error_tok(t, "unknown system register");
+		emit32(encode_mrs(sysreg, rt));
+		return;
+	}
+
 	if (strcasecmp(mnemonic, "ret") == 0) {
 		int rn = 30;
 		if (t->kind == TOK_REGISTER) {

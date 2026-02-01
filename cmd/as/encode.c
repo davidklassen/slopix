@@ -1302,6 +1302,68 @@ uint32_t encode_svc(int imm16) {
 	return 0xD4000001 | ((uint32_t)(imm16 & 0xFFFF) << 5);
 }
 
+// System register encoding table
+// Encoding: (op0-2)<<14 | op1<<11 | CRn<<7 | CRm<<3 | op2
+static const struct {
+	const char *name;
+	uint16_t encoding;
+} sysregs[] = {
+    {"sctlr_el1", 0x4080}, // 3:0:1:0:0
+    {"mair_el1", 0x4510},  // 3:0:10:2:0
+    {"tcr_el1", 0x4102},   // 3:0:2:0:2
+    {"ttbr0_el1", 0x4100}, // 3:0:2:0:0
+    {"ttbr1_el1", 0x4101}, // 3:0:2:0:1
+    {"vbar_el1", 0x4600},  // 3:0:12:0:0
+    {"cpacr_el1", 0x4082}, // 3:0:1:0:2
+    {"sp_el0", 0x4208},	   // 3:0:4:1:0
+    {"elr_el1", 0x4201},   // 3:0:4:0:1
+    {"spsr_el1", 0x4200},  // 3:0:4:0:0
+    {"esr_el1", 0x4290},   // 3:0:5:2:0
+    {"far_el1", 0x4300},   // 3:0:6:0:0
+};
+
+int encode_sysreg(const char *name) {
+	for (size_t i = 0; i < sizeof(sysregs) / sizeof(sysregs[0]); i++) {
+		if (strcasecmp(sysregs[i].name, name) == 0) {
+			return sysregs[i].encoding;
+		}
+	}
+	return -1;
+}
+
+// Fixed encoding instructions
+uint32_t encode_isb(void) {
+	return 0xD5033FDF;
+}
+uint32_t encode_dsb_sy(void) {
+	return 0xD5033F9F;
+}
+uint32_t encode_tlbi_vmalle1(void) {
+	return 0xD508871F;
+}
+uint32_t encode_eret(void) {
+	return 0xD69F03E0;
+}
+uint32_t encode_wfe(void) {
+	return 0xD503205F;
+}
+
+// MSR sysreg, Xt
+uint32_t encode_msr_reg(int sysreg, int rt) {
+	return 0xD5100000 | ((uint32_t)sysreg << 5) | (uint32_t)rt;
+}
+
+// MRS Xt, sysreg
+uint32_t encode_mrs(int sysreg, int rt) {
+	return 0xD5300000 | ((uint32_t)sysreg << 5) | (uint32_t)rt;
+}
+
+// MSR pstate, #imm (daifset, daifclr, spsel)
+uint32_t encode_msr_pstate(int op1, int op2, int imm4) {
+	return 0xD500401F | ((uint32_t)op1 << 16) | ((uint32_t)(imm4 & 0xF) << 8) |
+	       ((uint32_t)op2 << 5);
+}
+
 static int test_count = 0;
 static int test_pass = 0;
 
@@ -1696,6 +1758,23 @@ void test_encode(void) {
 	// All zeros - not encodable
 	ok = encode_logical_imm(1, 0, &imm);
 	printf("  0: ok=%d (should be 0)\n", ok);
+
+	printf("\nSystem instructions:\n");
+	check_encoding("ISB", encode_isb(), 0xD5033FDF);
+	check_encoding("DSB SY", encode_dsb_sy(), 0xD5033F9F);
+	check_encoding("TLBI VMALLE1", encode_tlbi_vmalle1(), 0xD508871F);
+	check_encoding("ERET", encode_eret(), 0xD69F03E0);
+	check_encoding("WFE", encode_wfe(), 0xD503205F);
+
+	printf("\nMSR/MRS:\n");
+	check_encoding("MSR sctlr_el1, x0",
+		       encode_msr_reg(encode_sysreg("sctlr_el1"), 0),
+		       0xD5181000);
+	check_encoding("MRS x0, sctlr_el1",
+		       encode_mrs(encode_sysreg("sctlr_el1"), 0),
+		       0xD5381000);
+	check_encoding("MSR daifset, #2", encode_msr_pstate(3, 6, 2), 0xD50342DF);
+	check_encoding("MSR spsel, #1", encode_msr_pstate(0, 5, 1), 0xD50041BF);
 
 	printf("\n========================================\n");
 	printf("Results: %d/%d tests passed\n", test_pass, test_count);

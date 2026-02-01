@@ -154,14 +154,34 @@ wfe
 
 **Solution:** Implement system instructions (~100-150 LOC):
 
-1. Add system register name table with opcodes
-2. `msr`: encode as `0xD5100000 | (sysreg << 5) | Rt`
-3. `mrs`: encode as `0xD5300000 | (sysreg << 5) | Rt`
-4. `isb`: encode as `0xD5033FDF`
-5. `dsb sy`: encode as `0xD503309F`
-6. `tlbi vmalle1`: encode as `0xD508871F`
-7. `eret`: encode as `0xD69F03E0`
-8. `wfe`: encode as `0xD503205F`
+Fixed encodings (no operands):
+```
+isb          = 0xD5033FDF
+dsb sy       = 0xD5033F9F
+tlbi vmalle1 = 0xD508871F
+eret         = 0xD69F03E0
+wfe          = 0xD503205F
+```
+
+System register access:
+```
+msr <sysreg>, Xt  = 0xD5100000 | (sysreg << 5) | Rt
+mrs Xt, <sysreg>  = 0xD5300000 | (sysreg << 5) | Rt
+```
+
+System register lookup table (sysreg values):
+```
+sctlr_el1  = 0x4080    mair_el1  = 0x4510    tcr_el1   = 0x4102
+ttbr0_el1  = 0x4100    ttbr1_el1 = 0x4101    vbar_el1  = 0x4600
+cpacr_el1  = 0x4082    sp_el0    = 0x4208    elr_el1   = 0x4201
+spsr_el1   = 0x4200    esr_el1   = 0x4290
+```
+
+PSTATE fields (different encoding, immediate operand):
+```
+msr daifset, #imm = 0xD50340DF | (imm << 8)
+msr spsel, #imm   = 0xD50040BF | (imm << 8)
+```
 
 ### 4. Assembler: Simple Macros
 
@@ -340,6 +360,8 @@ Add to `cmd/as`:
 - `tlbi vmalle1` - TLB invalidate all EL1
 - `eret` - exception return
 - `wfe` - wait for event
+
+Extend `cmd/as/encode.c` test_encode() with system instruction tests.
 
 **Test:** Assemble kernel/boot.S
 
