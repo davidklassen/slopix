@@ -66,12 +66,16 @@ the system.
 | Component | Gap | Solution |
 |-----------|-----|----------|
 | **cc** | No inline assembly codegen | Add minimal constraint support |
-| **as** | Missing `.equ`, `.fill`, `.balign` | Add directives |
-| **as** | No system instructions | Add `msr`, `mrs`, `isb`, `dsb`, `tlbi`, `eret`, `wfe` |
-| **as** | No macros | Add simple text-substitution macros |
 | **ld** | No kernel memory layout | Add `-T kernel` mode |
 | **ld** | No binary output | Add `--oformat=binary` |
 | **boot** | QEMU `-kernel` flag | New bootloader component |
+
+### Recently Completed
+
+- **as**: Directives (`.equ`, `.fill`, `.balign`, `.quad`, `.section`)
+- **as**: System instructions (`msr`, `mrs`, `isb`, `dsb`, `tlbi`, `eret`, `wfe`)
+- **as**: Macro support (`.macro`/`.endm` with `\param` substitution)
+- **kernel**: All .S files now assemble with custom assembler (boot.S, vectors.S, tables.S)
 
 ## Toolchain Gaps
 
@@ -79,18 +83,18 @@ the system.
 
 **Current state:** Parser creates `ND_ASM` node but codegen ignores it.
 
-**Kernel usage (21 occurrences in cpu.h + 1 in psci.c):**
+**Kernel usage (19 occurrences in cpu.h, 2 in test_exception.c, 1 in psci.c):**
 
 ```c
 // Pattern A: No operands (6 uses)
-__asm__ volatile("nop");
-__asm__ volatile("tlbi vmalle1");
+asm volatile("nop");
+asm volatile("tlbi vmalle1");
 
 // Pattern B: Output register (10 uses)
-__asm__ volatile("mrs %0, daif" : "=r"(val));
+asm volatile("mrs %0, daif" : "=r"(val));
 
 // Pattern C: Input register (5 uses)
-__asm__ volatile("msr ttbr0_el1, %0" : : "r"(v));
+asm volatile("msr ttbr0_el1, %0" : : "r"(v));
 
 // Pattern D: Register variable (1 use in psci.c)
 register long x0 asm("x0") = PSCI_SYSTEM_OFF;
@@ -106,121 +110,21 @@ asm volatile("hvc #0" ::"r"(x0));
 
 Only `"r"` constraint needed. Single operand sufficient.
 
-### 2. Assembler: Missing Directives
+### 2. Assembler: Missing Directives ✓
 
-**Current state:** Supports `.text`, `.data`, `.global`, `.align`, `.byte`,
-`.word`, `.xword`, `.ascii`, `.asciz`, `.zero`.
+**Status:** Complete. The assembler now supports `.equ`, `.fill`, `.balign`,
+`.quad`, and `.section` directives.
 
-**Missing directives used by kernel:**
+### 3. Assembler: System Instructions ✓
 
-| Directive | Usage | Implementation |
-|-----------|-------|----------------|
-| `.equ NAME, value` | 28 uses | Store in symbol table as constant |
-| `.fill count, size, value` | 18 uses | Emit `count * size` bytes |
-| `.balign N` | 8 uses | Align to N-byte boundary |
+**Status:** Complete. The assembler supports `msr`, `mrs`, `isb`, `dsb`, `tlbi`,
+`eret`, `wfe`, and all system registers used by the kernel.
 
-**Estimated:** ~50-70 LOC total.
+### 4. Assembler: Simple Macros ✓
 
-### 3. Assembler: System Instructions
-
-**Current state:** No system register or barrier instructions.
-
-**Kernel usage (boot.S, vectors.S):**
-
-```asm
-// System register access (13 uses)
-msr     mair_el1, x0
-mrs     x0, sctlr_el1
-msr     daifset, #2
-
-// Barriers (9 uses)
-isb
-dsb     sy
-
-// TLB management (3 uses)
-tlbi    vmalle1
-
-// Exception return (4 uses)
-eret
-
-// Hints (1 use)
-wfe
-```
-
-**System registers used:**
-- Standard: `mair_el1`, `tcr_el1`, `ttbr0_el1`, `ttbr1_el1`, `vbar_el1`, `cpacr_el1`, `sctlr_el1`
-- Exception: `sp_el0`, `elr_el1`, `spsr_el1`, `esr_el1`
-- Special: `spsel`, `daifset`
-
-**Solution:** Implement system instructions (~100-150 LOC):
-
-Fixed encodings (no operands):
-```
-isb          = 0xD5033FDF
-dsb sy       = 0xD5033F9F
-tlbi vmalle1 = 0xD508871F
-eret         = 0xD69F03E0
-wfe          = 0xD503205F
-```
-
-System register access:
-```
-msr <sysreg>, Xt  = 0xD5100000 | (sysreg << 5) | Rt
-mrs Xt, <sysreg>  = 0xD5300000 | (sysreg << 5) | Rt
-```
-
-System register lookup table (sysreg values):
-```
-sctlr_el1  = 0x4080    mair_el1  = 0x4510    tcr_el1   = 0x4102
-ttbr0_el1  = 0x4100    ttbr1_el1 = 0x4101    vbar_el1  = 0x4600
-cpacr_el1  = 0x4082    sp_el0    = 0x4208    elr_el1   = 0x4201
-spsr_el1   = 0x4200    esr_el1   = 0x4290
-```
-
-PSTATE fields (different encoding, immediate operand):
-```
-msr daifset, #imm = 0xD50340DF | (imm << 8)
-msr spsel, #imm   = 0xD50040BF | (imm << 8)
-```
-
-### 4. Assembler: Simple Macros
-
-**Current state:** No macro support.
-
-**Kernel usage (vectors.S):**
-
-```asm
-.macro vector_entry label
-    .balign 0x80
-\label:
-.endm
-
-.macro panic_vector id
-    mov x0, #\id
-    b   panic_entry
-.endm
-```
-
-These are simple text substitution with `\param` replacement.
-
-**Complex macro (tables.S) - will be manually expanded:**
-
-```asm
-.macro ram_blocks base, flags, count
-    .set ADDR, \base
-    .rept \count
-        .quad ADDR + \flags
-        .set ADDR, ADDR + 0x200000
-    .endr
-.endm
-```
-
-The `.rept`/`.set` loop requires expression evaluation and mutable state.
-Instead of implementing this, manually expand the 64 entries in tables.S.
-
-**Solution:**
-- Implement simple macros for vectors.S (~50-80 LOC)
-- Manually expand tables.S loop (one-time source edit)
+**Status:** Complete. The assembler supports `.macro`/`.endm` with `\param`
+substitution. The `ram_blocks` macro in tables.S has been manually expanded
+to explicit `.quad` directives.
 
 ### 5. Linker: Kernel Memory Layout
 
@@ -350,37 +254,23 @@ Add to `cmd/as`:
 
 **Status:** Complete
 
-### Phase 2: System Instructions
+### Phase 2: System Instructions ✓
 
-Add to `cmd/as`:
-- `msr <sysreg>, <reg>` - move to system register
-- `mrs <reg>, <sysreg>` - move from system register
-- `isb` - instruction synchronization barrier
-- `dsb sy` - data synchronization barrier
-- `tlbi vmalle1` - TLB invalidate all EL1
-- `eret` - exception return
-- `wfe` - wait for event
+Added system register and barrier instruction support to `cmd/as`.
 
-Extend `cmd/as/encode.c` test_encode() with system instruction tests.
+**Status:** Complete. kernel/boot.S assembles with custom assembler.
 
-**Test:** Assemble kernel/boot.S
+### Phase 3: Assembler Macros ✓
 
-### Phase 3: Assembler Macros
+Added `.macro`/`.endm` with `\param` substitution to `cmd/as`.
 
-Add to `cmd/as`:
-- `.macro NAME [params]` / `.endm` - define macro
-- `\param` substitution in macro body
-- Macro invocation
+**Status:** Complete. kernel/vectors.S assembles with custom assembler.
 
-**Test:** Assemble kernel/vectors.S
+### Phase 4: Manual Expansion ✓
 
-### Phase 4: Manual Expansion
+Expanded `ram_blocks` macro in kernel/tables.S to explicit `.quad` directives.
 
-Edit `kernel/tables.S`:
-- Expand `ram_blocks` macro to 64 `.quad` entries
-- Remove `.rept`/`.set` usage
-
-**Test:** Assemble kernel/tables.S
+**Status:** Complete. kernel/tables.S assembles with custom assembler.
 
 ### Phase 5: Inline Assembly
 
@@ -457,14 +347,15 @@ cd /src/kernel && /bin/build
 
 Each phase has concrete validation:
 
-| Phase | Test |
-|-------|------|
-| 1. Directives | `as` parses `.equ`, `.fill`, `.balign` |
-| 2. System instrs | `as` accepts kernel/boot.S |
-| 3. Macros | `as` accepts kernel/vectors.S |
-| 5. Inline asm | `cc` compiles test with mrs/msr |
-| 6. Linker | `ld -T kernel` produces correct layout |
-| 8. Bootloader | Output boots in QEMU |
+| Phase | Test | Status |
+|-------|------|--------|
+| 1. Directives | `as` parses `.equ`, `.fill`, `.balign` | ✓ |
+| 2. System instrs | `as` accepts kernel/boot.S | ✓ |
+| 3. Macros | `as` accepts kernel/vectors.S | ✓ |
+| 4. Expansion | `as` accepts kernel/tables.S | ✓ |
+| 5. Inline asm | `cc` compiles test with mrs/msr | |
+| 6. Linker | `ld -T kernel` produces correct layout | |
+| 8. Bootloader | Output boots in QEMU | |
 
 ### Triple Compilation
 
@@ -519,16 +410,15 @@ Verify toolchain correctness:
 
 | Component | Estimated LOC |
 |-----------|---------------|
-| as: directives | 50-70 ✓ |
-| as: system instructions | 100-150 |
-| as: simple macros | 50-80 |
+| as: directives | ✓ |
+| as: system instructions | ✓ |
+| as: simple macros | ✓ |
+| tables.S expansion | ✓ |
 | cc: inline asm | 100-150 |
 | ld: kernel mode | 150-200 |
 | kernel/build.c | 50-100 |
 | bootloader | 500-800 |
-| **Total** | ~1000-1550 |
-
-Plus one-time manual expansion of tables.S (~64 lines).
+| **Remaining** | ~800-1250 |
 
 ## References
 

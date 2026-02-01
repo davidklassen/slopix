@@ -3,12 +3,12 @@
 #include "test.h"
 
 TEST(undefined_instruction) {
-	__asm__ volatile(".word 0x00000000");
+	asm volatile(".word 0x00000000");
 	return 0;
 }
 
 TEST(svc_call) {
-	__asm__ volatile("svc #42");
+	asm volatile("svc #42");
 	return 0;
 }
 
