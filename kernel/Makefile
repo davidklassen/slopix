@@ -2,6 +2,7 @@ CROSS = aarch64-elf-
 CC = $(CROSS)gcc
 LD = $(CROSS)ld
 OBJCOPY = $(CROSS)objcopy
+AS = ../.bin/as
 
 CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I.
 ASFLAGS = -g -mcpu=cortex-a57
@@ -76,6 +77,10 @@ kernel-test.elf: $(OBJ) $(TEST_OBJ)
 
 kernel-test.bin: kernel-test.elf
 	$(OBJCOPY) -O binary $< $@
+
+# Use custom assembler for boot.S (no macros needed)
+boot.o: boot.S $(AS)
+	$(AS) $< -o $@
 
 %.o: %.S
 	$(CC) $(ASFLAGS) -c $< -o $@

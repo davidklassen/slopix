@@ -407,7 +407,14 @@ void pass1(Token *tok) {
 			if (t->kind == TOK_NUMBER) {
 				literal_pool_add_value((uint64_t)t->val);
 			} else if (t->kind == TOK_IDENT) {
-				literal_pool_add_symbol(t->str);
+				// Check if it's a defined constant (.equ)
+				Symbol *sym = symtab_lookup(t->str);
+				if (sym && sym->defined && sym->type == STT_NOTYPE &&
+				    sym->section == 0) {
+					literal_pool_add_value(sym->value);
+				} else {
+					literal_pool_add_symbol(t->str);
+				}
 			}
 			advance_lc(4);
 			tok = skip_to_newline(tok);
@@ -1727,7 +1734,14 @@ static void handle_instruction(Token *tok) {
 			if (t->kind == TOK_NUMBER) {
 				entry = literal_pool_add_value((uint64_t)t->val);
 			} else if (t->kind == TOK_IDENT) {
-				entry = literal_pool_add_symbol(t->str);
+				// Check if it's a defined constant (.equ)
+				Symbol *sym = symtab_lookup(t->str);
+				if (sym && sym->defined && sym->type == STT_NOTYPE &&
+				    sym->section == 0) {
+					entry = literal_pool_add_value(sym->value);
+				} else {
+					entry = literal_pool_add_symbol(t->str);
+				}
 			}
 			SectionBuf *sec = current_sec();
 			int64_t current_pc = sec ? (int64_t)sec->size : 0;
