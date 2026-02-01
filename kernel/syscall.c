@@ -1,4 +1,5 @@
 #include "syscall.h"
+#include "errno.h"
 #include "exception.h"
 #include "proc.h"
 #include "uart.h"
@@ -17,16 +18,16 @@
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 
 	if (vmm_validate(current->pagetable, (unsigned long)buf, len, 0) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	return filewrite(f, buf, len);
@@ -57,16 +58,16 @@ static long sys_exit(int status) {
 
 static long sys_read(int fd, char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 
 	if (vmm_validate(current->pagetable, (unsigned long)buf, len, 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	return fileread(f, buf, len);
@@ -89,7 +90,7 @@ static long sys_exec(const char *cmdline) {
 	// Safely copy command line from user space
 	char kcmd[1024];
 	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 1024) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	// Parse into argv (max 64 args)
@@ -114,7 +115,7 @@ static long sys_exec(const char *cmdline) {
 	}
 
 	if (argc == 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	unsigned long entry_addr = 0;
@@ -125,36 +126,36 @@ static long sys_exec(const char *cmdline) {
 	if (strncmp(argv[0], "initramfs:", 10) == 0) {
 		struct initramfs_entry entry;
 		if (initramfs_find(argv[0] + 10, &entry) < 0) {
-			return -1;
+			return -ENOENT;
 		}
 		new_pt = vmm_create();
 		if (!new_pt) {
-			return -1;
+			return -ENOMEM;
 		}
 		if (elf_load(entry.data, entry.size, new_pt, &entry_addr, &brk) < 0) {
 			vmm_free(new_pt);
-			return -1;
+			return -ENOENT;
 		}
 	} else {
 		// All other paths: look on disk
 		struct inode *ip = fs_namei(argv[0]);
 		if (ip == 0) {
-			return -1;
+			return -ENOENT;
 		}
 		fs_ilock(ip);
 		if (ip->type != T_FILE) {
 			fs_iunlockput(ip);
-			return -1;
+			return -EACCES;
 		}
 		new_pt = vmm_create();
 		if (!new_pt) {
 			fs_iunlockput(ip);
-			return -1;
+			return -ENOMEM;
 		}
 		if (elf_load_from_inode(ip, new_pt, &entry_addr, &brk) < 0) {
 			fs_iunlockput(ip);
 			vmm_free(new_pt);
-			return -1;
+			return -ENOENT;
 		}
 		fs_iunlockput(ip);
 	}
@@ -164,12 +165,12 @@ static long sys_exec(const char *cmdline) {
 		paddr_t pa = pmm_alloc();
 		if (pa == PMM_INVALID) {
 			vmm_free(new_pt);
-			return -1;
+			return -ENOMEM;
 		}
 		if (vmm_map_page(new_pt, USER_STACK - (i + 1) * PAGE_SIZE, pa, 1, 0) < 0) {
 			pmm_free(pa);
 			vmm_free(new_pt);
-			return -1;
+			return -ENOMEM;
 		}
 		if (i == 0) {
 			stack_pa = pa;
@@ -248,13 +249,13 @@ static long sys_exec(const char *cmdline) {
 static long sys_fork(void) {
 	pte_t *child_pt = vmm_copy(current->pagetable);
 	if (child_pt == 0) {
-		return -1;
+		return -ENOMEM;
 	}
 
 	struct proc *child = proc_alloc();
 	if (child == 0) {
 		vmm_free(child_pt);
-		return -1;
+		return -ENOMEM;
 	}
 
 	child->pagetable = child_pt;
@@ -336,7 +337,7 @@ static long sys_wait(void) {
 			}
 		}
 		if (!has_children) {
-			return -1;
+			return -ESRCH;
 		}
 		proc_wait(current);
 	}
@@ -369,7 +370,7 @@ static long sys_waitpid(int pid, int options) {
 		}
 
 		if (!has_children) {
-			return -1;
+			return -ESRCH;
 		}
 
 		if (stopped) {
@@ -387,17 +388,17 @@ static long sys_waitpid(int pid, int options) {
 
 static long sys_poll(int fd, long timeout_ms) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 
 	// For now, only console device supports polling
 	if (f->type != FD_DEVICE || f->major != CONSOLE) {
-		return -1;
+		return -ENOTTY;
 	}
 
 	unsigned long ticks = timeout_ms / 10;
@@ -418,7 +419,7 @@ static long sys_sbrk(long n) {
 	unsigned long new_sz = old_sz + n;
 
 	if (n < 0 && new_sz > old_sz) {
-		return -1;
+		return -EINVAL;
 	}
 
 	if (n > 0) {
@@ -428,11 +429,11 @@ static long sys_sbrk(long n) {
 		for (unsigned long va = old_end; va < new_end; va += PAGE_SIZE) {
 			paddr_t pa = pmm_alloc();
 			if (pa == PMM_INVALID) {
-				return -1;
+				return -ENOMEM;
 			}
 			if (vmm_map_page(current->pagetable, va, pa, 1, 0) < 0) {
 				pmm_free(pa);
-				return -1;
+				return -ENOMEM;
 			}
 		}
 	}
@@ -444,7 +445,7 @@ static long sys_sbrk(long n) {
 static long sys_open(const char *path, int flags) {
 	char kpath[128];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip;
@@ -453,19 +454,19 @@ static long sys_open(const char *path, int flags) {
 		if (ip == 0) {
 			ip = fs_create(kpath, T_FILE, 0, 0);
 			if (ip == 0) {
-				return -1;
+				return -ENOSPC;
 			}
 		} else {
 			if (flags & O_EXCL) {
 				fs_iput(ip);
-				return -1;
+				return -EEXIST;
 			}
 			fs_ilock(ip);
 		}
 	} else {
 		ip = fs_namei(kpath);
 		if (ip == 0) {
-			return -1;
+			return -ENOENT;
 		}
 		fs_ilock(ip);
 	}
@@ -473,7 +474,7 @@ static long sys_open(const char *path, int flags) {
 	struct file *f = filealloc();
 	if (f == 0) {
 		fs_iunlockput(ip);
-		return -1;
+		return -ENOMEM;
 	}
 
 	if (ip->type == T_DEVICE) {
@@ -500,7 +501,7 @@ static long sys_open(const char *path, int flags) {
 	int fd = fdalloc(f);
 	if (fd < 0) {
 		fileclose(f);
-		return -1;
+		return -ENOMEM;
 	}
 
 	return fd;
@@ -508,11 +509,11 @@ static long sys_open(const char *path, int flags) {
 
 static long sys_close(int fd) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 	current->ofile[fd] = 0;
 	fileclose(f);
@@ -521,29 +522,29 @@ static long sys_close(int fd) {
 
 static long sys_fstat(int fd, struct stat *st) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 	if (vmm_validate(current->pagetable, (unsigned long)st, sizeof(struct stat), 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 	return filestat(f, st);
 }
 
 static long sys_dup(int fd) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 	int newfd = fdalloc(f);
 	if (newfd < 0) {
-		return -1;
+		return -ENOMEM;
 	}
 	filedup(f);
 	return newfd;
@@ -552,12 +553,12 @@ static long sys_dup(int fd) {
 static long sys_mkdir(const char *path) {
 	char kpath[128];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip = fs_create(kpath, T_DIR, 0, 0);
 	if (ip == 0) {
-		return -1;
+		return -EEXIST;
 	}
 	fs_iunlockput(ip);
 	return 0;
@@ -566,12 +567,12 @@ static long sys_mkdir(const char *path) {
 static long sys_mknod(const char *path, int major, int minor) {
 	char kpath[128];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip = fs_create(kpath, T_DEVICE, major, minor);
 	if (ip == 0) {
-		return -1;
+		return -EEXIST;
 	}
 	fs_iunlockput(ip);
 	return 0;
@@ -581,21 +582,21 @@ static long sys_link(const char *old, const char *new) {
 	char kold[128], knew[128], name[DIRSIZ];
 
 	if (vmm_copyinstr(current->pagetable, kold, (unsigned long)old, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 	if (vmm_copyinstr(current->pagetable, knew, (unsigned long)new, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip = fs_namei(kold);
 	if (ip == 0) {
-		return -1;
+		return -ENOENT;
 	}
 
 	fs_ilock(ip);
 	if (ip->type == T_DIR) {
 		fs_iunlockput(ip);
-		return -1;
+		return -EPERM;
 	}
 	ip->nlink++;
 	fs_iupdate(ip);
@@ -620,36 +621,36 @@ bad:
 	ip->nlink--;
 	fs_iupdate(ip);
 	fs_iunlockput(ip);
-	return -1;
+	return -ENOENT;
 }
 
 static long sys_unlink(const char *path) {
 	char kpath[128], name[DIRSIZ];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *dp = fs_nameiparent(kpath, name);
 	if (dp == 0) {
-		return -1;
+		return -ENOENT;
 	}
 
 	fs_ilock(dp);
 
 	if (name[0] == '.' && name[1] == '\0') {
 		fs_iunlockput(dp);
-		return -1;
+		return -EINVAL;
 	}
 	if (name[0] == '.' && name[1] == '.' && name[2] == '\0') {
 		fs_iunlockput(dp);
-		return -1;
+		return -EINVAL;
 	}
 
 	unsigned int off;
 	struct inode *ip = fs_dirlookup(dp, name, &off);
 	if (ip == 0) {
 		fs_iunlockput(dp);
-		return -1;
+		return -ENOENT;
 	}
 
 	fs_ilock(ip);
@@ -657,7 +658,7 @@ static long sys_unlink(const char *path) {
 	if (ip->type == T_DIR && !fs_isdirempty(ip)) {
 		fs_iunlockput(ip);
 		fs_iunlockput(dp);
-		return -1;
+		return -ENOTEMPTY;
 	}
 
 	struct dirent de;
@@ -665,7 +666,7 @@ static long sys_unlink(const char *path) {
 	if (fs_writei(dp, (char *)&de, off, sizeof(de)) != sizeof(de)) {
 		fs_iunlockput(ip);
 		fs_iunlockput(dp);
-		return -1;
+		return -EIO;
 	}
 
 	if (ip->type == T_DIR) {
@@ -684,18 +685,18 @@ static long sys_unlink(const char *path) {
 static long sys_chdir(const char *path) {
 	char kpath[128];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip = fs_namei(kpath);
 	if (ip == 0) {
-		return -1;
+		return -ENOENT;
 	}
 
 	fs_ilock(ip);
 	if (ip->type != T_DIR) {
 		fs_iunlockput(ip);
-		return -1;
+		return -ENOTDIR;
 	}
 	fs_iunlock(ip);
 
@@ -706,19 +707,19 @@ static long sys_chdir(const char *path) {
 
 static long sys_pipe(int *fdarray) {
 	if (vmm_validate(current->pagetable, (unsigned long)fdarray, 8, 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct file *rf, *wf;
 	if (pipealloc(&rf, &wf) < 0) {
-		return -1;
+		return -ENOMEM;
 	}
 
 	int fd0 = fdalloc(rf);
 	if (fd0 < 0) {
 		fileclose(rf);
 		fileclose(wf);
-		return -1;
+		return -ENOMEM;
 	}
 
 	int fd1 = fdalloc(wf);
@@ -726,7 +727,7 @@ static long sys_pipe(int *fdarray) {
 		current->ofile[fd0] = 0;
 		fileclose(rf);
 		fileclose(wf);
-		return -1;
+		return -ENOMEM;
 	}
 
 	fdarray[0] = fd0;
@@ -737,15 +738,15 @@ static long sys_pipe(int *fdarray) {
 static long sys_stat(const char *path, struct stat *st) {
 	char kpath[128];
 	if (vmm_copyinstr(current->pagetable, kpath, (unsigned long)path, 128) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 	if (vmm_validate(current->pagetable, (unsigned long)st, sizeof(struct stat), 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	struct inode *ip = fs_namei(kpath);
 	if (ip == 0) {
-		return -1;
+		return -ENOENT;
 	}
 
 	fs_ilock(ip);
@@ -756,7 +757,7 @@ static long sys_stat(const char *path, struct stat *st) {
 
 static long sys_getcwd(char *buf, unsigned long size) {
 	if (size < 2 || vmm_validate(current->pagetable, (unsigned long)buf, size, 1) < 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	char names[16][DIRSIZ];
@@ -769,7 +770,7 @@ static long sys_getcwd(char *buf, unsigned long size) {
 		struct inode *parent = fs_dirlookup(ip, "..", 0);
 		if (parent == 0) {
 			fs_iunlockput(ip);
-			return -1;
+			return -EIO;
 		}
 		fs_iunlock(ip);
 
@@ -790,7 +791,7 @@ static long sys_getcwd(char *buf, unsigned long size) {
 		fs_iput(ip);
 		if (!found) {
 			fs_iput(parent);
-			return -1;
+			return -EIO;
 		}
 		ip = parent;
 		depth++;
@@ -805,7 +806,7 @@ static long sys_getcwd(char *buf, unsigned long size) {
 			buf[pos++] = '/';
 			for (int j = 0; j < DIRSIZ && names[i][j]; j++) {
 				if (pos + 1 >= size) {
-					return -1;
+					return -EINVAL;
 				}
 				buf[pos++] = names[i][j];
 			}
@@ -817,11 +818,11 @@ static long sys_getcwd(char *buf, unsigned long size) {
 
 static long sys_lseek(int fd, long offset, int whence) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0 || (f->type != FD_INODE && f->type != FD_BDEVICE)) {
-		return -1;
+		return -EBADF;
 	}
 
 	long newoff;
@@ -838,11 +839,11 @@ static long sys_lseek(int fd, long offset, int whence) {
 		fs_iunlock(f->ip);
 		break;
 	default:
-		return -1;
+		return -EINVAL;
 	}
 
 	if (newoff < 0) {
-		return -1;
+		return -EINVAL;
 	}
 	f->off = (unsigned int)newoff;
 	return newoff;
@@ -858,12 +859,12 @@ static long sys_lseek(int fd, long offset, int whence) {
 
 static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags) {
 	if (len == 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	// Only support anonymous private mappings for now
 	if (!(flags & MAP_ANONYMOUS) || !(flags & MAP_PRIVATE)) {
-		return -1;
+		return -EINVAL;
 	}
 
 	// Round len up to page size
@@ -873,7 +874,7 @@ static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags)
 	unsigned long va;
 	if (flags & MAP_FIXED) {
 		if (addr & (PAGE_SIZE - 1)) {
-			return -1;
+			return -EINVAL;
 		}
 		va = addr;
 	} else {
@@ -883,7 +884,7 @@ static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags)
 
 	// Check bounds
 	if (va + len > USER_STACK - PAGE_SIZE || va + len < va) {
-		return -1;
+		return -ENOMEM;
 	}
 
 	int write = (prot & PROT_WRITE) ? 1 : 0;
@@ -899,7 +900,7 @@ static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags)
 					pmm_free(unmap_pa);
 				}
 			}
-			return -1;
+			return -ENOMEM;
 		}
 
 		// Zero the page
@@ -917,7 +918,7 @@ static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags)
 					pmm_free(unmap_pa);
 				}
 			}
-			return -1;
+			return -ENOMEM;
 		}
 	}
 
@@ -931,10 +932,10 @@ static long sys_mmap(unsigned long addr, unsigned long len, int prot, int flags)
 
 static long sys_munmap(unsigned long addr, unsigned long len) {
 	if (addr & (PAGE_SIZE - 1)) {
-		return -1;
+		return -EINVAL;
 	}
 	if (len == 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	len = (len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
@@ -956,15 +957,15 @@ static long sys_kill(int pid, int sig) {
 	if (pid < -1) {
 		return proc_signal_pgrp(-pid, sig);
 	}
-	return -1;
+	return -EINVAL;
 }
 
 static long sys_getprocs(struct procinfo *buf, int max) {
 	if (max <= 0) {
-		return -1;
+		return -EINVAL;
 	}
 	if (vmm_validate(current->pagetable, (unsigned long)buf, max * sizeof(struct procinfo), 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	int count = 0;
@@ -1002,7 +1003,7 @@ static long sys_getpgid(int pid) {
 static long sys_tcsetpgrp(int fd, int pgid) {
 	(void)fd;
 	if (pgid < 0) {
-		return -1;
+		return -EINVAL;
 	}
 	extern void console_set_fg_pgid(int pgid);
 	console_set_fg_pgid(pgid);
@@ -1017,7 +1018,7 @@ static long sys_tcgetpgrp(int fd) {
 
 static long sys_tcsetraw(int fd, int raw) {
 	if (fd < 0 || fd > 2) {
-		return -1;
+		return -EBADF;
 	}
 	extern void console_set_raw(int raw);
 	console_set_raw(raw);
@@ -1032,20 +1033,20 @@ static long sys_tcgetraw(int fd) {
 
 static long sys_ftruncate(int fd, long length) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0) {
-		return -1;
+		return -EBADF;
 	}
 	if (f->type != FD_INODE || f->ip == 0) {
-		return -1;
+		return -EINVAL;
 	}
 	if (!f->writable) {
-		return -1;
+		return -EACCES;
 	}
 	if (length < 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	fs_ilock(f->ip);
@@ -1063,20 +1064,20 @@ struct linux_dirent {
 
 static long sys_getdents(int fd, char *buf, unsigned int count) {
 	if (fd < 0 || fd >= NOFILE) {
-		return -1;
+		return -EBADF;
 	}
 	struct file *f = current->ofile[fd];
 	if (f == 0 || f->type != FD_INODE) {
-		return -1;
+		return -EBADF;
 	}
 	if (vmm_validate(current->pagetable, (unsigned long)buf, count, 1) < 0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	fs_ilock(f->ip);
 	if (f->ip->type != T_DIR) {
 		fs_iunlock(f->ip);
-		return -1;
+		return -ENOTDIR;
 	}
 
 	unsigned int bpos = 0;
@@ -1124,11 +1125,11 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 	char kold[128], knew[128], oldname[DIRSIZ], newname[DIRSIZ];
 	if (vmm_copyinstr(current->pagetable, kold, (unsigned long)oldpath, 128) <
 	    0) {
-		return -1;
+		return -EFAULT;
 	}
 	if (vmm_copyinstr(current->pagetable, knew, (unsigned long)newpath, 128) <
 	    0) {
-		return -1;
+		return -EFAULT;
 	}
 
 	sleep_lock(&rename_lock);
@@ -1136,7 +1137,7 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 	struct inode *ip = fs_namei(kold);
 	if (ip == 0) {
 		sleep_unlock(&rename_lock);
-		return -1;
+		return -ENOENT;
 	}
 
 	int is_dir = 0;
@@ -1210,7 +1211,7 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 	if (old_dp == 0) {
 		fs_iput(ip);
 		sleep_unlock(&rename_lock);
-		return -1;
+		return -ENOENT;
 	}
 	fs_ilock(old_dp);
 	struct inode *check = fs_dirlookup(old_dp, oldname, &off);
@@ -1221,7 +1222,7 @@ static long sys_rename(const char *oldpath, const char *newpath) {
 		fs_iunlockput(old_dp);
 		fs_iput(ip);
 		sleep_unlock(&rename_lock);
-		return -1;
+		return -ENOENT;
 	}
 	fs_iput(check);
 	struct dirent de;
@@ -1266,7 +1267,7 @@ fail:
 	fs_iupdate(ip);
 	fs_iunlockput(ip);
 	sleep_unlock(&rename_lock);
-	return -1;
+	return -EINVAL;
 }
 
 void syscall(struct trap_frame *tf) {

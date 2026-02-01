@@ -19,6 +19,7 @@ static const char *error_messages[] = {
     [22] = "Invalid argument",
     [25] = "Inappropriate ioctl for device",
     [28] = "No space left on device",
+    [39] = "Directory not empty",
 };
 
 #define ERRMSG_COUNT (sizeof(error_messages) / sizeof(error_messages[0]))
