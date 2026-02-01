@@ -72,6 +72,7 @@ static struct job jobs[MAXJOBS];
 static int next_jid = 1;
 static int background;
 static int shell_pgid;
+static int last_exit_status = 0;
 
 static char *ps;
 static char *es;
@@ -133,6 +134,39 @@ static void report_done_jobs(void) {
 			remove_job(&jobs[i]);
 		}
 	}
+}
+
+static int encode_exit_status(int status) {
+	if (WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	}
+	if (WIFSIGNALED(status)) {
+		return 128 + WTERMSIG(status);
+	}
+	return 0;
+}
+
+static void expand_variables(char *buf, int bufsize) {
+	char tmp[128];
+	char *src = buf;
+	char *dst = tmp;
+	char *end = tmp + sizeof(tmp) - 1;
+
+	while (*src && dst < end) {
+		if (src[0] == '$' && src[1] == '?') {
+			char num[12];
+			snprintf(num, sizeof(num), "%d", last_exit_status);
+			for (char *p = num; *p && dst < end; p++) {
+				*dst++ = *p;
+			}
+			src += 2;
+		} else {
+			*dst++ = *src++;
+		}
+	}
+	*dst = '\0';
+	strncpy(buf, tmp, bufsize - 1);
+	buf[bufsize - 1] = '\0';
 }
 
 static void reset_pools(void) {
@@ -439,8 +473,10 @@ static void runcmd(struct cmd *cmd) {
 		close(p[0]);
 		close(p[1]);
 		wait(NULL);
-		wait(NULL);
-		exit(0);
+		int status;
+		wait(&status);
+		exit(WIFEXITED(status) ? WEXITSTATUS(status) : WIFSIGNALED(status) ? 128 + WTERMSIG(status)
+										   : 0);
 	}
 	}
 }
@@ -669,8 +705,10 @@ static int builtin_fg(int argc, char **argv) {
 	if (pid > 0) {
 		if (WIFSTOPPED(status)) {
 			j->state = JOB_STOPPED;
+			last_exit_status = 128 + WSTOPSIG(status);
 			printf("\n[%d] stopped  %s\n", j->jid, j->cmd);
 		} else {
+			last_exit_status = encode_exit_status(status);
 			remove_job(j);
 		}
 	}
@@ -715,16 +753,15 @@ static struct builtin builtins[] = {
 
 static int run_builtin(int argc, char **argv) {
 	if (argc == 0) {
-		return 0;
+		return -1;
 	}
 
 	for (struct builtin *b = builtins; b->name; b++) {
 		if (strcmp(argv[0], b->name) == 0) {
-			b->func(argc, argv);
-			return 1;
+			return b->func(argc, argv);
 		}
 	}
-	return 0;
+	return -1;
 }
 
 int main(void) {
@@ -750,13 +787,14 @@ int main(void) {
 			strncpy(cmdstr, buf, 63);
 			cmdstr[63] = '\0';
 
+			expand_variables(buf, sizeof(buf));
 			struct cmd *cmd = parsecmd(buf);
 			if (cmd == 0) {
 				printf("syntax error\n");
 			} else {
 				nulterminate(cmd);
 
-				int builtin_handled = 0;
+				int builtin_status = -1;
 				if (cmd->type == CMD_EXEC) {
 					struct execcmd *ecmd = (struct execcmd *)cmd;
 					if (ecmd->argv[0]) {
@@ -764,13 +802,16 @@ int main(void) {
 						while (ecmd->argv[argc]) {
 							argc++;
 						}
-						builtin_handled = run_builtin(argc, ecmd->argv);
+						builtin_status = run_builtin(argc, ecmd->argv);
 					} else {
-						builtin_handled = 1;
+						builtin_status = 0;
 					}
 				}
+				if (builtin_status >= 0) {
+					last_exit_status = builtin_status;
+				}
 
-				if (!builtin_handled) {
+				if (builtin_status < 0) {
 					int child_pid = fork();
 					if (child_pid == 0) {
 						setpgid(0, 0);
@@ -788,6 +829,8 @@ int main(void) {
 						if (WIFSTOPPED(status)) {
 							int jid = add_job(child_pid, cmdstr);
 							printf("\n[%d] stopped  %s\n", jid, cmdstr);
+						} else {
+							last_exit_status = encode_exit_status(status);
 						}
 						tcsetpgrp(0, shell_pgid);
 					}
