@@ -8,7 +8,9 @@
 struct inode;
 struct file;
 
-#define NOFILE 16
+#define NOFILE	     16
+#define KSTACK_PAGES 4
+#define KSTACK_SIZE  (KSTACK_PAGES * PAGE_SIZE)
 
 struct context {
 	unsigned long x19, x20, x21, x22, x23;

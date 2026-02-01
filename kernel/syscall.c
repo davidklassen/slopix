@@ -87,17 +87,17 @@ static long sys_getpid(void) {
 
 static long sys_exec(const char *cmdline) {
 	// Safely copy command line from user space
-	char kcmd[512];
-	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 512) < 0) {
+	char kcmd[1024];
+	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 1024) < 0) {
 		return -1;
 	}
 
-	// Parse into argv (max 16 args)
-	char *argv[16];
+	// Parse into argv (max 64 args)
+	char *argv[64];
 	int argc = 0;
 	char *p = kcmd;
 
-	while (*p && argc < 16) {
+	while (*p && argc < 64) {
 		while (*p == ' ') {
 			p++;
 		}
@@ -182,7 +182,7 @@ static long sys_exec(const char *cmdline) {
 	unsigned long ustack_top = USER_STACK;
 
 	// Copy strings to stack (from top down)
-	unsigned long ustr[16];
+	unsigned long ustr[64];
 	for (int j = argc - 1; j >= 0; j--) {
 		int len = 0;
 		while (argv[j][len]) {
@@ -262,7 +262,7 @@ static long sys_fork(void) {
 	child->pgid = current->pgid;
 
 	// Copy trap frame to child's kernel stack
-	char *sp = child->kstack + PAGE_SIZE;
+	char *sp = child->kstack + KSTACK_SIZE;
 	sp -= sizeof(struct trap_frame);
 	sp = (char *)((unsigned long)sp & ~0xFUL);
 
@@ -312,7 +312,7 @@ static long encode_wait_status(struct proc *p) {
 		p->pagetable = 0;
 	}
 	if (p->kstack) {
-		pmm_free(VA_TO_PA(p->kstack));
+		pmm_free_contiguous(VA_TO_PA(p->kstack), KSTACK_PAGES);
 		p->kstack = 0;
 	}
 

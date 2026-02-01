@@ -19,7 +19,7 @@ struct proc *proc_alloc(void) {
 			p->state = RUNNABLE;
 			p->pid = nextpid++;
 			p->pgid = p->pid;
-			paddr_t pa = pmm_alloc();
+			paddr_t pa = pmm_alloc_contiguous(KSTACK_PAGES);
 			if (pa == PMM_INVALID) {
 				p->state = UNUSED;
 				return 0;
@@ -57,7 +57,7 @@ void proc_create(proc_func func) {
 		return;
 	}
 
-	char *sp = p->kstack + PAGE_SIZE;
+	char *sp = p->kstack + KSTACK_SIZE;
 	sp = (char *)((unsigned long)sp & ~0xFUL);
 
 	p->ctx.x19 = (unsigned long)func;
@@ -82,7 +82,7 @@ int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack
 	p->pagetable = pagetable;
 	p->sz = sz;
 
-	char *sp = p->kstack + PAGE_SIZE;
+	char *sp = p->kstack + KSTACK_SIZE;
 	sp -= sizeof(struct trap_frame);
 	sp = (char *)((unsigned long)sp & ~0xFUL);
 
@@ -114,7 +114,7 @@ void proc_scheduler(void) {
 					vmm_free(p->pagetable);
 					p->pagetable = 0;
 				}
-				pmm_free(VA_TO_PA(p->kstack));
+				pmm_free_contiguous(VA_TO_PA(p->kstack), KSTACK_PAGES);
 				p->kstack = 0;
 			}
 		}

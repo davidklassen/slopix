@@ -229,7 +229,7 @@ int wait(int *wstatus) {
 }
 
 int execvp(const char *file, char *const argv[]) {
-	char cmdline[512];
+	char cmdline[1024];
 	int pos = 0;
 
 	// If file has no '/', search /bin/ (simple PATH behavior)
@@ -242,17 +242,17 @@ int execvp(const char *file, char *const argv[]) {
 
 	// Build cmdline with resolved path as first arg
 	const char *p = path;
-	while (*p && pos < 511) {
+	while (*p && pos < 1023) {
 		cmdline[pos++] = *p++;
 	}
 
 	// Append remaining args
 	for (int i = 1; argv[i]; i++) {
-		if (pos < 511) {
+		if (pos < 1023) {
 			cmdline[pos++] = ' ';
 		}
 		const char *arg = argv[i];
-		while (*arg && pos < 511) {
+		while (*arg && pos < 1023) {
 			cmdline[pos++] = *arg++;
 		}
 	}

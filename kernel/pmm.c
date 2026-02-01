@@ -65,6 +65,60 @@ paddr_t pmm_alloc(void) {
 	return pa;
 }
 
+static int is_page_free(paddr_t pa) {
+	struct run *r = freelist;
+	while (r) {
+		if (VA_TO_PA((paddr_t)r) == pa) {
+			return 1;
+		}
+		r = r->next;
+	}
+	return 0;
+}
+
+static void remove_page(paddr_t pa) {
+	struct run **pp = &freelist;
+	while (*pp) {
+		if (VA_TO_PA((paddr_t)*pp) == pa) {
+			*pp = (*pp)->next;
+			free_count--;
+			return;
+		}
+		pp = &(*pp)->next;
+	}
+}
+
+paddr_t pmm_alloc_contiguous(int n) {
+	if (n <= 0) {
+		return PMM_INVALID;
+	}
+	if (n == 1) {
+		return pmm_alloc();
+	}
+
+	struct run *r = freelist;
+	while (r) {
+		paddr_t base = VA_TO_PA((paddr_t)r);
+		int found = 1;
+		for (int i = 1; i < n; i++) {
+			if (!is_page_free(base + i * PAGE_SIZE)) {
+				found = 0;
+				break;
+			}
+		}
+		if (found) {
+			for (int i = 0; i < n; i++) {
+				paddr_t pa = base + i * PAGE_SIZE;
+				remove_page(pa);
+				zero_page(pa);
+			}
+			return base;
+		}
+		r = r->next;
+	}
+	return PMM_INVALID;
+}
+
 void pmm_free(paddr_t pa) {
 	if (pa < RAM_BASE || pa >= RAM_BASE + RAM_SIZE) {
 		return;
@@ -79,6 +133,12 @@ void pmm_free(paddr_t pa) {
 	r->next = freelist;
 	freelist = r;
 	free_count++;
+}
+
+void pmm_free_contiguous(paddr_t pa, int n) {
+	for (int i = 0; i < n; i++) {
+		pmm_free(pa + i * PAGE_SIZE);
+	}
 }
 
 unsigned long pmm_free_count(void) {
