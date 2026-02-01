@@ -38,16 +38,6 @@
 // VIRTIO: 0x0a000000 / 0x200000 = 80
 // RAM:    starts at entry 0 in L2_ram (L1[1] covers 0x40000000+)
 
-// Macro: Generate N consecutive 2MB block entries
-.macro ram_blocks base, flags, count
-    .set ADDR, \base
-    .rept \count
-        .quad ADDR + \flags
-        .set ADDR, ADDR + 0x200000
-    .endr
-.endm
-
-
 .section .tables, "aw"
 
 // ============ Identity Tables (TTBR0) ============
@@ -76,8 +66,71 @@ identity_l2_dev:
 
 .balign 4096
 identity_l2_ram:
-    ram_blocks RAM_BASE, RAM_FLAGS, 64  // Entries 0-63: 128MB RAM (64 x 2MB)
-    .fill 448, 8, 0                     // Entries 64-511: empty
+    .quad 0x40000040000705
+    .quad 0x40000040200705
+    .quad 0x40000040400705
+    .quad 0x40000040600705
+    .quad 0x40000040800705
+    .quad 0x40000040a00705
+    .quad 0x40000040c00705
+    .quad 0x40000040e00705
+    .quad 0x40000041000705
+    .quad 0x40000041200705
+    .quad 0x40000041400705
+    .quad 0x40000041600705
+    .quad 0x40000041800705
+    .quad 0x40000041a00705
+    .quad 0x40000041c00705
+    .quad 0x40000041e00705
+    .quad 0x40000042000705
+    .quad 0x40000042200705
+    .quad 0x40000042400705
+    .quad 0x40000042600705
+    .quad 0x40000042800705
+    .quad 0x40000042a00705
+    .quad 0x40000042c00705
+    .quad 0x40000042e00705
+    .quad 0x40000043000705
+    .quad 0x40000043200705
+    .quad 0x40000043400705
+    .quad 0x40000043600705
+    .quad 0x40000043800705
+    .quad 0x40000043a00705
+    .quad 0x40000043c00705
+    .quad 0x40000043e00705
+    .quad 0x40000044000705
+    .quad 0x40000044200705
+    .quad 0x40000044400705
+    .quad 0x40000044600705
+    .quad 0x40000044800705
+    .quad 0x40000044a00705
+    .quad 0x40000044c00705
+    .quad 0x40000044e00705
+    .quad 0x40000045000705
+    .quad 0x40000045200705
+    .quad 0x40000045400705
+    .quad 0x40000045600705
+    .quad 0x40000045800705
+    .quad 0x40000045a00705
+    .quad 0x40000045c00705
+    .quad 0x40000045e00705
+    .quad 0x40000046000705
+    .quad 0x40000046200705
+    .quad 0x40000046400705
+    .quad 0x40000046600705
+    .quad 0x40000046800705
+    .quad 0x40000046a00705
+    .quad 0x40000046c00705
+    .quad 0x40000046e00705
+    .quad 0x40000047000705
+    .quad 0x40000047200705
+    .quad 0x40000047400705
+    .quad 0x40000047600705
+    .quad 0x40000047800705
+    .quad 0x40000047a00705
+    .quad 0x40000047c00705
+    .quad 0x40000047e00705
+    .fill 448, 8, 0
 
 
 // ============ Kernel Tables (TTBR1) ============
@@ -106,5 +159,68 @@ kernel_l2_dev:
 
 .balign 4096
 kernel_l2_ram:
-    ram_blocks RAM_BASE, RAM_FLAGS, 64  // Entries 0-63: 128MB RAM
-    .fill 448, 8, 0                     // Entries 64-511: empty
+    .quad 0x40000040000705
+    .quad 0x40000040200705
+    .quad 0x40000040400705
+    .quad 0x40000040600705
+    .quad 0x40000040800705
+    .quad 0x40000040a00705
+    .quad 0x40000040c00705
+    .quad 0x40000040e00705
+    .quad 0x40000041000705
+    .quad 0x40000041200705
+    .quad 0x40000041400705
+    .quad 0x40000041600705
+    .quad 0x40000041800705
+    .quad 0x40000041a00705
+    .quad 0x40000041c00705
+    .quad 0x40000041e00705
+    .quad 0x40000042000705
+    .quad 0x40000042200705
+    .quad 0x40000042400705
+    .quad 0x40000042600705
+    .quad 0x40000042800705
+    .quad 0x40000042a00705
+    .quad 0x40000042c00705
+    .quad 0x40000042e00705
+    .quad 0x40000043000705
+    .quad 0x40000043200705
+    .quad 0x40000043400705
+    .quad 0x40000043600705
+    .quad 0x40000043800705
+    .quad 0x40000043a00705
+    .quad 0x40000043c00705
+    .quad 0x40000043e00705
+    .quad 0x40000044000705
+    .quad 0x40000044200705
+    .quad 0x40000044400705
+    .quad 0x40000044600705
+    .quad 0x40000044800705
+    .quad 0x40000044a00705
+    .quad 0x40000044c00705
+    .quad 0x40000044e00705
+    .quad 0x40000045000705
+    .quad 0x40000045200705
+    .quad 0x40000045400705
+    .quad 0x40000045600705
+    .quad 0x40000045800705
+    .quad 0x40000045a00705
+    .quad 0x40000045c00705
+    .quad 0x40000045e00705
+    .quad 0x40000046000705
+    .quad 0x40000046200705
+    .quad 0x40000046400705
+    .quad 0x40000046600705
+    .quad 0x40000046800705
+    .quad 0x40000046a00705
+    .quad 0x40000046c00705
+    .quad 0x40000046e00705
+    .quad 0x40000047000705
+    .quad 0x40000047200705
+    .quad 0x40000047400705
+    .quad 0x40000047600705
+    .quad 0x40000047800705
+    .quad 0x40000047a00705
+    .quad 0x40000047c00705
+    .quad 0x40000047e00705
+    .fill 448, 8, 0

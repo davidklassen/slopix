@@ -346,15 +346,17 @@ static void handle_directive(Token *tok) {
 		return;
 	}
 
-	if (strcmp(dir, ".xword") == 0) {
+	if (strcmp(dir, ".xword") == 0 || strcmp(dir, ".quad") == 0) {
 		Token *t = tok->next;
 		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
 			if (t->kind == TOK_NUMBER || t->kind == TOK_IDENT) {
 				advance_lc(8);
 				t = t->next;
-				if (t->kind == TOK_PLUS || t->kind == TOK_MINUS) {
+				// Skip any operators and their operands (e.g., + TABLE_FLAGS)
+				while (t->kind == TOK_PLUS || t->kind == TOK_MINUS ||
+				       t->kind == TOK_PIPE) {
 					t = t->next;
-					if (t->kind == TOK_NUMBER) {
+					if (t->kind == TOK_NUMBER || t->kind == TOK_IDENT) {
 						t = t->next;
 					}
 				}
@@ -443,10 +445,16 @@ static void handle_directive(Token *tok) {
 				current_section = SECTION_TEXT;
 				free(text_section_name);
 				text_section_name = strdup(name);
+				text_section_is_code = true;
 			} else if (strcmp(name, ".data") == 0) {
 				current_section = SECTION_DATA;
 			} else if (strcmp(name, ".bss") == 0) {
 				current_section = SECTION_BSS;
+			} else {
+				current_section = SECTION_TEXT;
+				free(text_section_name);
+				text_section_name = strdup(name);
+				text_section_is_code = false;
 			}
 		}
 		return;
@@ -505,6 +513,7 @@ void pass1(Token *tok) {
 	macro_init();
 	current_section = SECTION_TEXT;
 	text_section_name = strdup(".text");
+	text_section_is_code = true;
 	lc_text = 0;
 	lc_data = 0;
 	lc_bss = 0;
@@ -743,6 +752,8 @@ static void handle_directive_p2(Token *tok) {
 				current_section = SECTION_DATA;
 			} else if (strcmp(name, ".bss") == 0) {
 				current_section = SECTION_BSS;
+			} else {
+				current_section = SECTION_TEXT;
 			}
 		}
 		return;
@@ -812,7 +823,7 @@ static void handle_directive_p2(Token *tok) {
 		return;
 	}
 
-	if (strcmp(dir, ".xword") == 0) {
+	if (strcmp(dir, ".xword") == 0 || strcmp(dir, ".quad") == 0) {
 		Token *t = tok->next;
 		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
 			if (t->kind == TOK_NUMBER) {
@@ -821,27 +832,73 @@ static void handle_directive_p2(Token *tok) {
 				}
 				t = t->next;
 			} else if (t->kind == TOK_IDENT) {
-				Symbol *sym = symtab_add(t->str);
-				int sym_idx = symtab_get_index(sym);
-				int64_t addend = 0;
-
+				Symbol *sym = symtab_lookup(t->str);
 				t = t->next;
 
-				// Parse addend: +NUMBER or negative NUMBER
-				if (t->kind == TOK_PLUS) {
-					t = t->next;
-					if (t->kind == TOK_NUMBER) {
-						addend = t->val;
-						t = t->next;
-					}
-				} else if (t->kind == TOK_NUMBER && t->val < 0) {
-					addend = t->val;
-					t = t->next;
-				}
+				// Check if this is an absolute symbol (like from .equ)
+				if (sym && sym->defined && sym->section == SECTION_NONE) {
+					// Absolute constant - evaluate the full expression
+					int64_t value = (int64_t)sym->value;
 
-				if (sec) {
-					reloc_add(current_section, sec->size, R_AARCH64_ABS64, sym_idx, addend);
-					section_emit64(sec, 0);
+					// Handle + or - followed by another symbol or number
+					while (t->kind == TOK_PLUS || t->kind == TOK_MINUS ||
+					       t->kind == TOK_PIPE) {
+						int op = t->kind;
+						t = t->next;
+						int64_t operand = 0;
+						if (t->kind == TOK_NUMBER) {
+							operand = t->val;
+							t = t->next;
+						} else if (t->kind == TOK_IDENT) {
+							Symbol *sym2 = symtab_lookup(t->str);
+							if (sym2 && sym2->defined &&
+							    sym2->section == SECTION_NONE) {
+								operand = (int64_t)sym2->value;
+							}
+							t = t->next;
+						}
+						if (op == TOK_PLUS)
+							value += operand;
+						else if (op == TOK_MINUS)
+							value -= operand;
+						else if (op == TOK_PIPE)
+							value |= operand;
+					}
+
+					if (sec) {
+						section_emit64(sec, (uint64_t)value);
+					}
+				} else {
+					// Symbol reference - emit relocation
+					int sym_idx = symtab_get_index(symtab_add(sym ? sym->name : ""));
+					int64_t addend = 0;
+
+					// Parse addend: +NUMBER, -NUMBER, or +SYMBOL (absolute constant)
+					while (t->kind == TOK_PLUS || t->kind == TOK_MINUS) {
+						int op = t->kind;
+						t = t->next;
+						int64_t operand = 0;
+						if (t->kind == TOK_NUMBER) {
+							operand = t->val;
+							t = t->next;
+						} else if (t->kind == TOK_IDENT) {
+							Symbol *sym2 = symtab_lookup(t->str);
+							if (sym2 && sym2->defined &&
+							    sym2->section == SECTION_NONE) {
+								operand = (int64_t)sym2->value;
+							}
+							t = t->next;
+						}
+						if (op == TOK_PLUS)
+							addend += operand;
+						else
+							addend -= operand;
+					}
+
+					if (sec) {
+						reloc_add(current_section, sec->size, R_AARCH64_ABS64, sym_idx, addend);
+						section_emit64(sec, 0);
+					}
 				}
 			} else {
 				t = t->next;
@@ -2768,6 +2825,8 @@ void pass2(Token *tok) {
 	section_init(&text_section);
 	section_init(&data_section);
 	bss_size = lc_bss;
+	text_section_alignment = 2;
+	data_section_alignment = 3;
 	reloc_init();
 
 	current_section = SECTION_TEXT;

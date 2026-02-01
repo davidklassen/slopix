@@ -104,6 +104,8 @@ void elf_write(const char *filename) {
 			elf_syms[elf_idx].st_shndx = SEC_DATA;
 		} else if (sym->section == SECTION_BSS) {
 			elf_syms[elf_idx].st_shndx = SEC_BSS;
+		} else if (sym->defined) {
+			elf_syms[elf_idx].st_shndx = SHN_ABS;
 		} else {
 			elf_syms[elf_idx].st_shndx = SHN_UNDEF;
 		}
@@ -129,6 +131,8 @@ void elf_write(const char *filename) {
 			elf_syms[elf_idx].st_shndx = SEC_DATA;
 		} else if (sym->section == SECTION_BSS) {
 			elf_syms[elf_idx].st_shndx = SEC_BSS;
+		} else if (sym->defined) {
+			elf_syms[elf_idx].st_shndx = SHN_ABS;
 		} else {
 			elf_syms[elf_idx].st_shndx = SHN_UNDEF;
 		}
@@ -218,14 +222,14 @@ void elf_write(const char *filename) {
 	shdrs[SEC_TEXT].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
 	shdrs[SEC_TEXT].sh_offset = text_off;
 	shdrs[SEC_TEXT].sh_size = text_size;
-	shdrs[SEC_TEXT].sh_addralign = 4;
+	shdrs[SEC_TEXT].sh_addralign = text_section_alignment > 2 ? (1UL << text_section_alignment) : 4;
 
 	shdrs[SEC_DATA].sh_name = sh_name_data;
 	shdrs[SEC_DATA].sh_type = SHT_PROGBITS;
 	shdrs[SEC_DATA].sh_flags = SHF_ALLOC | SHF_WRITE;
 	shdrs[SEC_DATA].sh_offset = data_off;
 	shdrs[SEC_DATA].sh_size = data_size;
-	shdrs[SEC_DATA].sh_addralign = 8;
+	shdrs[SEC_DATA].sh_addralign = data_section_alignment > 3 ? (1UL << data_section_alignment) : 8;
 
 	shdrs[SEC_BSS].sh_name = sh_name_bss;
 	shdrs[SEC_BSS].sh_type = SHT_NOBITS;

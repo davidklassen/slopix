@@ -4,6 +4,9 @@ SectionBuf text_section;
 SectionBuf data_section;
 size_t bss_size;
 char *text_section_name;
+bool text_section_is_code;
+int text_section_alignment;
+int data_section_alignment;
 
 void section_init(SectionBuf *sec) {
 	sec->capacity = 256;
@@ -44,11 +47,18 @@ void section_emit64(SectionBuf *sec, uint64_t val) {
 }
 
 void section_align(SectionBuf *sec, int power) {
+	// Track maximum alignment for section header
+	if (sec == &text_section && power > text_section_alignment) {
+		text_section_alignment = power;
+	} else if (sec == &data_section && power > data_section_alignment) {
+		data_section_alignment = power;
+	}
+
 	size_t alignment = 1UL << power;
 	size_t aligned = (sec->size + alignment - 1) & ~(alignment - 1);
 	size_t padding = aligned - sec->size;
 	if (padding > 0) {
-		if (sec == &text_section) {
+		if (sec == &text_section && text_section_is_code) {
 			while (padding >= 4) {
 				section_emit32(sec, 0xd503201f);
 				padding -= 4;
