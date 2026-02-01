@@ -53,7 +53,7 @@ struct proc {
 	struct file *ofile[NOFILE];
 };
 
-#define NPROC 8
+#define NPROC 64
 
 extern struct proc procs[NPROC];
 extern struct proc *current;
