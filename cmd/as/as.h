@@ -30,6 +30,10 @@ typedef enum {
 	TOK_PLUS,
 	TOK_MINUS,
 	TOK_PERCENT,
+	TOK_LPAREN,
+	TOK_RPAREN,
+	TOK_PIPE,
+	TOK_LSHIFT,
 } TokenKind;
 
 typedef enum {

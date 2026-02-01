@@ -36,6 +36,69 @@ static void advance_lc(uint64_t bytes) {
 	}
 }
 
+static int log2_of(uint64_t n) {
+	if (n == 0 || (n & (n - 1)) != 0) {
+		return -1;
+	}
+	int power = 0;
+	while (n > 1) {
+		n >>= 1;
+		power++;
+	}
+	return power;
+}
+
+static int64_t parse_expr(Token **tok);
+
+static int64_t parse_primary(Token **tok) {
+	Token *t = *tok;
+	if (t->kind == TOK_NUMBER) {
+		*tok = t->next;
+		return t->val;
+	}
+	if (t->kind == TOK_IDENT) {
+		Symbol *sym = symtab_lookup(t->str);
+		if (!sym || !sym->defined) {
+			error_tok(t, "undefined symbol '%s'", t->str);
+		}
+		*tok = t->next;
+		return (int64_t)sym->value;
+	}
+	if (t->kind == TOK_LPAREN) {
+		*tok = t->next;
+		int64_t val = parse_expr(tok);
+		if ((*tok)->kind != TOK_RPAREN) {
+			error_tok(*tok, "expected ')'");
+		}
+		*tok = (*tok)->next;
+		return val;
+	}
+	error_tok(t, "expected number, symbol, or '('");
+	return 0;
+}
+
+static int64_t parse_shift_expr(Token **tok) {
+	int64_t val = parse_primary(tok);
+	while ((*tok)->kind == TOK_LSHIFT) {
+		*tok = (*tok)->next;
+		val = val << parse_primary(tok);
+	}
+	return val;
+}
+
+static int64_t parse_or_expr(Token **tok) {
+	int64_t val = parse_shift_expr(tok);
+	while ((*tok)->kind == TOK_PIPE) {
+		*tok = (*tok)->next;
+		val = val | parse_shift_expr(tok);
+	}
+	return val;
+}
+
+static int64_t parse_expr(Token **tok) {
+	return parse_or_expr(tok);
+}
+
 static Token *skip_to_newline(Token *tok) {
 	while (tok->kind != TOK_NEWLINE && tok->kind != TOK_EOF) {
 		tok = tok->next;
@@ -219,6 +282,59 @@ static void handle_directive(Token *tok) {
 		if (t->kind == TOK_NUMBER) {
 			align_lc((int)t->val);
 		}
+		return;
+	}
+
+	if (strcmp(dir, ".equ") == 0) {
+		Token *t = tok->next;
+		if (t->kind != TOK_IDENT) {
+			error_tok(t, "expected symbol name after .equ");
+		}
+		char *name = t->str;
+		t = t->next;
+		if (t->kind == TOK_COMMA) {
+			t = t->next;
+		}
+		int64_t value = parse_expr(&t);
+		Symbol *sym = symtab_add(name);
+		sym->section = SECTION_NONE;
+		sym->value = (uint64_t)value;
+		sym->defined = 1;
+		return;
+	}
+
+	if (strcmp(dir, ".fill") == 0) {
+		Token *t = tok->next;
+		int64_t count = (t->kind == TOK_NUMBER) ? t->val : 0;
+		t = t->next;
+		if (t->kind == TOK_COMMA) {
+			t = t->next;
+		}
+		int64_t size = (t->kind == TOK_NUMBER) ? t->val : 0;
+		advance_lc(count * size);
+		return;
+	}
+
+	if (strcmp(dir, ".balign") == 0) {
+		Token *t = tok->next;
+		int64_t boundary;
+		if (t->kind == TOK_NUMBER) {
+			boundary = t->val;
+		} else if (t->kind == TOK_IDENT) {
+			Symbol *sym = symtab_lookup(t->str);
+			if (!sym || !sym->defined) {
+				error_tok(t, "undefined symbol '%s'", t->str);
+			}
+			boundary = (int64_t)sym->value;
+		} else {
+			error_tok(t, "expected alignment value");
+			return;
+		}
+		int power = log2_of((uint64_t)boundary);
+		if (power < 0) {
+			error_tok(t, "alignment must be a power of 2");
+		}
+		align_lc(power);
 		return;
 	}
 
@@ -523,6 +639,48 @@ static void handle_directive_p2(Token *tok) {
 		Token *t = tok->next;
 		if (t->kind == TOK_NUMBER && sec) {
 			section_align(sec, (int)t->val);
+		}
+		return;
+	}
+
+	if (strcmp(dir, ".fill") == 0) {
+		Token *t = tok->next;
+		int64_t count = t->val;
+		t = t->next;
+		if (t->kind == TOK_COMMA) {
+			t = t->next;
+		}
+		int64_t size = t->val;
+		t = t->next;
+		if (t->kind == TOK_COMMA) {
+			t = t->next;
+		}
+		int64_t value = (t->kind == TOK_NUMBER) ? t->val : 0;
+		if (!sec) {
+			return;
+		}
+		for (int64_t i = 0; i < count; i++) {
+			for (int64_t j = 0; j < size; j++) {
+				section_emit8(sec, (uint8_t)(value >> (j * 8)));
+			}
+		}
+		return;
+	}
+
+	if (strcmp(dir, ".balign") == 0) {
+		Token *t = tok->next;
+		int64_t boundary;
+		if (t->kind == TOK_NUMBER) {
+			boundary = t->val;
+		} else if (t->kind == TOK_IDENT) {
+			Symbol *sym = symtab_lookup(t->str);
+			boundary = (int64_t)sym->value;
+		} else {
+			return;
+		}
+		int power = log2_of((uint64_t)boundary);
+		if (sec && power >= 0) {
+			section_align(sec, power);
 		}
 		return;
 	}

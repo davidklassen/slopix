@@ -67,6 +67,7 @@ the system.
 |-----------|-----|----------|
 | **cc** | No inline assembly codegen | Add minimal constraint support |
 | **as** | Missing `.equ`, `.fill`, `.balign` | Add directives |
+| **as** | No system instructions | Add `msr`, `mrs`, `isb`, `dsb`, `tlbi`, `eret`, `wfe` |
 | **as** | No macros | Add simple text-substitution macros |
 | **ld** | No kernel memory layout | Add `-T kernel` mode |
 | **ld** | No binary output | Add `--oformat=binary` |
@@ -120,7 +121,49 @@ Only `"r"` constraint needed. Single operand sufficient.
 
 **Estimated:** ~50-70 LOC total.
 
-### 3. Assembler: Simple Macros
+### 3. Assembler: System Instructions
+
+**Current state:** No system register or barrier instructions.
+
+**Kernel usage (boot.S, vectors.S):**
+
+```asm
+// System register access (13 uses)
+msr     mair_el1, x0
+mrs     x0, sctlr_el1
+msr     daifset, #2
+
+// Barriers (9 uses)
+isb
+dsb     sy
+
+// TLB management (3 uses)
+tlbi    vmalle1
+
+// Exception return (4 uses)
+eret
+
+// Hints (1 use)
+wfe
+```
+
+**System registers used:**
+- Standard: `mair_el1`, `tcr_el1`, `ttbr0_el1`, `ttbr1_el1`, `vbar_el1`, `cpacr_el1`, `sctlr_el1`
+- Exception: `sp_el0`, `elr_el1`, `spsr_el1`, `esr_el1`
+- Special: `spsel`, `daifset`
+
+**Solution:** Implement system instructions (~100-150 LOC):
+
+1. Add system register name table with opcodes
+2. `msr`: encode as `0xD5100000 | (sysreg << 5) | Rt`
+3. `mrs`: encode as `0xD5300000 | (sysreg << 5) | Rt`
+4. `isb`: encode as `0xD5033FDF`
+5. `dsb sy`: encode as `0xD503309F`
+6. `tlbi vmalle1`: encode as `0xD508871F`
+7. `eret`: encode as `0xD69F03E0`
+8. `wfe`: encode as `0xD503205F`
+
+### 4. Assembler: Simple Macros
 
 **Current state:** No macro support.
 
@@ -159,7 +202,7 @@ Instead of implementing this, manually expand the 64 entries in tables.S.
 - Implement simple macros for vectors.S (~50-80 LOC)
 - Manually expand tables.S loop (one-time source edit)
 
-### 4. Linker: Kernel Memory Layout
+### 5. Linker: Kernel Memory Layout
 
 **Current state:** Hardcoded `TEXT_BASE = 0x10000`, four sections (text, rodata,
 data, bss), ELF output only.
@@ -184,7 +227,7 @@ Symbols: __bss_start, __bss_end, __stack_top, __phys_base, __virt_base
 
 No full linker script parser needed.
 
-### 5. Variadic Functions
+### 6. Variadic Functions
 
 **Status:** Already works! chibicc has full va_list support with 224-byte
 `__va_area__` buffer, register save area, and proper AArch64 ABI handling.
@@ -278,16 +321,29 @@ Can reuse patterns from kernel virtio.c and fs.c but must be standalone.
 
 ## Implementation Plan
 
-### Phase 1: Assembler Directives
+### Phase 1: Assembler Directives ✓
 
 Add to `cmd/as`:
 - `.equ NAME, value` - constant in symbol table
 - `.fill count, size, value` - emit bytes
 - `.balign N` - align to N bytes
 
-**Test:** Assemble kernel/boot.S (uses .equ)
+**Status:** Complete
 
-### Phase 2: Assembler Macros
+### Phase 2: System Instructions
+
+Add to `cmd/as`:
+- `msr <sysreg>, <reg>` - move to system register
+- `mrs <reg>, <sysreg>` - move from system register
+- `isb` - instruction synchronization barrier
+- `dsb sy` - data synchronization barrier
+- `tlbi vmalle1` - TLB invalidate all EL1
+- `eret` - exception return
+- `wfe` - wait for event
+
+**Test:** Assemble kernel/boot.S
+
+### Phase 3: Assembler Macros
 
 Add to `cmd/as`:
 - `.macro NAME [params]` / `.endm` - define macro
@@ -296,7 +352,7 @@ Add to `cmd/as`:
 
 **Test:** Assemble kernel/vectors.S
 
-### Phase 3: Manual Expansion
+### Phase 4: Manual Expansion
 
 Edit `kernel/tables.S`:
 - Expand `ram_blocks` macro to 64 `.quad` entries
@@ -304,7 +360,7 @@ Edit `kernel/tables.S`:
 
 **Test:** Assemble kernel/tables.S
 
-### Phase 4: Inline Assembly
+### Phase 5: Inline Assembly
 
 Add to `cmd/cc`:
 - Parse `: "=r"(var)` output constraint
@@ -314,7 +370,7 @@ Add to `cmd/cc`:
 
 **Test:** Compile kernel/cpu.h functions
 
-### Phase 5: Kernel Linker Mode
+### Phase 6: Kernel Linker Mode
 
 Add to `cmd/ld`:
 - `-T kernel` flag
@@ -324,7 +380,7 @@ Add to `cmd/ld`:
 
 **Test:** Link kernel, produce kernel.bin
 
-### Phase 6: Kernel Build Script
+### Phase 7: Kernel Build Script
 
 Create `kernel/build.c`:
 - Compile all .c files
@@ -334,7 +390,7 @@ Create `kernel/build.c`:
 
 **Test:** Build kernel within slopix
 
-### Phase 7: Bootloader
+### Phase 8: Bootloader
 
 Create `boot/` directory:
 - Standalone bootloader binary
@@ -344,7 +400,7 @@ Create `boot/` directory:
 
 **Test:** Boot slopix without -kernel flag
 
-### Phase 8: Integration
+### Phase 9: Integration
 
 - Update Makefile for pflash bootloader
 - Test full cycle: boot → edit → rebuild → reboot
@@ -381,11 +437,12 @@ Each phase has concrete validation:
 
 | Phase | Test |
 |-------|------|
-| Directives | `as` accepts kernel/boot.S |
-| Macros | `as` accepts kernel/vectors.S |
-| Inline asm | `cc` compiles test with mrs/msr |
-| Linker | `ld -T kernel` produces correct layout |
-| Binary | Output boots in QEMU |
+| 1. Directives | `as` parses `.equ`, `.fill`, `.balign` |
+| 2. System instrs | `as` accepts kernel/boot.S |
+| 3. Macros | `as` accepts kernel/vectors.S |
+| 5. Inline asm | `cc` compiles test with mrs/msr |
+| 6. Linker | `ld -T kernel` produces correct layout |
+| 8. Bootloader | Output boots in QEMU |
 
 ### Triple Compilation
 
@@ -440,13 +497,14 @@ Verify toolchain correctness:
 
 | Component | Estimated LOC |
 |-----------|---------------|
-| as: directives | 50-70 |
+| as: directives | 50-70 ✓ |
+| as: system instructions | 100-150 |
 | as: simple macros | 50-80 |
 | cc: inline asm | 100-150 |
 | ld: kernel mode | 150-200 |
 | kernel/build.c | 50-100 |
 | bootloader | 500-800 |
-| **Total** | ~900-1400 |
+| **Total** | ~1000-1550 |
 
 Plus one-time manual expansion of tables.S (~64 lines).
 

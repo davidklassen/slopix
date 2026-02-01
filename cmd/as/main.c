@@ -184,6 +184,14 @@ static char *token_kind_name(TokenKind kind) {
 		return "MINUS";
 	case TOK_PERCENT:
 		return "PERCENT";
+	case TOK_LPAREN:
+		return "LPAREN";
+	case TOK_RPAREN:
+		return "RPAREN";
+	case TOK_PIPE:
+		return "PIPE";
+	case TOK_LSHIFT:
+		return "LSHIFT";
 	}
 	return "UNKNOWN";
 }

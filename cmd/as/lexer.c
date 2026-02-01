@@ -394,6 +394,30 @@ Token *tokenize(char *input) {
 			continue;
 		}
 
+		if (startswith(p, "<<")) {
+			cur = cur->next = new_token(TOK_LSHIFT, p, p + 2, line_no);
+			p += 2;
+			continue;
+		}
+
+		if (*p == '(') {
+			cur = cur->next = new_token(TOK_LPAREN, p, p + 1, line_no);
+			p++;
+			continue;
+		}
+
+		if (*p == ')') {
+			cur = cur->next = new_token(TOK_RPAREN, p, p + 1, line_no);
+			p++;
+			continue;
+		}
+
+		if (*p == '|') {
+			cur = cur->next = new_token(TOK_PIPE, p, p + 1, line_no);
+			p++;
+			continue;
+		}
+
 		error_at(p, "invalid token");
 	}
 
