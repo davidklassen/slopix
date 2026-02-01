@@ -371,6 +371,49 @@ int feof(FILE *stream) {
 	return stream->eof;
 }
 
+typedef struct {
+	int (*putc)(int c, void *ctx);
+	void *ctx;
+} PrintWriter;
+
+typedef struct {
+	int left_align;
+	int zero_pad;
+	int show_sign;
+	int space_sign;
+	int alt_form;
+	int width;
+	int precision;
+	int length;
+} FmtSpec;
+
+static int emit_char(PrintWriter *w, int c, int *count) {
+	int r = w->putc(c, w->ctx);
+	if (r == EOF) {
+		return -1;
+	}
+	(*count)++;
+	return 0;
+}
+
+static int emit_chars(PrintWriter *w, int c, int n, int *count) {
+	for (int i = 0; i < n; i++) {
+		if (emit_char(w, c, count) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int emit_str(PrintWriter *w, const char *s, int len, int *count) {
+	for (int i = 0; i < len; i++) {
+		if (emit_char(w, s[i], count) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static void reverse(char *buf, int len) {
 	int i = 0, j = len - 1;
 	while (i < j) {
@@ -382,118 +425,139 @@ static void reverse(char *buf, int len) {
 	}
 }
 
-static int format_int(char *buf, long val, int is_signed) {
-	int neg = 0;
-	unsigned long uval;
+static int format_uint(char *buf, unsigned long val) {
 	int len = 0;
-
-	if (is_signed && val < 0) {
-		neg = 1;
-		uval = -(unsigned long)val;
-	} else {
-		uval = val;
-	}
-
-	if (uval == 0) {
+	if (val == 0) {
 		buf[len++] = '0';
 		return len;
 	}
-
-	while (uval > 0) {
-		buf[len++] = '0' + (uval % 10);
-		uval /= 10;
+	while (val > 0) {
+		buf[len++] = '0' + (val % 10);
+		val /= 10;
 	}
-
-	if (neg) {
-		buf[len++] = '-';
-	}
-
 	reverse(buf, len);
 	return len;
 }
 
-static int format_hex(char *buf, unsigned long val, int width, int upper) {
+static int format_hex(char *buf, unsigned long val, int upper) {
 	const char *hex = upper ? "0123456789ABCDEF" : "0123456789abcdef";
 	int len = 0;
-	int digits = 0;
-
-	if (val == 0 && width == 0) {
+	if (val == 0) {
 		buf[len++] = '0';
 		return len;
 	}
-
-	unsigned long tmp = val;
-	while (tmp > 0 || digits < width) {
-		buf[len++] = hex[tmp & 0xf];
-		tmp >>= 4;
-		digits++;
-		if (digits >= width && tmp == 0) {
-			break;
-		}
+	while (val > 0) {
+		buf[len++] = hex[val & 0xf];
+		val >>= 4;
 	}
-
 	reverse(buf, len);
 	return len;
 }
 
-int vfprintf(FILE *stream, const char *fmt, va_list ap) {
-	if (!stream || !fmt) {
-		return -1;
+static int format_octal(char *buf, unsigned long val) {
+	int len = 0;
+	if (val == 0) {
+		buf[len++] = '0';
+		return len;
 	}
+	while (val > 0) {
+		buf[len++] = '0' + (val & 7);
+		val >>= 3;
+	}
+	reverse(buf, len);
+	return len;
+}
 
+static int vprintf_core(PrintWriter *w, const char *fmt, va_list ap) {
 	int count = 0;
 	char numbuf[32];
 
 	while (*fmt) {
 		if (*fmt != '%') {
-			if (fputc(*fmt, stream) == EOF) {
+			if (emit_char(w, *fmt, &count) < 0) {
 				return -1;
 			}
-			count++;
 			fmt++;
 			continue;
 		}
 		fmt++;
 
-		int zero_pad = 0;
-		if (*fmt == '0') {
-			zero_pad = 1;
+		FmtSpec spec = {0, 0, 0, 0, 0, 0, -1, 0};
+
+		while (*fmt == '-' || *fmt == '0' || *fmt == '+' || *fmt == ' ' ||
+		       *fmt == '#') {
+			switch (*fmt) {
+			case '-':
+				spec.left_align = 1;
+				break;
+			case '0':
+				spec.zero_pad = 1;
+				break;
+			case '+':
+				spec.show_sign = 1;
+				break;
+			case ' ':
+				spec.space_sign = 1;
+				break;
+			case '#':
+				spec.alt_form = 1;
+				break;
+			}
 			fmt++;
 		}
 
-		int width = 0;
+		if (spec.left_align) {
+			spec.zero_pad = 0;
+		}
+
 		if (*fmt == '*') {
-			width = va_arg(ap, int);
+			spec.width = va_arg(ap, int);
+			if (spec.width < 0) {
+				spec.left_align = 1;
+				spec.zero_pad = 0;
+				spec.width = -spec.width;
+			}
 			fmt++;
 		} else {
 			while (*fmt >= '0' && *fmt <= '9') {
-				width = width * 10 + (*fmt - '0');
+				spec.width = spec.width * 10 + (*fmt - '0');
 				fmt++;
 			}
 		}
 
-		int precision = -1;
 		if (*fmt == '.') {
 			fmt++;
 			if (*fmt == '*') {
-				precision = va_arg(ap, int);
+				spec.precision = va_arg(ap, int);
+				if (spec.precision < 0) {
+					spec.precision = -1;
+				}
 				fmt++;
 			} else {
-				precision = 0;
+				spec.precision = 0;
 				while (*fmt >= '0' && *fmt <= '9') {
-					precision = precision * 10 + (*fmt - '0');
+					spec.precision = spec.precision * 10 + (*fmt - '0');
 					fmt++;
 				}
 			}
 		}
 
-		int is_long = 0;
-		if (*fmt == 'l') {
-			is_long = 1;
+		if (*fmt == 'h') {
+			spec.length = -1;
 			fmt++;
-		}
-		if (*fmt == 'l') {
-			is_long = 2;
+			if (*fmt == 'h') {
+				spec.length = -2;
+				fmt++;
+			}
+		} else if (*fmt == 'l') {
+			spec.length = 1;
+			fmt++;
+			if (*fmt == 'l') {
+				spec.length = 2;
+				fmt++;
+			}
+		} else if (*fmt == 'z') {
+			spec.length = 3;
 			fmt++;
 		}
 
@@ -501,119 +565,217 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 		case 'd':
 		case 'i': {
 			long val;
-			if (is_long) {
+			if (spec.length == 2 || spec.length == 1) {
 				val = va_arg(ap, long);
+			} else if (spec.length == 3) {
+				val = (long)va_arg(ap, size_t);
 			} else {
 				val = va_arg(ap, int);
-			}
-			int len = format_int(numbuf, val, 1);
-			int pad = width - len;
-			if (pad > 0 && !zero_pad) {
-				while (pad-- > 0) {
-					if (fputc(' ', stream) == EOF) {
-						return -1;
-					}
-					count++;
+				if (spec.length == -1) {
+					val = (short)val;
+				} else if (spec.length == -2) {
+					val = (signed char)val;
 				}
 			}
-			if (pad > 0 && zero_pad) {
-				int neg = (val < 0);
-				if (neg) {
-					if (fputc('-', stream) == EOF) {
-						return -1;
-					}
-					count++;
-					len--;
-					pad = width - len - 1;
+			int neg = (val < 0);
+			unsigned long uval = neg ? -(unsigned long)val : (unsigned long)val;
+			int len = format_uint(numbuf, uval);
+			char sign_char = 0;
+			if (neg) {
+				sign_char = '-';
+			} else if (spec.show_sign) {
+				sign_char = '+';
+			} else if (spec.space_sign) {
+				sign_char = ' ';
+			}
+			int sign_len = sign_char ? 1 : 0;
+			int total_len = len + sign_len;
+			int pad = spec.width - total_len;
+			if (!spec.left_align && !spec.zero_pad && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
 				}
-				while (pad-- > 0) {
-					if (fputc('0', stream) == EOF) {
-						return -1;
-					}
-					count++;
+			}
+			if (sign_char) {
+				if (emit_char(w, sign_char, &count) < 0) {
+					return -1;
 				}
-				for (int i = neg ? 1 : 0; i < len + (neg ? 1 : 0); i++) {
-					if (fputc(numbuf[i], stream) == EOF) {
-						return -1;
-					}
-					count++;
+			}
+			if (!spec.left_align && spec.zero_pad && pad > 0) {
+				if (emit_chars(w, '0', pad, &count) < 0) {
+					return -1;
 				}
-			} else {
-				for (int i = 0; i < len; i++) {
-					if (fputc(numbuf[i], stream) == EOF) {
-						return -1;
-					}
-					count++;
+			}
+			if (emit_str(w, numbuf, len, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
 				}
 			}
 			break;
 		}
 		case 'u': {
 			unsigned long val;
-			if (is_long) {
+			if (spec.length == 2 || spec.length == 1) {
 				val = va_arg(ap, unsigned long);
+			} else if (spec.length == 3) {
+				val = va_arg(ap, size_t);
 			} else {
 				val = va_arg(ap, unsigned int);
+				if (spec.length == -1) {
+					val = (unsigned short)val;
+				} else if (spec.length == -2) {
+					val = (unsigned char)val;
+				}
 			}
-			int len = format_int(numbuf, (long)val, 0);
-			int pad = width - len;
-			char pad_char = zero_pad ? '0' : ' ';
-			while (pad-- > 0) {
-				if (fputc(pad_char, stream) == EOF) {
+			int len = format_uint(numbuf, val);
+			int pad = spec.width - len;
+			if (!spec.left_align && !spec.zero_pad && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
 			}
-			for (int i = 0; i < len; i++) {
-				if (fputc(numbuf[i], stream) == EOF) {
+			if (!spec.left_align && spec.zero_pad && pad > 0) {
+				if (emit_chars(w, '0', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
+			}
+			if (emit_str(w, numbuf, len, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
+			}
+			break;
+		}
+		case 'o': {
+			unsigned long val;
+			if (spec.length == 2 || spec.length == 1) {
+				val = va_arg(ap, unsigned long);
+			} else if (spec.length == 3) {
+				val = va_arg(ap, size_t);
+			} else {
+				val = va_arg(ap, unsigned int);
+				if (spec.length == -1) {
+					val = (unsigned short)val;
+				} else if (spec.length == -2) {
+					val = (unsigned char)val;
+				}
+			}
+			int len = format_octal(numbuf, val);
+			int prefix_len = 0;
+			if (spec.alt_form && val != 0) {
+				prefix_len = 1;
+			}
+			int total_len = len + prefix_len;
+			int pad = spec.width - total_len;
+			if (!spec.left_align && !spec.zero_pad && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
+			}
+			if (prefix_len) {
+				if (emit_char(w, '0', &count) < 0) {
+					return -1;
+				}
+			}
+			if (!spec.left_align && spec.zero_pad && pad > 0) {
+				if (emit_chars(w, '0', pad, &count) < 0) {
+					return -1;
+				}
+			}
+			if (emit_str(w, numbuf, len, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
 			}
 			break;
 		}
 		case 'x':
 		case 'X': {
 			unsigned long val;
-			if (is_long) {
+			if (spec.length == 2 || spec.length == 1) {
 				val = va_arg(ap, unsigned long);
+			} else if (spec.length == 3) {
+				val = va_arg(ap, size_t);
 			} else {
 				val = va_arg(ap, unsigned int);
+				if (spec.length == -1) {
+					val = (unsigned short)val;
+				} else if (spec.length == -2) {
+					val = (unsigned char)val;
+				}
 			}
 			int upper = (*fmt == 'X');
-			int len = format_hex(numbuf, val, 0, upper);
-			int pad = width - len;
-			char pad_char = zero_pad ? '0' : ' ';
-			while (pad-- > 0) {
-				if (fputc(pad_char, stream) == EOF) {
-					return -1;
-				}
-				count++;
+			int len = format_hex(numbuf, val, upper);
+			int prefix_len = 0;
+			if (spec.alt_form && val != 0) {
+				prefix_len = 2;
 			}
-			for (int i = 0; i < len; i++) {
-				if (fputc(numbuf[i], stream) == EOF) {
+			int total_len = len + prefix_len;
+			int pad = spec.width - total_len;
+			if (!spec.left_align && !spec.zero_pad && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
+			}
+			if (prefix_len) {
+				if (emit_char(w, '0', &count) < 0) {
+					return -1;
+				}
+				if (emit_char(w, upper ? 'X' : 'x', &count) < 0) {
+					return -1;
+				}
+			}
+			if (!spec.left_align && spec.zero_pad && pad > 0) {
+				if (emit_chars(w, '0', pad, &count) < 0) {
+					return -1;
+				}
+			}
+			if (emit_str(w, numbuf, len, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
 			}
 			break;
 		}
 		case 'p': {
 			unsigned long ptr = (unsigned long)va_arg(ap, void *);
-			if (fputc('0', stream) == EOF) {
-				return -1;
+			char hexbuf[20];
+			int hlen = 0;
+			hexbuf[hlen++] = '0';
+			hexbuf[hlen++] = 'x';
+			int numlen = format_hex(numbuf, ptr, 0);
+			int zeros = 16 - numlen;
+			for (int i = 0; i < zeros; i++) {
+				hexbuf[hlen++] = '0';
 			}
-			count++;
-			if (fputc('x', stream) == EOF) {
-				return -1;
+			for (int i = 0; i < numlen; i++) {
+				hexbuf[hlen++] = numbuf[i];
 			}
-			count++;
-			int len = format_hex(numbuf, ptr, 16, 0);
-			for (int i = 0; i < len; i++) {
-				if (fputc(numbuf[i], stream) == EOF) {
+			int pad = spec.width - hlen;
+			if (!spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
+			}
+			if (emit_str(w, hexbuf, hlen, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
 			}
 			break;
 		}
@@ -627,48 +789,56 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 			while (*p++) {
 				slen++;
 			}
-			if (precision >= 0 && precision < slen) {
-				slen = precision;
+			if (spec.precision >= 0 && spec.precision < slen) {
+				slen = spec.precision;
 			}
-			int pad = width - slen;
-			while (pad-- > 0) {
-				if (fputc(' ', stream) == EOF) {
+			int pad = spec.width - slen;
+			if (!spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
 			}
-			for (int i = 0; i < slen; i++) {
-				if (fputc(s[i], stream) == EOF) {
+			if (emit_str(w, s, slen, &count) < 0) {
+				return -1;
+			}
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
 					return -1;
 				}
-				count++;
 			}
 			break;
 		}
 		case 'c': {
 			int c = va_arg(ap, int);
-			if (fputc(c, stream) == EOF) {
+			int pad = spec.width - 1;
+			if (!spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
+			}
+			if (emit_char(w, c, &count) < 0) {
 				return -1;
 			}
-			count++;
+			if (spec.left_align && pad > 0) {
+				if (emit_chars(w, ' ', pad, &count) < 0) {
+					return -1;
+				}
+			}
 			break;
 		}
 		case '%':
-			if (fputc('%', stream) == EOF) {
+			if (emit_char(w, '%', &count) < 0) {
 				return -1;
 			}
-			count++;
 			break;
 		default:
-			if (fputc('%', stream) == EOF) {
+			if (emit_char(w, '%', &count) < 0) {
 				return -1;
 			}
-			count++;
 			if (*fmt) {
-				if (fputc(*fmt, stream) == EOF) {
+				if (emit_char(w, *fmt, &count) < 0) {
 					return -1;
 				}
-				count++;
 			}
 			break;
 		}
@@ -680,6 +850,18 @@ int vfprintf(FILE *stream, const char *fmt, va_list ap) {
 	return count;
 }
 
+static int file_putc(int c, void *ctx) {
+	return fputc(c, (FILE *)ctx);
+}
+
+int vfprintf(FILE *stream, const char *fmt, va_list ap) {
+	if (!stream || !fmt) {
+		return -1;
+	}
+	PrintWriter w = {file_putc, stream};
+	return vprintf_core(&w, fmt, ap);
+}
+
 int fprintf(FILE *stream, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
@@ -688,256 +870,48 @@ int fprintf(FILE *stream, const char *fmt, ...) {
 	return result;
 }
 
+int printf(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int result = vfprintf(stdout, fmt, ap);
+	va_end(ap);
+	return result;
+}
+
+int vprintf(const char *fmt, va_list ap) {
+	return vfprintf(stdout, fmt, ap);
+}
+
+typedef struct {
+	char *buf;
+	size_t size;
+	size_t pos;
+} StrWriterCtx;
+
+static int str_putc(int c, void *ctx) {
+	StrWriterCtx *s = ctx;
+	if (s->buf && s->pos < s->size - 1) {
+		s->buf[s->pos] = (char)c;
+	}
+	s->pos++;
+	return (unsigned char)c;
+}
+
 int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
 	if (!fmt) {
 		return -1;
 	}
+	StrWriterCtx ctx = {str, size, 0};
 	if (!str || size == 0) {
-		str = 0;
-		size = 0;
+		ctx.buf = 0;
+		ctx.size = 0;
 	}
-
-	int count = 0;
-	char numbuf[32];
-
-	while (*fmt) {
-		if (*fmt != '%') {
-			if (str && (size_t)count < size - 1) {
-				str[count] = *fmt;
-			}
-			count++;
-			fmt++;
-			continue;
-		}
-		fmt++;
-
-		int zero_pad = 0;
-		if (*fmt == '0') {
-			zero_pad = 1;
-			fmt++;
-		}
-
-		int width = 0;
-		if (*fmt == '*') {
-			width = va_arg(ap, int);
-			fmt++;
-		} else {
-			while (*fmt >= '0' && *fmt <= '9') {
-				width = width * 10 + (*fmt - '0');
-				fmt++;
-			}
-		}
-
-		int precision = -1;
-		if (*fmt == '.') {
-			fmt++;
-			if (*fmt == '*') {
-				precision = va_arg(ap, int);
-				fmt++;
-			} else {
-				precision = 0;
-				while (*fmt >= '0' && *fmt <= '9') {
-					precision = precision * 10 + (*fmt - '0');
-					fmt++;
-				}
-			}
-		}
-
-		int is_long = 0;
-		if (*fmt == 'l') {
-			is_long = 1;
-			fmt++;
-		}
-		if (*fmt == 'l') {
-			is_long = 2;
-			fmt++;
-		}
-
-		switch (*fmt) {
-		case 'd':
-		case 'i': {
-			long val;
-			if (is_long) {
-				val = va_arg(ap, long);
-			} else {
-				val = va_arg(ap, int);
-			}
-			int len = format_int(numbuf, val, 1);
-			int pad = width - len;
-			if (pad > 0 && !zero_pad) {
-				while (pad-- > 0) {
-					if (str && (size_t)count < size - 1) {
-						str[count] = ' ';
-					}
-					count++;
-				}
-			}
-			if (pad > 0 && zero_pad) {
-				int neg = (val < 0);
-				if (neg) {
-					if (str && (size_t)count < size - 1) {
-						str[count] = '-';
-					}
-					count++;
-					len--;
-					pad = width - len - 1;
-				}
-				while (pad-- > 0) {
-					if (str && (size_t)count < size - 1) {
-						str[count] = '0';
-					}
-					count++;
-				}
-				for (int i = neg ? 1 : 0; i < len + (neg ? 1 : 0); i++) {
-					if (str && (size_t)count < size - 1) {
-						str[count] = numbuf[i];
-					}
-					count++;
-				}
-			} else {
-				for (int i = 0; i < len; i++) {
-					if (str && (size_t)count < size - 1) {
-						str[count] = numbuf[i];
-					}
-					count++;
-				}
-			}
-			break;
-		}
-		case 'u': {
-			unsigned long val;
-			if (is_long) {
-				val = va_arg(ap, unsigned long);
-			} else {
-				val = va_arg(ap, unsigned int);
-			}
-			int len = format_int(numbuf, (long)val, 0);
-			int pad = width - len;
-			char pad_char = zero_pad ? '0' : ' ';
-			while (pad-- > 0) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = pad_char;
-				}
-				count++;
-			}
-			for (int i = 0; i < len; i++) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = numbuf[i];
-				}
-				count++;
-			}
-			break;
-		}
-		case 'x':
-		case 'X': {
-			unsigned long val;
-			if (is_long) {
-				val = va_arg(ap, unsigned long);
-			} else {
-				val = va_arg(ap, unsigned int);
-			}
-			int upper = (*fmt == 'X');
-			int len = format_hex(numbuf, val, 0, upper);
-			int pad = width - len;
-			char pad_char = zero_pad ? '0' : ' ';
-			while (pad-- > 0) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = pad_char;
-				}
-				count++;
-			}
-			for (int i = 0; i < len; i++) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = numbuf[i];
-				}
-				count++;
-			}
-			break;
-		}
-		case 'p': {
-			unsigned long ptr = (unsigned long)va_arg(ap, void *);
-			if (str && (size_t)count < size - 1) {
-				str[count] = '0';
-			}
-			count++;
-			if (str && (size_t)count < size - 1) {
-				str[count] = 'x';
-			}
-			count++;
-			int len = format_hex(numbuf, ptr, 16, 0);
-			for (int i = 0; i < len; i++) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = numbuf[i];
-				}
-				count++;
-			}
-			break;
-		}
-		case 's': {
-			const char *s = va_arg(ap, const char *);
-			if (!s) {
-				s = "(null)";
-			}
-			int slen = 0;
-			const char *p = s;
-			while (*p++) {
-				slen++;
-			}
-			if (precision >= 0 && precision < slen) {
-				slen = precision;
-			}
-			int pad = width - slen;
-			while (pad-- > 0) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = ' ';
-				}
-				count++;
-			}
-			for (int i = 0; i < slen; i++) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = s[i];
-				}
-				count++;
-			}
-			break;
-		}
-		case 'c': {
-			int c = va_arg(ap, int);
-			if (str && (size_t)count < size - 1) {
-				str[count] = c;
-			}
-			count++;
-			break;
-		}
-		case '%':
-			if (str && (size_t)count < size - 1) {
-				str[count] = '%';
-			}
-			count++;
-			break;
-		default:
-			if (str && (size_t)count < size - 1) {
-				str[count] = '%';
-			}
-			count++;
-			if (*fmt) {
-				if (str && (size_t)count < size - 1) {
-					str[count] = *fmt;
-				}
-				count++;
-			}
-			break;
-		}
-		if (*fmt) {
-			fmt++;
-		}
+	PrintWriter w = {str_putc, &ctx};
+	int count = vprintf_core(&w, fmt, ap);
+	if (ctx.buf && ctx.size > 0) {
+		size_t term_pos = ctx.pos < ctx.size ? ctx.pos : ctx.size - 1;
+		ctx.buf[term_pos] = '\0';
 	}
-
-	if (str && size > 0) {
-		size_t term_pos = (size_t)count < size - 1 ? (size_t)count : size - 1;
-		str[term_pos] = '\0';
-	}
-
 	return count;
 }
 

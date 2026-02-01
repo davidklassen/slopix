@@ -29,6 +29,7 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 
 int puts(const char *s);
 int printf(const char *fmt, ...);
+int vprintf(const char *fmt, va_list ap);
 int fileno(FILE *stream);
 
 FILE *fopen(const char *path, const char *mode);

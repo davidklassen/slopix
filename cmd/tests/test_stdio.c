@@ -997,6 +997,148 @@ TEST(perror_basic) {
 	return 0;
 }
 
+TEST(sprintf_left_align_str) {
+	char buf[32];
+	sprintf(buf, "%-10s", "hello");
+	ASSERT_EQ(strcmp(buf, "hello     "), 0, "left-align string");
+	return 0;
+}
+
+TEST(sprintf_left_align_int) {
+	char buf[32];
+	sprintf(buf, "%-10d", 42);
+	ASSERT_EQ(strcmp(buf, "42        "), 0, "left-align int");
+	return 0;
+}
+
+TEST(sprintf_left_align_llu) {
+	char buf[32];
+	sprintf(buf, "%-10llu", 123ULL);
+	ASSERT_EQ(strcmp(buf, "123       "), 0, "left-align llu");
+	return 0;
+}
+
+TEST(sprintf_size_t) {
+	char buf[32];
+	size_t val = 12345;
+	sprintf(buf, "%zu bytes", val);
+	ASSERT_EQ(strcmp(buf, "12345 bytes"), 0, "size_t");
+	return 0;
+}
+
+TEST(sprintf_size_t_large) {
+	char buf[32];
+	size_t val = 18446744073709551615UL;
+	sprintf(buf, "%zu", val);
+	ASSERT_EQ(strcmp(buf, "18446744073709551615"), 0, "size_t large");
+	return 0;
+}
+
+TEST(sprintf_plus_positive) {
+	char buf[32];
+	sprintf(buf, "%+d", 42);
+	ASSERT_EQ(strcmp(buf, "+42"), 0, "+positive");
+	return 0;
+}
+
+TEST(sprintf_plus_negative) {
+	char buf[32];
+	sprintf(buf, "%+d", -42);
+	ASSERT_EQ(strcmp(buf, "-42"), 0, "+negative");
+	return 0;
+}
+
+TEST(sprintf_space_positive) {
+	char buf[32];
+	sprintf(buf, "% d", 42);
+	ASSERT_EQ(strcmp(buf, " 42"), 0, "space positive");
+	return 0;
+}
+
+TEST(sprintf_space_negative) {
+	char buf[32];
+	sprintf(buf, "% d", -42);
+	ASSERT_EQ(strcmp(buf, "-42"), 0, "space negative");
+	return 0;
+}
+
+TEST(sprintf_alt_hex) {
+	char buf[32];
+	sprintf(buf, "%#x", 255);
+	ASSERT_EQ(strcmp(buf, "0xff"), 0, "alt hex");
+	return 0;
+}
+
+TEST(sprintf_alt_hex_upper) {
+	char buf[32];
+	sprintf(buf, "%#X", 255);
+	ASSERT_EQ(strcmp(buf, "0XFF"), 0, "alt hex upper");
+	return 0;
+}
+
+TEST(sprintf_alt_hex_zero) {
+	char buf[32];
+	sprintf(buf, "%#x", 0);
+	ASSERT_EQ(strcmp(buf, "0"), 0, "alt hex zero no prefix");
+	return 0;
+}
+
+TEST(sprintf_octal) {
+	char buf[32];
+	sprintf(buf, "%o", 8);
+	ASSERT_EQ(strcmp(buf, "10"), 0, "octal");
+	return 0;
+}
+
+TEST(sprintf_alt_octal) {
+	char buf[32];
+	sprintf(buf, "%#o", 8);
+	ASSERT_EQ(strcmp(buf, "010"), 0, "alt octal");
+	return 0;
+}
+
+TEST(sprintf_short) {
+	char buf[32];
+	sprintf(buf, "%hd", (short)-1234);
+	ASSERT_EQ(strcmp(buf, "-1234"), 0, "short");
+	return 0;
+}
+
+TEST(sprintf_char_hh) {
+	char buf[32];
+	sprintf(buf, "%hhd", (signed char)65);
+	ASSERT_EQ(strcmp(buf, "65"), 0, "char hh");
+	return 0;
+}
+
+TEST(sprintf_left_zero) {
+	char buf[32];
+	sprintf(buf, "%-010d", 42);
+	ASSERT_EQ(strcmp(buf, "42        "), 0, "left overrides zero");
+	return 0;
+}
+
+TEST(sprintf_plus_width) {
+	char buf[32];
+	sprintf(buf, "%+5d", 42);
+	ASSERT_EQ(strcmp(buf, "  +42"), 0, "plus with width");
+	return 0;
+}
+
+TEST(sprintf_plus_zero_pad) {
+	char buf[32];
+	sprintf(buf, "%+05d", 42);
+	ASSERT_EQ(strcmp(buf, "+0042"), 0, "plus with zero pad");
+	return 0;
+}
+
+TEST(sprintf_multi_specifiers) {
+	char buf[64];
+	sprintf(buf, "[%d] %-10s %zu bytes", 0, "hello", (size_t)123);
+	ASSERT_EQ(strcmp(buf, "[0] hello      123 bytes"), 0, "multi specifiers");
+	return 0;
+}
+
 TEST_SUITE(stdio) {
 	RUN_TEST(stdio_stdin_exists);
 	RUN_TEST(stdio_stdout_exists);
@@ -1059,4 +1201,24 @@ TEST_SUITE(stdio) {
 	RUN_TEST(getline_no_newline);
 	RUN_TEST(getline_long_line);
 	RUN_TEST(perror_basic);
+	RUN_TEST(sprintf_left_align_str);
+	RUN_TEST(sprintf_left_align_int);
+	RUN_TEST(sprintf_left_align_llu);
+	RUN_TEST(sprintf_size_t);
+	RUN_TEST(sprintf_size_t_large);
+	RUN_TEST(sprintf_plus_positive);
+	RUN_TEST(sprintf_plus_negative);
+	RUN_TEST(sprintf_space_positive);
+	RUN_TEST(sprintf_space_negative);
+	RUN_TEST(sprintf_alt_hex);
+	RUN_TEST(sprintf_alt_hex_upper);
+	RUN_TEST(sprintf_alt_hex_zero);
+	RUN_TEST(sprintf_octal);
+	RUN_TEST(sprintf_alt_octal);
+	RUN_TEST(sprintf_short);
+	RUN_TEST(sprintf_char_hh);
+	RUN_TEST(sprintf_left_zero);
+	RUN_TEST(sprintf_plus_width);
+	RUN_TEST(sprintf_plus_zero_pad);
+	RUN_TEST(sprintf_multi_specifiers);
 }

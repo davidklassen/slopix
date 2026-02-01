@@ -739,6 +739,7 @@ int main(void) {
 		update_jobs();
 		report_done_jobs();
 		printf("slopix> ");
+		fflush(stdout);
 		int n = readline(buf, sizeof(buf));
 		if (n < 0) {
 			printf("\n");
