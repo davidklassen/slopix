@@ -3,6 +3,7 @@
 SectionBuf text_section;
 SectionBuf data_section;
 size_t bss_size;
+char *text_section_name;
 
 void section_init(SectionBuf *sec) {
 	sec->capacity = 256;

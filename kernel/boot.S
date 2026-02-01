@@ -57,11 +57,12 @@ _start:
 
     ldr     x0, =__bss_start
     ldr     x1, =__bss_end
-1:  cmp     x0, x1
-    b.ge    2f
+.bss_loop:
+    cmp     x0, x1
+    b.ge    .bss_done
     str     xzr, [x0], #8
-    b       1b
-2:
+    b       .bss_loop
+.bss_done:
 
     // Store DTB virtual address (PA + kernel base offset)
     ldr     x0, =_dtb_address

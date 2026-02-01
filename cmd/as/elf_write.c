@@ -38,13 +38,17 @@ void elf_write(const char *filename) {
 	strtab_init(&strtab);
 	strtab_init(&shstrtab);
 
-	uint32_t sh_name_text = strtab_add(&shstrtab, ".text");
+	const char *tname = text_section_name ? text_section_name : ".text";
+	char rela_text_name[64];
+	snprintf(rela_text_name, sizeof(rela_text_name), ".rela%s", tname);
+
+	uint32_t sh_name_text = strtab_add(&shstrtab, tname);
 	uint32_t sh_name_data = strtab_add(&shstrtab, ".data");
 	uint32_t sh_name_bss = strtab_add(&shstrtab, ".bss");
 	uint32_t sh_name_symtab = strtab_add(&shstrtab, ".symtab");
 	uint32_t sh_name_strtab = strtab_add(&shstrtab, ".strtab");
 	uint32_t sh_name_shstrtab = strtab_add(&shstrtab, ".shstrtab");
-	uint32_t sh_name_rela_text = strtab_add(&shstrtab, ".rela.text");
+	uint32_t sh_name_rela_text = strtab_add(&shstrtab, rela_text_name);
 	uint32_t sh_name_rela_data = strtab_add(&shstrtab, ".rela.data");
 
 	int nsyms = symtab_count();

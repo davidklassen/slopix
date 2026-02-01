@@ -338,8 +338,25 @@ static void handle_directive(Token *tok) {
 		return;
 	}
 
+	if (strcmp(dir, ".section") == 0) {
+		Token *t = tok->next;
+		if (t->kind == TOK_IDENT || t->kind == TOK_LABEL) {
+			const char *name = t->str;
+			if (strncmp(name, ".text", 5) == 0) {
+				current_section = SECTION_TEXT;
+				free(text_section_name);
+				text_section_name = strdup(name);
+			} else if (strcmp(name, ".data") == 0) {
+				current_section = SECTION_DATA;
+			} else if (strcmp(name, ".bss") == 0) {
+				current_section = SECTION_BSS;
+			}
+		}
+		return;
+	}
+
 	if (strcmp(dir, ".file") == 0 || strcmp(dir, ".loc") == 0 ||
-	    strcmp(dir, ".section") == 0 || strcmp(dir, ".ident") == 0 ||
+	    strcmp(dir, ".ident") == 0 ||
 	    strcmp(dir, ".cfi_startproc") == 0 ||
 	    strcmp(dir, ".cfi_endproc") == 0 ||
 	    strcmp(dir, ".cfi_def_cfa_offset") == 0 ||
@@ -352,6 +369,7 @@ void pass1(Token *tok) {
 	symtab_init();
 	literal_pool_init();
 	current_section = SECTION_TEXT;
+	text_section_name = strdup(".text");
 	lc_text = 0;
 	lc_data = 0;
 	lc_bss = 0;
@@ -523,6 +541,20 @@ static void handle_directive_p2(Token *tok) {
 	const char *dir = tok->str;
 	SectionBuf *sec = current_sec();
 
+	if (strcmp(dir, ".section") == 0) {
+		Token *t = tok->next;
+		if (t->kind == TOK_IDENT || t->kind == TOK_LABEL) {
+			const char *name = t->str;
+			if (strncmp(name, ".text", 5) == 0) {
+				current_section = SECTION_TEXT;
+			} else if (strcmp(name, ".data") == 0) {
+				current_section = SECTION_DATA;
+			} else if (strcmp(name, ".bss") == 0) {
+				current_section = SECTION_BSS;
+			}
+		}
+		return;
+	}
 	if (strcmp(dir, ".text") == 0) {
 		current_section = SECTION_TEXT;
 		return;
@@ -1360,23 +1392,73 @@ static void handle_instruction(Token *tok) {
 	if (strcasecmp(mnemonic, "mov") == 0) {
 		expect_register(t);
 		int sf = t->reg_width == 64 ? 1 : 0;
-		int rd = encode_gpr(t);
+		int rd_is_sp = (t->reg_type == REG_SP);
+		int rd = rd_is_sp ? 31 : encode_gpr(t);
 		t = expect_comma(t->next);
 		t = skip_hash(t);
 		if (t->kind == TOK_REGISTER) {
 			if (t->reg_type == REG_SP) {
+				// mov rd, sp -> add rd, sp, #0
 				emit32(encode_add_imm(sf, rd, 31, 0, 0));
+			} else if (rd_is_sp) {
+				// mov sp, rm -> add sp, rm, #0
+				int rm = encode_gpr(t);
+				emit32(encode_add_imm(sf, 31, rm, 0, 0));
 			} else {
 				int rm = encode_gpr(t);
 				emit32(encode_mov_reg(sf, rd, rm));
 			}
 		} else {
-			int64_t val = t->val;
-			if (val < 0 && val >= -65536) {
-				emit32(encode_movn(sf, rd, (int)(~val), 0));
+			uint64_t val;
+			if (t->kind == TOK_IDENT) {
+				Symbol *sym = symtab_lookup(t->str);
+				if (!sym || !sym->defined)
+					error_tok(t, "undefined symbol");
+				val = sym->value;
 			} else {
-				emit32(encode_movz(sf, rd, (int)val, 0));
+				val = (uint64_t)t->val;
 			}
+			int hw = 0;
+			uint16_t imm16 = 0;
+			// Find which 16-bit chunk has the value
+			if ((val & 0xFFFFULL) == val) {
+				hw = 0;
+				imm16 = (uint16_t)val;
+			} else if ((val & 0xFFFF0000ULL) == val) {
+				hw = 1;
+				imm16 = (uint16_t)(val >> 16);
+			} else if ((val & 0xFFFF00000000ULL) == val) {
+				hw = 2;
+				imm16 = (uint16_t)(val >> 32);
+			} else if ((val & 0xFFFF000000000000ULL) == val) {
+				hw = 3;
+				imm16 = (uint16_t)(val >> 48);
+			} else if (t->val < 0 && t->val >= -65536) {
+				// Small negative: use MOVN
+				emit32(encode_movn(sf, rd, (int)(~t->val), 0));
+				return;
+			} else {
+				// Multi-chunk value: use MOVZ + MOVK sequence
+				imm16 = (uint16_t)(val & 0xFFFF);
+				emit32(encode_movz(sf, rd, imm16, 0));
+				if (val >> 16) {
+					imm16 = (uint16_t)((val >> 16) & 0xFFFF);
+					if (imm16)
+						emit32(encode_movk(sf, rd, imm16, 1));
+				}
+				if (val >> 32) {
+					imm16 = (uint16_t)((val >> 32) & 0xFFFF);
+					if (imm16)
+						emit32(encode_movk(sf, rd, imm16, 2));
+				}
+				if (val >> 48) {
+					imm16 = (uint16_t)((val >> 48) & 0xFFFF);
+					if (imm16)
+						emit32(encode_movk(sf, rd, imm16, 3));
+				}
+				return;
+			}
+			emit32(encode_movz(sf, rd, imm16, hw));
 		}
 		return;
 	}

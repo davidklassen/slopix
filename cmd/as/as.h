@@ -255,6 +255,7 @@ void dump_symbols(void);
 
 // section.c
 extern SectionBuf text_section;
+extern char *text_section_name;
 extern SectionBuf data_section;
 extern size_t bss_size;
 
