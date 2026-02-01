@@ -192,6 +192,8 @@ static char *token_kind_name(TokenKind kind) {
 		return "PIPE";
 	case TOK_LSHIFT:
 		return "LSHIFT";
+	case TOK_BACKSLASH:
+		return "BACKSLASH";
 	}
 	return "UNKNOWN";
 }
@@ -294,6 +296,7 @@ int main(int argc, char **argv) {
 	bool dump_tokens_flag = false;
 	bool dump_symbols_flag = false;
 	bool test_encode_flag = false;
+	bool test_macro_flag = false;
 	bool verbose_flag = false;
 
 	for (int i = 1; i < argc; i++) {
@@ -303,6 +306,8 @@ int main(int argc, char **argv) {
 			dump_symbols_flag = true;
 		} else if (strcmp(argv[i], "-test-encode") == 0) {
 			test_encode_flag = true;
+		} else if (strcmp(argv[i], "-test-macro") == 0) {
+			test_macro_flag = true;
 		} else if (strcmp(argv[i], "-o") == 0) {
 			if (i + 1 >= argc) {
 				usage(1);
@@ -331,6 +336,11 @@ int main(int argc, char **argv) {
 
 	if (test_encode_flag) {
 		test_encode();
+		return 0;
+	}
+
+	if (test_macro_flag) {
+		test_macro();
 		return 0;
 	}
 

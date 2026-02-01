@@ -48,7 +48,18 @@ void section_align(SectionBuf *sec, int power) {
 	size_t aligned = (sec->size + alignment - 1) & ~(alignment - 1);
 	size_t padding = aligned - sec->size;
 	if (padding > 0) {
-		section_emit_zeros(sec, padding);
+		if (sec == &text_section) {
+			while (padding >= 4) {
+				section_emit32(sec, 0xd503201f);
+				padding -= 4;
+			}
+			while (padding > 0) {
+				section_emit8(sec, 0);
+				padding--;
+			}
+		} else {
+			section_emit_zeros(sec, padding);
+		}
 	}
 }
 

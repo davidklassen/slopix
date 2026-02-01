@@ -12,6 +12,7 @@ static const char *srcs[] = {
     "reloc",
     "elf_write",
     "literal",
+    "macro",
     NULL,
 };
 

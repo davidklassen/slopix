@@ -287,6 +287,12 @@ Token *tokenize(char *input) {
 			continue;
 		}
 
+		if (*p == '\\' && is_ident1(p[1])) {
+			cur = cur->next = new_token(TOK_BACKSLASH, p, p + 1, line_no);
+			p++;
+			continue;
+		}
+
 		if (*p == '"') {
 			cur = cur->next = read_string(p, line_no);
 			p += cur->len;

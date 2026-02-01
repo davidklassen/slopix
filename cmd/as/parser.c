@@ -2,6 +2,14 @@
 #include <strings.h>
 
 static int current_section;
+
+// Macro collection state
+static bool collecting_macro = false;
+static char *macro_name = NULL;
+static int macro_num_params = 0;
+static char *macro_params[16];
+static Token *macro_body_head = NULL;
+static Token *macro_body_tail = NULL;
 static uint64_t lc_text;
 static uint64_t lc_data;
 static uint64_t lc_bss;
@@ -104,6 +112,95 @@ static Token *skip_to_newline(Token *tok) {
 		tok = tok->next;
 	}
 	return tok;
+}
+
+static int find_param(Macro *m, const char *name) {
+	for (int i = 0; i < m->num_params; i++) {
+		if (strcmp(m->params[i], name) == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static Token *expand_macro(Macro *m, Token **args, int nargs, int line_no) {
+	Token dummy = {};
+	Token *tail = &dummy;
+
+	for (Token *t = m->body; t; t = t->next) {
+		if (t->kind == TOK_BACKSLASH && t->next) {
+			Token *param_tok = t->next;
+			const char *param_name = param_tok->str;
+			int idx = find_param(m, param_name);
+			if (idx >= 0 && idx < nargs) {
+				Token *arg = args[idx];
+				bool make_label = (param_tok->kind == TOK_LABEL);
+				if (!make_label && param_tok->kind == TOK_IDENT) {
+					make_label = param_tok->next &&
+						     param_tok->next->kind == TOK_COLON;
+				}
+				if (make_label) {
+					Token *label = clone_token(arg);
+					label->kind = TOK_LABEL;
+					label->line_no = line_no;
+					tail = tail->next = label;
+					if (param_tok->kind == TOK_LABEL) {
+						t = param_tok;
+					} else {
+						t = param_tok->next;
+					}
+				} else {
+					Token *cloned = clone_token(arg);
+					cloned->line_no = line_no;
+					tail = tail->next = cloned;
+					t = param_tok;
+				}
+				continue;
+			}
+		}
+		Token *cloned = clone_token(t);
+		cloned->line_no = line_no;
+		tail = tail->next = cloned;
+	}
+	return dummy.next;
+}
+
+static Token *parse_macro_args(Token *tok, Token **args, int max_args) {
+	int nargs = 0;
+	while (tok->kind != TOK_NEWLINE && tok->kind != TOK_EOF &&
+	       nargs < max_args) {
+		if (tok->kind == TOK_COMMA) {
+			tok = tok->next;
+			continue;
+		}
+		args[nargs++] = tok;
+		tok = tok->next;
+	}
+	return tok;
+}
+
+static void splice_tokens(Token *head, Token *after) {
+	if (!head) {
+		return;
+	}
+	Token *last = head;
+	while (last->next) {
+		last = last->next;
+	}
+	last->next = after;
+}
+
+static int64_t get_imm_value(Token *t) {
+	if (t->kind == TOK_NUMBER) {
+		return t->val;
+	}
+	if (t->kind == TOK_IDENT) {
+		Symbol *sym = symtab_lookup(t->str);
+		if (sym && sym->defined) {
+			return (int64_t)sym->value;
+		}
+	}
+	return t->val;
 }
 
 static bool is_ldr_literal(Token *tok) {
@@ -355,6 +452,43 @@ static void handle_directive(Token *tok) {
 		return;
 	}
 
+	if (strcmp(dir, ".macro") == 0) {
+		Token *t = tok->next;
+		if (t->kind != TOK_IDENT) {
+			error_tok(t, "expected macro name");
+		}
+		macro_name = strdup(t->str);
+		macro_num_params = 0;
+		t = t->next;
+		while (t->kind != TOK_NEWLINE && t->kind != TOK_EOF) {
+			if (t->kind == TOK_IDENT) {
+				macro_params[macro_num_params++] = strdup(t->str);
+			}
+			t = t->next;
+		}
+		macro_body_head = NULL;
+		macro_body_tail = NULL;
+		collecting_macro = true;
+		return;
+	}
+
+	if (strcmp(dir, ".endm") == 0) {
+		if (!collecting_macro) {
+			error_tok(tok, ".endm without .macro");
+		}
+		macro_define(macro_name, macro_num_params, macro_params, macro_body_head);
+		free(macro_name);
+		for (int i = 0; i < macro_num_params; i++) {
+			free(macro_params[i]);
+		}
+		macro_name = NULL;
+		macro_num_params = 0;
+		macro_body_head = NULL;
+		macro_body_tail = NULL;
+		collecting_macro = false;
+		return;
+	}
+
 	if (strcmp(dir, ".file") == 0 || strcmp(dir, ".loc") == 0 ||
 	    strcmp(dir, ".ident") == 0 ||
 	    strcmp(dir, ".cfi_startproc") == 0 ||
@@ -368,13 +502,49 @@ static void handle_directive(Token *tok) {
 void pass1(Token *tok) {
 	symtab_init();
 	literal_pool_init();
+	macro_init();
 	current_section = SECTION_TEXT;
 	text_section_name = strdup(".text");
 	lc_text = 0;
 	lc_data = 0;
 	lc_bss = 0;
+	collecting_macro = false;
 
 	while (tok->kind != TOK_EOF) {
+		if (collecting_macro) {
+			if (tok->kind == TOK_IDENT && tok->str[0] == '.' &&
+			    strcmp(tok->str, ".endm") == 0) {
+				handle_directive(tok);
+				tok = skip_to_newline(tok);
+				if (tok->kind == TOK_NEWLINE) {
+					tok = tok->next;
+				}
+				continue;
+			}
+			Token *line_start = tok;
+			while (tok->kind != TOK_NEWLINE && tok->kind != TOK_EOF) {
+				Token *cloned = clone_token(tok);
+				if (macro_body_tail) {
+					macro_body_tail->next = cloned;
+				} else {
+					macro_body_head = cloned;
+				}
+				macro_body_tail = cloned;
+				tok = tok->next;
+			}
+			if (tok->kind == TOK_NEWLINE) {
+				Token *nl = clone_token(tok);
+				if (macro_body_tail) {
+					macro_body_tail->next = nl;
+				} else {
+					macro_body_head = nl;
+				}
+				macro_body_tail = nl;
+				tok = tok->next;
+			}
+			continue;
+		}
+
 		if (tok->kind == TOK_NEWLINE) {
 			tok = tok->next;
 			continue;
@@ -399,6 +569,22 @@ void pass1(Token *tok) {
 			continue;
 		}
 
+		if (tok->kind == TOK_IDENT) {
+			Macro *m = macro_lookup(tok->str);
+			if (m) {
+				Token *args[16];
+				Token *after = parse_macro_args(tok->next, args, m->num_params);
+				Token *expanded = expand_macro(m, args, m->num_params, tok->line_no);
+				if (expanded) {
+					splice_tokens(expanded, after);
+					tok = expanded;
+				} else {
+					tok = after;
+				}
+				continue;
+			}
+		}
+
 		if (is_ldr_literal(tok)) {
 			Token *t = tok->next;
 			t = t->next;
@@ -407,7 +593,6 @@ void pass1(Token *tok) {
 			if (t->kind == TOK_NUMBER) {
 				literal_pool_add_value((uint64_t)t->val);
 			} else if (t->kind == TOK_IDENT) {
-				// Check if it's a defined constant (.equ)
 				Symbol *sym = symtab_lookup(t->str);
 				if (sym && sym->defined && sym->type == STT_NOTYPE &&
 				    sym->section == 0) {
@@ -990,17 +1175,17 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_add_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int64_t val = t->val;
+			int64_t val = get_imm_value(t);
 			if (val < 0) {
 				int imm12 = encode_imm12(-val, &shift);
 				if (imm12 < 0) {
-					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)val);
 				}
 				emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			} else {
 				int imm12 = encode_imm12(val, &shift);
 				if (imm12 < 0) {
-					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)val);
 				}
 				emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
@@ -1022,17 +1207,17 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_sub_reg(sf, rd, rn, rm));
 		} else {
 			int shift;
-			int64_t val = t->val;
+			int64_t val = get_imm_value(t);
 			if (val < 0) {
 				int imm12 = encode_imm12(-val, &shift);
 				if (imm12 < 0) {
-					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)val);
 				}
 				emit32(encode_add_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			} else {
 				int imm12 = encode_imm12(val, &shift);
 				if (imm12 < 0) {
-					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)t->val);
+					error_tok(t, "immediate value %lld not encodable as 12-bit immediate", (long long)val);
 				}
 				emit32(encode_sub_imm(sf, rd, rn, imm12, shift ? 1 : 0));
 			}
@@ -2586,8 +2771,21 @@ void pass2(Token *tok) {
 	reloc_init();
 
 	current_section = SECTION_TEXT;
+	bool skip_macro_body = false;
 
 	while (tok->kind != TOK_EOF) {
+		if (skip_macro_body) {
+			if (tok->kind == TOK_IDENT && tok->str[0] == '.' &&
+			    strcmp(tok->str, ".endm") == 0) {
+				skip_macro_body = false;
+			}
+			tok = skip_to_newline(tok);
+			if (tok->kind == TOK_NEWLINE) {
+				tok = tok->next;
+			}
+			continue;
+		}
+
 		if (tok->kind == TOK_NEWLINE) {
 			tok = tok->next;
 			continue;
@@ -2599,6 +2797,14 @@ void pass2(Token *tok) {
 		}
 
 		if (tok->kind == TOK_IDENT && tok->str[0] == '.') {
+			if (strcmp(tok->str, ".macro") == 0) {
+				skip_macro_body = true;
+				tok = skip_to_newline(tok);
+				if (tok->kind == TOK_NEWLINE) {
+					tok = tok->next;
+				}
+				continue;
+			}
 			handle_directive_p2(tok);
 			tok = skip_to_newline(tok);
 			if (tok->kind == TOK_NEWLINE) {
@@ -2608,6 +2814,19 @@ void pass2(Token *tok) {
 		}
 
 		if (tok->kind == TOK_IDENT) {
+			Macro *m = macro_lookup(tok->str);
+			if (m) {
+				Token *args[16];
+				Token *after = parse_macro_args(tok->next, args, m->num_params);
+				Token *expanded = expand_macro(m, args, m->num_params, tok->line_no);
+				if (expanded) {
+					splice_tokens(expanded, after);
+					tok = expanded;
+				} else {
+					tok = after;
+				}
+				continue;
+			}
 			handle_instruction(tok);
 			tok = skip_to_newline(tok);
 			if (tok->kind == TOK_NEWLINE) {

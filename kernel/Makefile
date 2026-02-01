@@ -78,8 +78,11 @@ kernel-test.elf: $(OBJ) $(TEST_OBJ)
 kernel-test.bin: kernel-test.elf
 	$(OBJCOPY) -O binary $< $@
 
-# Use custom assembler for boot.S (no macros needed)
+# Use custom assembler for boot.S and vectors.S
 boot.o: boot.S $(AS)
+	$(AS) $< -o $@
+
+vectors.o: vectors.S $(AS)
 	$(AS) $< -o $@
 
 %.o: %.S

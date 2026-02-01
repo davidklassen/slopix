@@ -34,6 +34,7 @@ typedef enum {
 	TOK_RPAREN,
 	TOK_PIPE,
 	TOK_LSHIFT,
+	TOK_BACKSLASH,
 } TokenKind;
 
 typedef enum {
@@ -487,5 +488,22 @@ uint32_t encode_ldr_fp_post(int ftype, int ft, int rn, int64_t imm);
 uint32_t encode_str_fp_post(int ftype, int ft, int rn, int64_t imm);
 
 void test_encode(void);
+
+// macro.c
+typedef struct Macro Macro;
+struct Macro {
+	char *name;
+	int num_params;
+	char **params;
+	Token *body;
+	Macro *next;
+};
+
+void macro_init(void);
+Macro *macro_lookup(const char *name);
+Macro *macro_define(const char *name, int num_params, char **params, Token *body);
+Token *clone_token(Token *tok);
+Token *clone_token_list(Token *head);
+void test_macro(void);
 
 #endif
