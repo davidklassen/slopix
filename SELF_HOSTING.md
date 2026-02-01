@@ -272,17 +272,62 @@ Expanded `ram_blocks` macro in kernel/tables.S to explicit `.quad` directives.
 
 **Status:** Complete. kernel/tables.S assembles with custom assembler.
 
-### Phase 5: Inline Assembly
+### Phase 5: Kernel C Compilation
+
+**Goal:** Compile all kernel .c files with custom cc, assemble with GNU as.
 
 Add to `cmd/cc`:
 - Parse `: "=r"(var)` output constraint
 - Parse `: : "r"(var)` input constraint
 - Emit load/store around asm string
 - Register substitution for `%0`
+- Handle `register ... asm("x0")` variable binding
 
-**Test:** Compile kernel/cpu.h functions
+**Kernel C files (28 total):**
 
-### Phase 6: Kernel Linker Mode
+| Category | Files |
+|----------|-------|
+| Core | kernel.c, init.c, syscall.c, exception.c |
+| Memory | pmm.c, vmm.c, elf.c |
+| Filesystem | fs.c, bio.c, disk.c, pipe.c |
+| Devices | uart.c, virtio.c, gic.c, timer.c, console.c |
+| Process | proc.c, sched.c, sync.c, signal.c |
+| Utilities | kprintf.c, string.c, dtb.c, cmdline.c, initramfs.c, file.c, psci.c |
+
+**Inline asm patterns to support:**
+
+```c
+// Pattern A: No operands (6 uses)
+asm volatile("nop");
+
+// Pattern B: Output register (10 uses)
+asm volatile("mrs %0, daif" : "=r"(val));
+
+// Pattern C: Input register (5 uses)
+asm volatile("msr ttbr0_el1, %0" : : "r"(v));
+
+// Pattern D: Register variable + input (1 use)
+register long x0 asm("x0") = PSCI_SYSTEM_OFF;
+asm volatile("hvc #0" ::"r"(x0));
+```
+
+**Exit criteria:** Makefile updated to use custom cc for kernel .c → .s, GNU as for
+.s → .o, GNU ld for linking. `make test` passes.
+
+### Phase 6: Assembler for Compiler Output
+
+**Goal:** Replace GNU as with custom as for compiler-generated assembly.
+
+Gaps to be discovered during Phase 5 testing. The compiler may emit instructions,
+addressing modes, or directive patterns not yet supported by our assembler.
+
+Known gap: `hvc` instruction (hypervisor call for PSCI).
+
+Still using GNU ld at this point.
+
+**Exit criteria:** Makefile uses custom cc + custom as + GNU ld. `make test` passes.
+
+### Phase 7: Kernel Linker Mode
 
 Add to `cmd/ld`:
 - `-T kernel` flag
@@ -290,9 +335,9 @@ Add to `cmd/ld`:
 - Symbol definitions
 - `--oformat=binary` for raw output
 
-**Test:** Link kernel, produce kernel.bin
+**Exit criteria:** Makefile uses custom cc + custom as + custom ld. `make test` passes.
 
-### Phase 7: Kernel Build Script
+### Phase 8: Kernel Build Script
 
 Create `kernel/build.c`:
 - Compile all .c files
@@ -300,9 +345,9 @@ Create `kernel/build.c`:
 - Link with `-T kernel`
 - Output to `/kernel.bin`
 
-**Test:** Build kernel within slopix
+**Exit criteria:** Build kernel within slopix using `/bin/build`.
 
-### Phase 8: Bootloader
+### Phase 9: Bootloader
 
 Create `boot/` directory:
 - Standalone bootloader binary
@@ -310,9 +355,9 @@ Create `boot/` directory:
 - Filesystem traversal
 - Kernel loading
 
-**Test:** Boot slopix without -kernel flag
+**Exit criteria:** Boot slopix without -kernel flag.
 
-### Phase 9: Integration
+### Phase 10: Integration
 
 - Update Makefile for pflash bootloader
 - Test full cycle: boot → edit → rebuild → reboot
@@ -353,9 +398,10 @@ Each phase has concrete validation:
 | 2. System instrs | `as` accepts kernel/boot.S | ✓ |
 | 3. Macros | `as` accepts kernel/vectors.S | ✓ |
 | 4. Expansion | `as` accepts kernel/tables.S | ✓ |
-| 5. Inline asm | `cc` compiles test with mrs/msr | |
-| 6. Linker | `ld -T kernel` produces correct layout | |
-| 8. Bootloader | Output boots in QEMU | |
+| 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | |
+| 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | |
+| 7. Linker | custom cc + custom as + custom ld, `make test` passes | |
+| 9. Bootloader | Boot without -kernel flag | |
 
 ### Triple Compilation
 
@@ -415,10 +461,11 @@ Verify toolchain correctness:
 | as: simple macros | ✓ |
 | tables.S expansion | ✓ |
 | cc: inline asm | 100-150 |
+| as: compiler output gaps | TBD |
 | ld: kernel mode | 150-200 |
 | kernel/build.c | 50-100 |
 | bootloader | 500-800 |
-| **Remaining** | ~800-1250 |
+| **Remaining** | ~800-1250 + TBD |
 
 ## References
 
