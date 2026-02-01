@@ -29,7 +29,7 @@ static void usage(void) {
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  --prefix=PATH  Output directory for binaries\n");
-	fprintf(stderr, "  clean          Remove .build/ and build/ directories\n");
+	fprintf(stderr, "  clean          Remove .build/ directory\n");
 	fprintf(stderr, "  DIR            Directory to build (default: current)\n");
 	exit(1);
 }
@@ -247,7 +247,6 @@ int main(int argc, char **argv) {
 
 	if (do_clean) {
 		remove_recursive(".build");
-		remove_recursive("build");
 		return 0;
 	}
 
