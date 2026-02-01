@@ -88,6 +88,7 @@ disk.img: .bin/mkfs userspace
 		:dir:/bin \
 		:dir:/lib \
 		:dir:/tmp \
+		:dir:/include \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
@@ -124,7 +125,8 @@ disk.img: .bin/mkfs userspace
 		.build/out/bin/mkfs:/bin/mkfs \
 		.build/out/bin/mkramfs:/bin/mkramfs \
 		.build/out/lib/libc.a:/lib/libc.a \
-		--sync-src .
+		--sync-src . \
+		--sync-include .build/out/include
 
 disk-test.img: .bin/mkfs cmd
 	$(MKFS) $@ -s 2048 \

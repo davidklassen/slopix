@@ -496,10 +496,11 @@ static void sync_source_dir(const char *hostpath, const char *imgpath) {
 }
 
 static void usage(const char *prog) {
-	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...] [--sync-src path]\n", prog);
-	fprintf(stderr, "  -s blocks       Total filesystem size in blocks (default: 1024)\n");
-	fprintf(stderr, "  -i inodes       Number of inodes (default: 200)\n");
-	fprintf(stderr, "  --sync-src path Recursively copy source tree to /src/\n");
+	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...] [--sync-src path] [--sync-include path]\n", prog);
+	fprintf(stderr, "  -s blocks           Total filesystem size in blocks (default: 1024)\n");
+	fprintf(stderr, "  -i inodes           Number of inodes (default: 200)\n");
+	fprintf(stderr, "  --sync-src path     Recursively copy source tree to /src/\n");
+	fprintf(stderr, "  --sync-include path Recursively copy headers to /include/\n");
 	fprintf(stderr, "\nFile specifications:\n");
 	fprintf(stderr, "  hostfile:/imgpath        Copy host file to image path\n");
 	fprintf(stderr, "  :dir:/path               Create directory\n");
@@ -513,6 +514,7 @@ int main(int argc, char **argv) {
 	uint32_t ninodes = 200;
 	char *imgfile = NULL;
 	char *sync_src_path = NULL;
+	char *sync_include_path = NULL;
 	int i;
 
 	if (argc < 2) {
@@ -537,6 +539,11 @@ int main(int argc, char **argv) {
 				usage(argv[0]);
 			}
 			sync_src_path = argv[++i];
+		} else if (strcmp(argv[i], "--sync-include") == 0) {
+			if (i + 1 >= argc) {
+				usage(argv[0]);
+			}
+			sync_include_path = argv[++i];
 		} else if (strchr(argv[i], ':') != NULL) {
 			break;
 		} else {
@@ -604,6 +611,14 @@ int main(int argc, char **argv) {
 				usage(argv[0]);
 			}
 			sync_src_path = argv[++fi];
+			continue;
+		}
+
+		if (strcmp(arg, "--sync-include") == 0) {
+			if (fi + 1 >= argc) {
+				usage(argv[0]);
+			}
+			sync_include_path = argv[++fi];
 			continue;
 		}
 
@@ -752,6 +767,10 @@ int main(int argc, char **argv) {
 	if (sync_src_path) {
 		load_buildignore(sync_src_path);
 		sync_source_dir(sync_src_path, "/src");
+	}
+
+	if (sync_include_path) {
+		sync_source_dir(sync_include_path, "/include");
 	}
 
 	struct dinode din;

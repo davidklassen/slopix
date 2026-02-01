@@ -47,6 +47,8 @@ int mkdir_p(const char *path);
 int file_exists(const char *path);
 int move_recursive(const char *src, const char *dst);
 int remove_recursive(const char *path);
+int copy_file(const char *src, const char *dst);
+int copy_dir(const char *src, const char *dst);
 
 void log_info(const char *fmt, ...);
 void log_error(const char *fmt, ...);
@@ -239,7 +241,7 @@ int remove_recursive(const char *path) {
 	}
 }
 
-static int copy_file(const char *src, const char *dst) {
+int copy_file(const char *src, const char *dst) {
 	int sfd = open(src, O_RDONLY);
 	if (sfd < 0) {
 		return -1;
@@ -275,6 +277,48 @@ static int copy_file(const char *src, const char *dst) {
 	close(sfd);
 	close(dfd);
 	return n < 0 ? -1 : 0;
+}
+
+int copy_dir(const char *src, const char *dst) {
+	DIR *d = opendir(src);
+	if (d == NULL) {
+		return -1;
+	}
+
+	if (mkdir_p(dst) < 0) {
+		closedir(d);
+		return -1;
+	}
+
+	struct dirent *ent;
+	while ((ent = readdir(d)) != NULL) {
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+			continue;
+		}
+		char srcchild[512], dstchild[512];
+		snprintf(srcchild, sizeof(srcchild), "%s/%s", src, ent->d_name);
+		snprintf(dstchild, sizeof(dstchild), "%s/%s", dst, ent->d_name);
+
+		struct stat st;
+		if (stat(srcchild, &st) < 0) {
+			closedir(d);
+			return -1;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
+			if (copy_dir(srcchild, dstchild) < 0) {
+				closedir(d);
+				return -1;
+			}
+		} else {
+			if (copy_file(srcchild, dstchild) < 0) {
+				closedir(d);
+				return -1;
+			}
+		}
+	}
+	closedir(d);
+	return 0;
 }
 
 int move_recursive(const char *src, const char *dst) {
@@ -399,11 +443,7 @@ int compile(const char *src) {
 	const char *as = get_env_or("AS", "as");
 	const char *include_path = getenv("INCLUDE_PATH");
 	if (include_path == NULL || include_path[0] == '\0') {
-		if (file_exists("/src/libc/include")) {
-			include_path = "/src/libc/include";
-		} else {
-			include_path = "";
-		}
+		include_path = "";
 	}
 
 	if (mkdir_p(".build/obj") < 0) {

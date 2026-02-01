@@ -83,7 +83,7 @@ static void add_default_include_paths(char *argv0) {
 	if (include_path) {
 		strarray_push(&include_paths, include_path);
 	} else {
-		strarray_push(&include_paths, "/src/libc/include");
+		strarray_push(&include_paths, "/include");
 	}
 
 	for (int i = 0; i < include_paths.len; i++) {

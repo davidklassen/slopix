@@ -115,11 +115,17 @@ static int build_with_buildc(const char *prefix, const char *build_include) {
 	}
 
 	// Always use system "cc" here, not $CC which may be a cross-compiler
-	char incflag[256];
-	snprintf(incflag, sizeof(incflag), "-I%s", build_include);
-
-	char *compile_argv[] = {"cc", incflag, "build.c", "-o", ".build/build", NULL};
-	int ret = run_cmd(compile_argv);
+	// Skip -I flag when using default /include (cc already includes it)
+	int ret;
+	if (strcmp(build_include, "/include") == 0) {
+		char *compile_argv[] = {"cc", "build.c", "-o", ".build/build", NULL};
+		ret = run_cmd(compile_argv);
+	} else {
+		char incflag[256];
+		snprintf(incflag, sizeof(incflag), "-I%s", build_include);
+		char *compile_argv[] = {"cc", incflag, "build.c", "-o", ".build/build", NULL};
+		ret = run_cmd(compile_argv);
+	}
 	if (ret != 0) {
 		fprintf(stderr, "[build] ERROR: failed to compile build.c\n");
 		return ret;
@@ -220,8 +226,8 @@ int main(int argc, char **argv) {
 			strncpy(build_include, build_include_env, sizeof(build_include) - 1);
 			build_include[sizeof(build_include) - 1] = '\0';
 		}
-	} else if (file_exists("/src/lib/build.h")) {
-		strcpy(build_include, "/src/lib");
+	} else if (file_exists("/include/build.h")) {
+		strcpy(build_include, "/include");
 	} else {
 		snprintf(build_include, sizeof(build_include), "%s/lib", cwd);
 	}

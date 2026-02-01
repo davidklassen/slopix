@@ -59,5 +59,15 @@ int main(void) {
 	    NULL,
 	};
 
-	return archive_objs(".build/out/lib/libc.a", all_objs);
+	if (archive_objs(".build/out/lib/libc.a", all_objs) != 0) {
+		return 1;
+	}
+
+	mkdir_p(".build/out/include");
+	if (copy_dir("include", ".build/out/include") < 0) {
+		log_error("failed to install headers");
+		return 1;
+	}
+
+	return 0;
 }
