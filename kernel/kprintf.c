@@ -1,11 +1,7 @@
 #include "kprintf.h"
 #include "cpu.h"
 #include "uart.h"
-
-typedef __builtin_va_list va_list;
-#define va_start(ap, last) __builtin_va_start(ap, last)
-#define va_arg(ap, type)   __builtin_va_arg(ap, type)
-#define va_end(ap)	   __builtin_va_end(ap)
+#include "stdarg.h"
 
 static void reverse(char *buf, int len) {
 	int i = 0, j = len - 1;
@@ -195,7 +191,7 @@ void kprintf(const char *fmt, ...) {
 	uart_puts(buf);
 }
 
-__attribute__((noreturn)) void kpanic(const char *fmt, ...) {
+void kpanic(const char *fmt, ...) {
 	char buf[256];
 	va_list ap;
 	va_start(ap, fmt);
