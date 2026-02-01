@@ -9,7 +9,7 @@ IndentWidth: 8
 # No short forms
 AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Never
-AllowShortIfStatementsOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 
@@ -25,7 +25,7 @@ BinPackParameters: false
 # Other
 BreakBeforeBraces: Attach
 PointerAlignment: Right
-InsertBraces: true
+InsertBraces: false
 SpaceAfterCStyleCast: false
 ColumnLimit: 0
 SpacesInParentheses: false

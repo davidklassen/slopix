@@ -24,9 +24,7 @@ int main(void) {
 	for (int i = 0; srcs[i]; i++) {
 		char src[64];
 		snprintf(src, sizeof(src), "%s.c", srcs[i]);
-		if (compile(src) != 0) {
-			return 1;
-		}
+		if (compile(src) != 0) return 1;
 	}
 
 	char out[256];

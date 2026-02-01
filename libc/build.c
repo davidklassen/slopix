@@ -29,17 +29,13 @@ int main(void) {
 	for (int i = 0; c_srcs[i]; i++) {
 		char src[64];
 		snprintf(src, sizeof(src), "%s.c", c_srcs[i]);
-		if (compile(src) != 0) {
-			return 1;
-		}
+		if (compile(src) != 0) return 1;
 	}
 
 	for (int i = 0; asm_srcs[i]; i++) {
 		char src[64];
 		snprintf(src, sizeof(src), "%s.S", asm_srcs[i]);
-		if (assemble(src) != 0) {
-			return 1;
-		}
+		if (assemble(src) != 0) return 1;
 	}
 
 	static const char *all_objs[] = {
@@ -59,9 +55,7 @@ int main(void) {
 	    NULL,
 	};
 
-	if (archive_objs(".build/out/lib/libc.a", all_objs) != 0) {
-		return 1;
-	}
+	if (archive_objs(".build/out/lib/libc.a", all_objs) != 0) return 1;
 
 	mkdir_p(".build/out/include");
 	if (copy_dir("include", ".build/out/include") < 0) {
