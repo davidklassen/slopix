@@ -17,6 +17,8 @@ static const char *srcs[] = {
     "test_libgen",
     "test_dirent",
     "test_errno",
+    "test_sbrk",
+    "test_errors",
     NULL,
 };
 

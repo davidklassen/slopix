@@ -756,8 +756,11 @@ static long sys_stat(const char *path, struct stat *st) {
 }
 
 static long sys_getcwd(char *buf, unsigned long size) {
-	if (size < 2 || vmm_validate(current->pagetable, (unsigned long)buf, size, 1) < 0) {
+	if (size < 2) {
 		return -EINVAL;
+	}
+	if (vmm_validate(current->pagetable, (unsigned long)buf, size, 1) < 0) {
+		return -EFAULT;
 	}
 
 	char names[16][DIRSIZ];

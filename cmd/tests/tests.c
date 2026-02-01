@@ -14,6 +14,8 @@ extern void test_suite_stdio(void);
 extern void test_suite_libgen(void);
 extern void test_suite_dirent(void);
 extern void test_suite_errno(void);
+extern void test_suite_sbrk(void);
+extern void test_suite_errors(void);
 
 int main(void) {
 	RUN_SUITE(libc);
@@ -30,6 +32,8 @@ int main(void) {
 	RUN_SUITE(libgen);
 	RUN_SUITE(dirent);
 	RUN_SUITE(errno);
+	RUN_SUITE(sbrk);
+	RUN_SUITE(errors);
 	TEST_REPORT();
 	TEST_EXIT();
 	return 0;

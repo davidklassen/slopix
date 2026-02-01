@@ -1,4 +1,5 @@
 #include "proc.h"
+#include "errno.h"
 #include "pmm.h"
 #include "vmm.h"
 #include "cpu.h"
@@ -217,11 +218,11 @@ int proc_signal(int pid, int sig) {
 				return 0;
 			}
 		}
-		return -1;
+		return -ESRCH;
 	}
 
 	if (sig < 1 || sig >= NSIG) {
-		return -1;
+		return -EINVAL;
 	}
 
 	for (int i = 0; i < NPROC; i++) {
@@ -237,7 +238,7 @@ int proc_signal(int pid, int sig) {
 			return 0;
 		}
 	}
-	return -1;
+	return -ESRCH;
 }
 
 int proc_setpgid(int pid, int pgid) {
@@ -255,7 +256,7 @@ int proc_setpgid(int pid, int pgid) {
 			}
 		}
 		if (p == 0) {
-			return -1;
+			return -ESRCH;
 		}
 	}
 
@@ -264,7 +265,7 @@ int proc_setpgid(int pid, int pgid) {
 	}
 
 	if (pgid <= 0) {
-		return -1;
+		return -EINVAL;
 	}
 
 	p->pgid = pgid;
@@ -280,12 +281,15 @@ int proc_getpgid(int pid) {
 			return procs[i].pgid;
 		}
 	}
-	return -1;
+	return -ESRCH;
 }
 
 int proc_signal_pgrp(int pgid, int sig) {
-	if (pgid <= 0 || sig < 1 || sig >= NSIG) {
-		return -1;
+	if (pgid <= 0) {
+		return -EINVAL;
+	}
+	if (sig < 1 || sig >= NSIG) {
+		return -EINVAL;
 	}
 
 	int found = 0;
@@ -301,7 +305,7 @@ int proc_signal_pgrp(int pgid, int sig) {
 			found = 1;
 		}
 	}
-	return found ? 0 : -1;
+	return found ? 0 : -ESRCH;
 }
 
 void proc_check_signals(void) {
