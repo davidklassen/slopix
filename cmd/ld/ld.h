@@ -120,12 +120,12 @@ typedef struct {
 #define STT_FILE    4
 
 // Extraction macros
-#define ELF64_ST_BIND(info) ((info) >> 4)
-#define ELF64_ST_TYPE(info) ((info) & 0xf)
+#define ELF64_ST_BIND(info)	  ((info) >> 4)
+#define ELF64_ST_TYPE(info)	  ((info) & 0xf)
 #define ELF64_ST_INFO(bind, type) (((bind) << 4) | ((type) & 0xf))
-#define ELF64_R_SYM(info)  ((info) >> 32)
-#define ELF64_R_TYPE(info) ((uint32_t)(info))
-#define ELF64_R_INFO(sym, type) (((uint64_t)(sym) << 32) | (type))
+#define ELF64_R_SYM(info)	  ((info) >> 32)
+#define ELF64_R_TYPE(info)	  ((uint32_t)(info))
+#define ELF64_R_INFO(sym, type)	  (((uint64_t)(sym) << 32) | (type))
 
 // AArch64 relocations
 #define R_AARCH64_NONE		     0
@@ -230,9 +230,7 @@ void symtab_init(SymbolTable *tab);
 Symbol *symbol_lookup(SymbolTable *tab, const char *name);
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
 void collect_definitions(ObjectFile **objects, int count, SymbolTable *global);
-bool resolve_archives(ObjectFile ***objects, int *count, int *capacity,
-                      Archive **archives, int archive_count, SymbolTable *global,
-                      const char *entry_point, bool verbose);
+bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive **archives, int archive_count, SymbolTable *global, const char *entry_point, bool verbose);
 bool check_undefined(ObjectFile **objects, int count, SymbolTable *global, const char *entry_point);
 void dump_globals(SymbolTable *global);
 
@@ -285,8 +283,7 @@ uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *secti
 void dump_output_sections(OutputSection *sections);
 
 // reloc.c
-bool apply_relocations(ObjectFile **objects, int count,
-                       SymbolTable *global, OutputSection *sections);
+bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections);
 const char *reloc_type_name(int type);
 
 // output.c

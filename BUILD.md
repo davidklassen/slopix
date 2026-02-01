@@ -186,7 +186,7 @@ slopix/
 ├── kernel/                # Stays separate - uses Makefile + GCC
 │
 ├── Makefile               # Builds kernel (userspace via .bin/build)
-├── .buildignore           # Exclusions for /src sync
+├── .mkfsignore           # Exclusions for /src sync
 │
 ├── .bin/                  # Host-native binaries (gitignored)
 │   ├── build              # Build tool (runs on host)
@@ -204,7 +204,7 @@ slopix/
     ├── bin/
     ├── lib/
     │   └── libc.a
-    └── src/               # Source tree copy (via mkfs --sync-src)
+    └── src/               # Source tree copy (via mkfs -m)
 ```
 
 **Note:** The `lib/` directory at project root is for build utilities only.
@@ -259,7 +259,7 @@ Child directories are left clean with no `.build/` or `build/` traces.
 
 Simple commands (cat, ls, etc.) have no `build.c` - `/bin/build` uses fallback.
 
-### .buildignore
+### .mkfsignore
 
 Simple exclusion list for syncing source to `build/src/`:
 
@@ -278,19 +278,19 @@ are contained in `.build/` and `build/`.
 
 ### Source Sync
 
-Source sync is handled by `mkfs` with a new `--sync-src` option:
+Source sync is handled by `mkfs` with the `-m source:target` option:
 
 ```bash
-mkfs disk.img -s 8192 --sync-src /path/to/source
+mkfs disk.img -s 8192 -m .:src
 ```
 
 This replaces the current explicit file listing in the Makefile. The tool:
 1. Walks the source tree recursively
-2. Skips entries matching `.buildignore` prefixes
-3. Creates directories and copies files to `/src/` on the image
+2. Skips entries matching `.mkfsignore` prefixes
+3. Creates directories and copies files to the target path on the image
 
 On slopix, a separate `sync` program can copy `/src` to `/src/build/src/`
-using the same `.buildignore` logic.
+using the same `.mkfsignore` logic.
 
 ### Build Flow
 
@@ -324,7 +324,7 @@ Step 3: Build userspace (cross-compile)
    → final build/ contains everything for disk image
 
 Step 4: Create disk image
-   .bin/mkfs disk.img --sync-src . ...
+   .bin/mkfs disk.img -m .build/out:/ -m .:src ...
    → copies build/bin/* to /bin/
    → copies build/lib/* to /lib/
    → syncs source to /src/
@@ -349,7 +349,7 @@ bootstrap (Step 2) and cross-compilation (Step 3).
    → final /src/build/ contains all binaries
 
 2. Sync source
-   Copy /src to /src/build/src/ (respecting .buildignore)
+   Copy /src to /src/build/src/ (respecting .mkfsignore)
 
 3. Install
    Copy /src/build/* to /
@@ -607,12 +607,12 @@ the build will fail. Run full build first to ensure dependencies are in place.
 1. Create `lib/` directory at project root
 2. Create `.build/` and `build/` directories
 3. Update `.gitignore` to include `.build/` and `build/`
-4. Create `.buildignore`
+4. Create `.mkfsignore`
 
 **Verification:**
 - [x] `lib/` directory exists
 - [x] `.gitignore` updated
-- [x] `.buildignore` created
+- [x] `.mkfsignore` created
 
 ### Phase 2: Consolidate Headers
 
@@ -648,13 +648,13 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 
 1. Create `lib/build.h` with nob-style utilities
 2. Create `cmd/build/main.c` - the `/bin/build` tool
-3. Add `--sync-src` option to mkfs
+3. Add `-m source:target` option to mkfs
 4. Add `--prefix` option to build tool
 
 **Verification:**
 - [x] `cc -I lib cmd/build/main.c -o .bin/build` works
 - [x] `.bin/build --prefix=.bin cmd/cc` builds host cc
-- [x] `mkfs --sync-src` works
+- [x] `mkfs -m` works
 
 ### Phase 5: Add build.c Files
 
@@ -672,7 +672,7 @@ to `/bin/` like everything else. They're also bootstrapped for host use.
 ### Phase 6: Migrate and Verify
 
 1. Switch Makefile to use new build system for userspace
-2. Verify disk.img creation works with --sync-src
+2. Verify disk.img creation works with -m
 3. Remove old Makefiles from libc/, cmd/, cmd/*/ subdirectories
 4. Final verification on slopix
 

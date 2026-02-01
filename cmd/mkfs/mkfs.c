@@ -322,11 +322,18 @@ static uint32_t create_device(uint32_t parent_inum, const char *name, uint16_t t
 static char *ignore_patterns[MAX_IGNORE];
 static int ignore_count = 0;
 
-static void load_buildignore(const char *srcpath) {
-	char path[512];
-	snprintf(path, sizeof(path), "%s/.buildignore", srcpath);
+static void clear_ignore_patterns(void) {
+	for (int i = 0; i < ignore_count; i++) {
+		free(ignore_patterns[i]);
+		ignore_patterns[i] = NULL;
+	}
+	ignore_count = 0;
+}
 
-	FILE *f = fopen(path, "r");
+static void load_mkfsignore(void) {
+	clear_ignore_patterns();
+
+	FILE *f = fopen(".mkfsignore", "r");
 	if (f == NULL) {
 		return;
 	}
@@ -496,25 +503,33 @@ static void sync_source_dir(const char *hostpath, const char *imgpath) {
 }
 
 static void usage(const char *prog) {
-	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...] [--sync-src path] [--sync-include path]\n", prog);
+	fprintf(stderr, "Usage: %s <image> [-s blocks] [-i inodes] [spec ...] [-m source:target]\n", prog);
 	fprintf(stderr, "  -s blocks           Total filesystem size in blocks (default: 1024)\n");
 	fprintf(stderr, "  -i inodes           Number of inodes (default: 200)\n");
-	fprintf(stderr, "  --sync-src path     Recursively copy source tree to /src/\n");
-	fprintf(stderr, "  --sync-include path Recursively copy headers to /include/\n");
+	fprintf(stderr, "  -m source:target    Recursively copy source directory to target path\n");
 	fprintf(stderr, "\nFile specifications:\n");
 	fprintf(stderr, "  hostfile:/imgpath        Copy host file to image path\n");
 	fprintf(stderr, "  :dir:/path               Create directory\n");
 	fprintf(stderr, "  :cdev:/path:major:minor  Create character device\n");
 	fprintf(stderr, "  :bdev:/path:major:minor  Create block device\n");
+	fprintf(stderr, "\nExamples:\n");
+	fprintf(stderr, "  -m .build/out:/          Copy .build/out/* to /\n");
+	fprintf(stderr, "  -m .:src                 Copy source tree to /src/\n");
 	exit(1);
 }
+
+#define MAX_MAPS 32
+struct dir_map {
+	char *src;
+	char *dst;
+};
 
 int main(int argc, char **argv) {
 	uint32_t size = 1024;
 	uint32_t ninodes = 200;
 	char *imgfile = NULL;
-	char *sync_src_path = NULL;
-	char *sync_include_path = NULL;
+	struct dir_map dir_maps[MAX_MAPS];
+	int dir_map_count = 0;
 	int i;
 
 	if (argc < 2) {
@@ -534,16 +549,24 @@ int main(int argc, char **argv) {
 				usage(argv[0]);
 			}
 			ninodes = atoi(argv[++i]);
-		} else if (strcmp(argv[i], "--sync-src") == 0) {
+		} else if (strcmp(argv[i], "-m") == 0) {
 			if (i + 1 >= argc) {
 				usage(argv[0]);
 			}
-			sync_src_path = argv[++i];
-		} else if (strcmp(argv[i], "--sync-include") == 0) {
-			if (i + 1 >= argc) {
-				usage(argv[0]);
+			char *arg = argv[++i];
+			char *colon = strchr(arg, ':');
+			if (colon == NULL) {
+				fprintf(stderr, "mkfs: -m requires source:target format\n");
+				exit(1);
 			}
-			sync_include_path = argv[++i];
+			if (dir_map_count >= MAX_MAPS) {
+				fprintf(stderr, "mkfs: too many -m mappings (max %d)\n", MAX_MAPS);
+				exit(1);
+			}
+			*colon = '\0';
+			dir_maps[dir_map_count].src = arg;
+			dir_maps[dir_map_count].dst = colon + 1;
+			dir_map_count++;
 		} else if (strchr(argv[i], ':') != NULL) {
 			break;
 		} else {
@@ -606,19 +629,24 @@ int main(int argc, char **argv) {
 	for (int fi = file_start; fi < argc; fi++) {
 		char *arg = argv[fi];
 
-		if (strcmp(arg, "--sync-src") == 0) {
+		if (strcmp(arg, "-m") == 0) {
 			if (fi + 1 >= argc) {
 				usage(argv[0]);
 			}
-			sync_src_path = argv[++fi];
-			continue;
-		}
-
-		if (strcmp(arg, "--sync-include") == 0) {
-			if (fi + 1 >= argc) {
-				usage(argv[0]);
+			char *maparg = argv[++fi];
+			char *colon = strchr(maparg, ':');
+			if (colon == NULL) {
+				fprintf(stderr, "mkfs: -m requires source:target format\n");
+				exit(1);
 			}
-			sync_include_path = argv[++fi];
+			if (dir_map_count >= MAX_MAPS) {
+				fprintf(stderr, "mkfs: too many -m mappings (max %d)\n", MAX_MAPS);
+				exit(1);
+			}
+			*colon = '\0';
+			dir_maps[dir_map_count].src = maparg;
+			dir_maps[dir_map_count].dst = colon + 1;
+			dir_map_count++;
 			continue;
 		}
 
@@ -764,13 +792,15 @@ int main(int argc, char **argv) {
 		close(fd);
 	}
 
-	if (sync_src_path) {
-		load_buildignore(sync_src_path);
-		sync_source_dir(sync_src_path, "/src");
-	}
-
-	if (sync_include_path) {
-		sync_source_dir(sync_include_path, "/include");
+	load_mkfsignore();
+	for (int mi = 0; mi < dir_map_count; mi++) {
+		char imgpath[512];
+		if (dir_maps[mi].dst[0] == '/') {
+			snprintf(imgpath, sizeof(imgpath), "%s", dir_maps[mi].dst);
+		} else {
+			snprintf(imgpath, sizeof(imgpath), "/%s", dir_maps[mi].dst);
+		}
+		sync_source_dir(dir_maps[mi].src, imgpath);
 	}
 
 	struct dinode din;

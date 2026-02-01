@@ -1,7 +1,7 @@
 #ifndef SYS_WAIT_H
 #define SYS_WAIT_H
 
-#define WNOHANG   1
+#define WNOHANG	  1
 #define WUNTRACED 2
 
 #define WIFEXITED(s)   (((s) & 0x7f) == 0)

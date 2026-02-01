@@ -390,7 +390,7 @@ are addressed in [BUILD.md](BUILD.md).
 
 ### Source Files on Disk Image
 
-With BUILD.md's `--sync-src`, the full source tree is copied:
+With BUILD.md's `-m` flag, the full source tree is copied:
 
 ```
 /src/lib/          - Build utilities (build.h)
