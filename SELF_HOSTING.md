@@ -152,90 +152,10 @@ No full linker script parser needed.
 
 ## Bootloader
 
-### Purpose
+The bootloader replaces QEMU's `-kernel` flag, enabling true disk-based boot.
+It loads `/boot/kernel.bin` from the filesystem and jumps to the kernel.
 
-The bootloader replaces QEMU's `-kernel` flag, enabling true disk-based boot:
-
-1. Runs from pflash0 (address 0x0)
-2. Initializes UART (debug output) and virtio-blk
-3. Mounts slopix filesystem, finds `/boot/kernel.bin`
-4. Loads kernel to 0x40080000
-5. Passes DTB address in x0, jumps to kernel
-
-### QEMU Configuration
-
-```bash
-# Current (cross-compiled kernel)
-qemu-system-aarch64 -M virt -kernel kernel.bin -drive file=disk.img ...
-
-# Self-hosting (bootloader in pflash)
-qemu-system-aarch64 -M virt \
-  -drive if=pflash,format=raw,file=bootloader.bin \
-  -drive if=virtio,format=raw,file=disk.img \
-  -nographic
-```
-
-### DTB Handling
-
-QEMU virt machine behavior:
-- With `-kernel`: passes DTB address in x0
-- With pflash boot: places DTB at RAM base (0x40000000)
-
-The bootloader passes 0x40000000 in x0. Kernel code unchanged.
-
-### Boot Flow
-
-```
-CPU reset
-    │
-    ▼
-pflash0 @ 0x0 (bootloader)
-    │
-    ├─ Initialize UART
-    ├─ Initialize virtio-blk
-    ├─ Read superblock from disk
-    ├─ Find root inode
-    ├─ Traverse path: / → kernel.bin
-    ├─ Read file blocks → 0x40080000
-    │
-    ▼
-    ldr x0, =0x40000000    // DTB (QEMU placed it here)
-    ldr x1, =0x40080000    // kernel entry
-    br  x1
-    │
-    ▼
-kernel _start @ 0x40080000
-    │
-    ├─ mov x19, x0         // Save DTB (existing code)
-    ├─ Enable MMU
-    ├─ Jump to kernel_main
-    └─ ... (normal boot)
-```
-
-### Reboot Cycle
-
-Add PSCI_SYSTEM_RESET (0x84000009) alongside existing PSCI_SYSTEM_OFF:
-
-```c
-void psci_system_reset(void) {
-    register long x0 asm("x0") = PSCI_SYSTEM_RESET;
-    asm volatile("hvc #0" ::"r"(x0));
-}
-```
-
-Reboot triggers CPU reset → bootloader runs → loads (new) kernel from disk.
-
-### Bootloader Size Estimate
-
-| Component | Lines |
-|-----------|-------|
-| Entry, UART init | ~50 |
-| Virtio-blk driver | ~200 |
-| Filesystem read | ~300 |
-| Kernel load, jump | ~50 |
-| **Total** | ~600 |
-
-Can reuse patterns from kernel virtio.c and fs.c but must be standalone.
+See [BOOTLOADER.md](BOOTLOADER.md) for detailed design and implementation plan.
 
 ## Implementation Plan
 
@@ -348,11 +268,7 @@ Create `kernel/build.c`:
 
 ### Phase 9: Bootloader
 
-Create `boot/` directory:
-- Standalone bootloader binary
-- Virtio-blk driver (simplified)
-- Filesystem traversal
-- Kernel loading
+See [BOOTLOADER.md](BOOTLOADER.md) for detailed design and implementation phases.
 
 **Exit criteria:** Boot slopix without -kernel flag.
 
@@ -400,6 +316,7 @@ Each phase has concrete validation:
 | 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | ✓ |
 | 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | ✓ |
 | 7. Linker | custom cc + custom as + custom ld, `make test` passes | ✓ |
+| 8. Build script | kernel/build.c produces kernel.bin | ✓ |
 | 9. Bootloader | Boot without -kernel flag | |
 
 ### Triple Compilation
@@ -462,9 +379,9 @@ Verify toolchain correctness:
 | cc: inline asm | ✓ |
 | as: compiler output gaps | ✓ |
 | ld: kernel mode | ✓ |
-| kernel/build.c | 50-100 |
+| kernel/build.c | ✓ |
 | bootloader | 500-800 |
-| **Remaining** | ~550-900 |
+| **Remaining** | ~500-800 |
 
 ## References
 
