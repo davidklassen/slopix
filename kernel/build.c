@@ -51,7 +51,6 @@ static const char *test_srcs[] = {
     "tests/test_vmm",
     "tests/test_tlb",
     "tests/test_pmm",
-    "tests/test_initramfs",
     "tests/test_virtio",
     "tests/test_bio",
     "tests/test_fs",

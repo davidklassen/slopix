@@ -26,7 +26,6 @@ DECLARE_SUITE(timer);
 DECLARE_SUITE(vmm);
 DECLARE_SUITE(tlb);
 DECLARE_SUITE(pmm);
-DECLARE_SUITE(initramfs);
 DECLARE_SUITE(virtio);
 DECLARE_SUITE(virtio_features);
 DECLARE_SUITE(virtio_queue);
@@ -73,7 +72,6 @@ void kernel_main(void) {
 	pmm_init();
 	RUN_SUITE(pmm);
 	RUN_SUITE(tlb);
-	RUN_SUITE(initramfs);
 
 	virtio_init();
 	RUN_SUITE(virtio);

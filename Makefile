@@ -70,30 +70,23 @@ disk.img: .bin/mkfs build
 		-m libc:src/libc
 
 disk-test.img: .bin/mkfs build-test
-	$(MKFS) $@ -s 2048 \
+	$(MKFS) $@ -s 4096 \
 		:dir:/dev \
+		:dir:/bin \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
 		testdata/hello.txt:/hello \
 		testdata/large.txt:/large \
 		.build/out/bin/true:/true \
-		.build/out/bin/false:/false
-
-initramfs-test.bin: .bin/mkramfs build-test
-	$(MKRAMFS) $@ \
-		.build/out/bin/init .build/out/bin/shell .build/out/bin/cursor_blink \
-		.build/out/bin/echo .build/out/bin/ticker .build/out/bin/shutdown \
-		.build/out/bin/true .build/out/bin/false .build/out/bin/cat .build/out/bin/ls \
-		.build/out/bin/mkdir .build/out/bin/rm .build/out/bin/cp .build/out/bin/mv \
-		.build/out/bin/touch .build/out/bin/wc .build/out/bin/head .build/out/bin/grep \
-		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
+		.build/out/bin/false:/false \
+		.build/out/bin/tests:/bin/tests
 
 run: clean disk.img
 	$(QEMU_DISK) -kernel .build/out/boot/kernel.bin -append "init=/bin/init"
 
-test: clean disk-test.img initramfs-test.bin
-	$(QEMU_TEST) -kernel .build/out/boot/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
+test: clean disk-test.img
+	$(QEMU_TEST) -kernel .build/out/boot/kernel-test.bin -append "init=/bin/tests"
 
 clean:
 	rm -rf .bin/ .build/
