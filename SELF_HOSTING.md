@@ -33,14 +33,14 @@ QEMU boot (no -kernel flag)
 
 Boot sequence
 ├── Bootloader runs from pflash
-├── Reads /kernel.bin from disk
+├── Reads /boot/kernel.bin from disk
 ├── Passes DTB address in x0
 └── Jumps to kernel
 
 Self-hosting cycle
 ├── Edit /src/kernel/*.c
 ├── Run /bin/build in /src/kernel
-├── Produces /kernel.bin
+├── Produces /boot/kernel.bin
 └── Reboot → new kernel runs
 ```
 
@@ -158,7 +158,7 @@ The bootloader replaces QEMU's `-kernel` flag, enabling true disk-based boot:
 
 1. Runs from pflash0 (address 0x0)
 2. Initializes UART (debug output) and virtio-blk
-3. Mounts slopix filesystem, finds `/kernel.bin`
+3. Mounts slopix filesystem, finds `/boot/kernel.bin`
 4. Loads kernel to 0x40080000
 5. Passes DTB address in x0, jumps to kernel
 
@@ -342,7 +342,7 @@ Create `kernel/build.c`:
 - Compile all .c files
 - Assemble all .S files
 - Link with `-T kernel`
-- Output to `/kernel.bin`
+- Output to `/boot/kernel.bin`
 
 **Exit criteria:** Build kernel within slopix using `/bin/build`.
 
@@ -382,7 +382,7 @@ Same build.c files work in both environments.
 **Kernel build (after toolchain enhancements):**
 ```
 cd /src/kernel && /bin/build
-# Produces /kernel.bin
+# Produces /boot/kernel.bin
 ```
 
 ## Testing Strategy
@@ -448,7 +448,7 @@ Verify toolchain correctness:
 /bin/                    Compiled binaries
 /lib/libc.a             C library
 /include/               Headers
-/kernel.bin             Kernel image (rebuilt in place)
+/boot/kernel.bin             Kernel image (rebuilt in place)
 ```
 
 ## Effort Summary

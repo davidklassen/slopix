@@ -139,11 +139,11 @@ static int kernel_link(const char *out, int include_tests) {
 int main(void) {
 	const char *run_tests = getenv("RUN_TESTS");
 	int test_mode = (run_tests != NULL && run_tests[0] != '0');
-	const char *output = test_mode ? ".build/out/kernel-test.bin" : ".build/out/kernel.bin";
+	const char *output = test_mode ? ".build/out/boot/kernel-test.bin" : ".build/out/boot/kernel.bin";
 
 	mkdir_p(".build/obj");
 	mkdir_p(".build/obj/tests");
-	mkdir_p(".build/out");
+	mkdir_p(".build/out/boot");
 
 	for (int i = 0; asm_srcs[i] != NULL; i++) {
 		if (kernel_assemble(asm_srcs[i]) != 0) {

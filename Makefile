@@ -90,10 +90,10 @@ initramfs-test.bin: .bin/mkramfs build-test
 		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
 
 run: clean disk.img
-	$(QEMU_DISK) -kernel .build/out/kernel.bin -append "init=/bin/init"
+	$(QEMU_DISK) -kernel .build/out/boot/kernel.bin -append "init=/bin/init"
 
 test: clean disk-test.img initramfs-test.bin
-	$(QEMU_TEST) -kernel .build/out/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
+	$(QEMU_TEST) -kernel .build/out/boot/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
 clean:
 	rm -rf .bin/ .build/
