@@ -1,6 +1,7 @@
 #define BUILD_IMPLEMENTATION
 #include "build.h"
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -100,10 +101,12 @@ int main(void) {
 		return 1;
 	}
 
-	if (truncate(".build/out/bootloader.bin", 64 * 1024 * 1024) != 0) {
+	int fd = open(".build/out/bootloader.bin", O_WRONLY);
+	if (fd < 0 || ftruncate(fd, 64 * 1024 * 1024) != 0) {
 		log_error("failed to pad bootloader.bin");
 		return 1;
 	}
+	close(fd);
 
 	log_info("built bootloader.bin");
 	return 0;
