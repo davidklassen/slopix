@@ -3,6 +3,7 @@
 void output_section_init(OutputSection *sec, const char *name, uint32_t type, uint64_t flags) {
 	sec->name = name;
 	sec->addr = 0;
+	sec->lma = 0;
 	sec->offset = 0;
 	sec->size = 0;
 	sec->alignment = SECTION_ALIGN;
@@ -33,6 +34,31 @@ int categorize_section(const char *name, uint64_t flags) {
 	return -1;
 }
 
+int categorize_section_kernel(const char *name, uint64_t flags) {
+	if (!(flags & SHF_ALLOC)) {
+		return -1;
+	}
+	if (strcmp(name, ".text.boot") == 0) {
+		return KOUT_TEXT_BOOT;
+	}
+	if (strcmp(name, ".tables") == 0) {
+		return KOUT_TABLES;
+	}
+	if (strncmp(name, ".text", 5) == 0) {
+		return KOUT_TEXT;
+	}
+	if (strncmp(name, ".rodata", 7) == 0) {
+		return KOUT_RODATA;
+	}
+	if (strncmp(name, ".data", 5) == 0) {
+		return KOUT_DATA;
+	}
+	if (strncmp(name, ".bss", 4) == 0) {
+		return KOUT_BSS;
+	}
+	return -1;
+}
+
 static uint64_t align_up(uint64_t val, uint64_t align) {
 	if (align == 0) {
 		return val;
@@ -53,7 +79,8 @@ static void add_piece(OutputSection *sec, ObjectFile *file, int input_shndx, uin
 	p->size = size;
 }
 
-void merge_sections(ObjectFile **objects, int count, OutputSection *sections) {
+void merge_sections(ObjectFile **objects, int count, OutputSection *sections, int section_count, int (*categorize)(const char *, uint64_t)) {
+	(void)section_count;
 	for (int i = 0; i < count; i++) {
 		ObjectFile *obj = objects[i];
 
@@ -64,7 +91,7 @@ void merge_sections(ObjectFile **objects, int count, OutputSection *sections) {
 				continue;
 			}
 
-			int cat = categorize_section(name, sh->sh_flags);
+			int cat = categorize(name, sh->sh_flags);
 			if (cat < 0) {
 				continue;
 			}
@@ -106,6 +133,7 @@ void assign_addresses(OutputSection *sections) {
 		}
 		addr = align_up(addr, sec->alignment);
 		sec->addr = addr;
+		sec->lma = addr;
 		addr += sec->size;
 	}
 
@@ -119,12 +147,13 @@ void assign_addresses(OutputSection *sections) {
 		}
 		addr = align_up(addr, sec->alignment);
 		sec->addr = addr;
+		sec->lma = addr;
 		addr += sec->size;
 	}
 }
 
-SectionPiece *find_piece(OutputSection *sections, ObjectFile *file, int input_shndx) {
-	for (int i = 1; i < OUT_COUNT; i++) {
+SectionPiece *find_piece(OutputSection *sections, int section_count, ObjectFile *file, int input_shndx) {
+	for (int i = 1; i < section_count; i++) {
 		OutputSection *sec = &sections[i];
 		for (int j = 0; j < sec->piece_count; j++) {
 			SectionPiece *p = &sec->pieces[j];
@@ -136,8 +165,8 @@ SectionPiece *find_piece(OutputSection *sections, ObjectFile *file, int input_sh
 	return NULL;
 }
 
-static int find_section_for_piece(OutputSection *sections, SectionPiece *piece) {
-	for (int i = 1; i < OUT_COUNT; i++) {
+static int find_section_for_piece(OutputSection *sections, int section_count, SectionPiece *piece) {
+	for (int i = 1; i < section_count; i++) {
 		OutputSection *sec = &sections[i];
 		for (int j = 0; j < sec->piece_count; j++) {
 			if (&sec->pieces[j] == piece) {
@@ -148,19 +177,19 @@ static int find_section_for_piece(OutputSection *sections, SectionPiece *piece) 
 	return 0;
 }
 
-void update_symbol_values(SymbolTable *global, OutputSection *sections) {
+void update_symbol_values(SymbolTable *global, OutputSection *sections, int section_count) {
 	for (int i = 0; i < SYMTAB_BUCKETS; i++) {
 		for (Symbol *sym = global->buckets[i]; sym; sym = sym->next) {
 			if (sym->shndx == SHN_ABS) {
 				continue;
 			}
 
-			SectionPiece *piece = find_piece(sections, sym->file, sym->shndx);
+			SectionPiece *piece = find_piece(sections, section_count, sym->file, sym->shndx);
 			if (!piece) {
 				continue;
 			}
 
-			int out_idx = find_section_for_piece(sections, piece);
+			int out_idx = find_section_for_piece(sections, section_count, piece);
 			OutputSection *sec = &sections[out_idx];
 
 			sym->value = sec->addr + piece->output_offset + sym->value;
@@ -169,7 +198,7 @@ void update_symbol_values(SymbolTable *global, OutputSection *sections) {
 	}
 }
 
-uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections) {
+uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections, int section_count) {
 	if (sym_idx < 0 || sym_idx >= obj->symcount) {
 		return 0;
 	}
@@ -183,12 +212,12 @@ uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *secti
 		return sym->st_value;
 	}
 
-	SectionPiece *piece = find_piece(sections, obj, sym->st_shndx);
+	SectionPiece *piece = find_piece(sections, section_count, obj, sym->st_shndx);
 	if (!piece) {
 		return sym->st_value;
 	}
 
-	int out_idx = find_section_for_piece(sections, piece);
+	int out_idx = find_section_for_piece(sections, section_count, piece);
 	OutputSection *sec = &sections[out_idx];
 
 	return sec->addr + piece->output_offset + sym->st_value;
@@ -205,25 +234,27 @@ static const char *section_type_str(uint32_t type) {
 	}
 }
 
-void dump_output_sections(OutputSection *sections) {
+void dump_output_sections(OutputSection *sections, int section_count) {
 	printf("Output sections:\n");
-	printf("%-10s %-12s %-12s %-10s %-10s %s\n",
+	printf("%-10s %-18s %-18s %-12s %-10s %-10s %s\n",
 	       "Name",
 	       "Address",
+	       "LMA",
 	       "Size",
 	       "Align",
 	       "Type",
 	       "Pieces");
 
-	for (int i = 1; i < OUT_COUNT; i++) {
+	for (int i = 1; i < section_count; i++) {
 		OutputSection *sec = &sections[i];
 		if (sec->size == 0 && sec->piece_count == 0) {
 			continue;
 		}
 
-		printf("%-10s 0x%010llx 0x%010llx %-10llu %-10s %d\n",
+		printf("%-10s 0x%016llx 0x%016llx 0x%010llx %-10llu %-10s %d\n",
 		       sec->name,
 		       (unsigned long long)sec->addr,
+		       (unsigned long long)sec->lma,
 		       (unsigned long long)sec->size,
 		       (unsigned long long)sec->alignment,
 		       section_type_str(sec->type),
@@ -239,4 +270,68 @@ void dump_output_sections(OutputSection *sections) {
 			       (unsigned long long)p->size);
 		}
 	}
+}
+
+void assign_addresses_kernel(OutputSection *sections) {
+	uint64_t phys = KERNEL_PHYS_BASE;
+
+	// Boot section at physical address
+	OutputSection *boot = &sections[KOUT_TEXT_BOOT];
+	if (boot->size > 0) {
+		boot->addr = phys;
+		boot->lma = phys;
+		phys += boot->size;
+	}
+
+	// Tables at 4KB alignment
+	phys = align_up(phys, 0x1000);
+	OutputSection *tables = &sections[KOUT_TABLES];
+	if (tables->size > 0) {
+		tables->addr = phys;
+		tables->lma = phys;
+		phys += tables->size;
+	}
+
+	// Kernel sections start at 64KB offset
+	phys = KERNEL_PHYS_BASE + KERNEL_BOOT_SIZE;
+	uint64_t virt = KERNEL_VIRT_BASE + KERNEL_BOOT_SIZE;
+
+	for (int i = KOUT_TEXT; i <= KOUT_BSS; i++) {
+		OutputSection *sec = &sections[i];
+		if (sec->size == 0) {
+			continue;
+		}
+		uint64_t a = sec->alignment;
+		phys = align_up(phys, a);
+		virt = align_up(virt, a);
+		sec->lma = phys;
+		sec->addr = virt;
+		phys += sec->size;
+		virt += sec->size;
+	}
+}
+
+void add_kernel_symbol_placeholders(SymbolTable *global) {
+	add_linker_symbol(global, "__phys_base", 0);
+	add_linker_symbol(global, "__virt_base", 0);
+	add_linker_symbol(global, "__bss_start", 0);
+	add_linker_symbol(global, "__bss_end", 0);
+	add_linker_symbol(global, "__stack_top", 0);
+}
+
+void define_kernel_symbols(SymbolTable *global, OutputSection *sections) {
+	Symbol *phys_base = symbol_lookup(global, "__phys_base");
+	Symbol *virt_base = symbol_lookup(global, "__virt_base");
+	Symbol *bss_start = symbol_lookup(global, "__bss_start");
+	Symbol *bss_end = symbol_lookup(global, "__bss_end");
+	Symbol *stack_top = symbol_lookup(global, "__stack_top");
+
+	phys_base->value = KERNEL_PHYS_BASE;
+	virt_base->value = KERNEL_VIRT_BASE;
+
+	OutputSection *bss = &sections[KOUT_BSS];
+	bss_start->value = bss->addr;
+	bss_end->value = bss->addr + bss->size;
+
+	stack_top->value = align_up(bss->addr + bss->size, 16) + KERNEL_STACK_SIZE;
 }

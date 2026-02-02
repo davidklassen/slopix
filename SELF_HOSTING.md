@@ -399,7 +399,7 @@ Each phase has concrete validation:
 | 4. Expansion | `as` accepts kernel/tables.S | ✓ |
 | 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | ✓ |
 | 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | ✓ |
-| 7. Linker | custom cc + custom as + custom ld, `make test` passes | |
+| 7. Linker | custom cc + custom as + custom ld, `make test` passes | ✓ |
 | 9. Bootloader | Boot without -kernel flag | |
 
 ### Triple Compilation
@@ -461,10 +461,10 @@ Verify toolchain correctness:
 | tables.S expansion | ✓ |
 | cc: inline asm | ✓ |
 | as: compiler output gaps | ✓ |
-| ld: kernel mode | 150-200 |
+| ld: kernel mode | ✓ |
 | kernel/build.c | 50-100 |
 | bootloader | 500-800 |
-| **Remaining** | ~700-1100 |
+| **Remaining** | ~550-900 |
 
 ## References
 

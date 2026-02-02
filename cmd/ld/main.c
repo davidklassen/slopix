@@ -15,6 +15,16 @@ void error(char *fmt, ...) {
 	exit(1);
 }
 
+typedef enum {
+	LINK_MODE_USERSPACE,
+	LINK_MODE_KERNEL
+} LinkMode;
+
+typedef enum {
+	OUTPUT_ELF,
+	OUTPUT_BINARY
+} OutputFormat;
+
 static void usage(int code) {
 	fprintf(stderr, "Usage: ld [options] <input.o> ...\n");
 	fprintf(stderr, "Options:\n");
@@ -22,6 +32,8 @@ static void usage(int code) {
 	fprintf(stderr, "  -L <dir>          Add library search path\n");
 	fprintf(stderr, "  -l <name>         Link with libNAME.a\n");
 	fprintf(stderr, "  -e <symbol>       Set entry point (default: _start)\n");
+	fprintf(stderr, "  -T kernel         Use kernel memory layout\n");
+	fprintf(stderr, "  --oformat=binary  Output raw binary (not ELF)\n");
 	fprintf(stderr, "  --verbose         Verbose output\n");
 	fprintf(stderr, "  --dump-sections   Print sections and exit\n");
 	fprintf(stderr, "  --dump-symbols    Print symbols and exit\n");
@@ -217,6 +229,8 @@ int main(int argc, char **argv) {
 	bool dump_globals_flag = false;
 	bool dump_merged_flag = false;
 	bool dump_archives_flag = false;
+	LinkMode link_mode = LINK_MODE_USERSPACE;
+	OutputFormat output_format = OUTPUT_ELF;
 	StringArray lib_paths = {0};
 	char **input_files = NULL;
 	int input_count = 0;
@@ -269,6 +283,18 @@ int main(int argc, char **argv) {
 			dump_merged_flag = true;
 		} else if (strcmp(argv[i], "--dump-archives") == 0) {
 			dump_archives_flag = true;
+		} else if (strcmp(argv[i], "-T") == 0) {
+			if (i + 1 >= argc) {
+				error("-T requires an argument");
+			}
+			i++;
+			if (strcmp(argv[i], "kernel") == 0) {
+				link_mode = LINK_MODE_KERNEL;
+			} else {
+				error("unknown -T target: %s", argv[i]);
+			}
+		} else if (strcmp(argv[i], "--oformat=binary") == 0) {
+			output_format = OUTPUT_BINARY;
 		} else if (strcmp(argv[i], "--version") == 0) {
 			version();
 		} else if (strcmp(argv[i], "--help") == 0) {
@@ -338,22 +364,46 @@ int main(int argc, char **argv) {
 
 	collect_definitions(objects, object_count, &global);
 	resolve_archives(&objects, &object_count, &object_capacity, archives, archive_count, &global, entry_point, verbose_flag);
+	if (link_mode == LINK_MODE_KERNEL) {
+		add_kernel_symbol_placeholders(&global);
+	}
 	if (!check_undefined(objects, object_count, &global, entry_point)) {
 		exit(1);
 	}
 
-	OutputSection sections[OUT_COUNT];
-	output_section_init(&sections[OUT_NULL], "", SHT_NULL, 0);
-	output_section_init(&sections[OUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
-	output_section_init(&sections[OUT_RODATA], ".rodata", SHT_PROGBITS, SHF_ALLOC);
-	output_section_init(&sections[OUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
-	output_section_init(&sections[OUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
+	int section_count;
+	OutputSection *sections;
 
-	merge_sections(objects, object_count, sections);
-	assign_addresses(sections);
-	update_symbol_values(&global, sections);
+	if (link_mode == LINK_MODE_KERNEL) {
+		section_count = KOUT_COUNT;
+		sections = calloc(KOUT_COUNT, sizeof(OutputSection));
+		output_section_init(&sections[KOUT_NULL], "", SHT_NULL, 0);
+		output_section_init(&sections[KOUT_TEXT_BOOT], ".text.boot", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+		output_section_init(&sections[KOUT_TABLES], ".tables", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+		output_section_init(&sections[KOUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+		output_section_init(&sections[KOUT_RODATA], ".rodata", SHT_PROGBITS, SHF_ALLOC);
+		output_section_init(&sections[KOUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+		output_section_init(&sections[KOUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
 
-	if (!apply_relocations(objects, object_count, &global, sections)) {
+		merge_sections(objects, object_count, sections, section_count, categorize_section_kernel);
+		assign_addresses_kernel(sections);
+		define_kernel_symbols(&global, sections);
+	} else {
+		section_count = OUT_COUNT;
+		sections = calloc(OUT_COUNT, sizeof(OutputSection));
+		output_section_init(&sections[OUT_NULL], "", SHT_NULL, 0);
+		output_section_init(&sections[OUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+		output_section_init(&sections[OUT_RODATA], ".rodata", SHT_PROGBITS, SHF_ALLOC);
+		output_section_init(&sections[OUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+		output_section_init(&sections[OUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
+
+		merge_sections(objects, object_count, sections, section_count, categorize_section);
+		assign_addresses(sections);
+	}
+
+	update_symbol_values(&global, sections, section_count);
+
+	if (!apply_relocations(objects, object_count, &global, sections, section_count)) {
 		exit(1);
 	}
 
@@ -362,7 +412,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (dump_merged_flag) {
-		dump_output_sections(sections);
+		dump_output_sections(sections, section_count);
 	}
 
 	bool dump_only = dump_sections_flag || dump_symbols_flag || dump_globals_flag ||
@@ -372,10 +422,18 @@ int main(int argc, char **argv) {
 		if (verbose_flag) {
 			fprintf(stderr, "writing %s\n", out_path);
 		}
-		if (!write_executable(out_path, sections, &global, entry_point)) {
+		bool ok;
+		if (output_format == OUTPUT_BINARY) {
+			ok = write_binary(out_path, sections, section_count);
+		} else {
+			ok = write_executable(out_path, sections, &global, entry_point);
+		}
+		if (!ok) {
 			exit(1);
 		}
 	}
+
+	free(sections);
 
 	for (int i = 0; i < object_count; i++) {
 		elf_free(objects[i]);

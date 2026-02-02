@@ -41,6 +41,24 @@ static Symbol *symbol_add(SymbolTable *tab, const char *name, uint64_t value, ui
 	return sym;
 }
 
+Symbol *add_linker_symbol(SymbolTable *tab, const char *name, uint64_t value) {
+	Symbol *sym = malloc(sizeof(Symbol));
+	sym->name = strdup(name);
+	sym->value = value;
+	sym->size = 0;
+	sym->type = STT_NOTYPE;
+	sym->binding = STB_GLOBAL;
+	sym->file = NULL;
+	sym->shndx = SHN_ABS;
+	sym->output_shndx = 0;
+
+	uint32_t h = hash_string(name) % SYMTAB_BUCKETS;
+	sym->next = tab->buckets[h];
+	tab->buckets[h] = sym;
+	tab->count++;
+	return sym;
+}
+
 static void symbol_replace(Symbol *existing, uint64_t value, uint64_t size, uint8_t type, uint8_t binding, ObjectFile *file, uint16_t shndx) {
 	existing->value = value;
 	existing->size = size;
@@ -226,14 +244,15 @@ bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global) {
 
 void dump_globals(SymbolTable *global) {
 	printf("Global symbol table (%d symbols):\n", global->count);
-	printf("%-40s %-10s %-8s %-8s %s\n", "Name", "Value", "Size", "Bind", "File");
+	printf("%-40s %-18s %-8s %-8s %s\n", "Name", "Value", "Size", "Bind", "File");
 
 	for (int i = 0; i < SYMTAB_BUCKETS; i++) {
 		for (Symbol *s = global->buckets[i]; s; s = s->next) {
 			const char *bind =
 			    s->binding == STB_GLOBAL ? "GLOBAL" : s->binding == STB_WEAK ? "WEAK"
 											 : "?";
-			printf("%-40s 0x%08llx %-8llu %-8s %s\n", s->name, (unsigned long long)s->value, (unsigned long long)s->size, bind, s->file->filename);
+			const char *file = s->file ? s->file->filename : "(linker)";
+			printf("%-40s 0x%016llx %-8llu %-8s %s\n", s->name, (unsigned long long)s->value, (unsigned long long)s->size, bind, file);
 		}
 	}
 }

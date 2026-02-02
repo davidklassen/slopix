@@ -147,3 +147,61 @@ fail:
 	close(fd);
 	return false;
 }
+
+bool write_binary(const char *path, OutputSection *sections, int section_count) {
+	uint64_t base_lma = UINT64_MAX;
+	for (int i = 1; i < section_count; i++) {
+		if (sections[i].size > 0 && sections[i].type != SHT_NOBITS) {
+			if (sections[i].lma < base_lma) {
+				base_lma = sections[i].lma;
+			}
+		}
+	}
+
+	if (base_lma == UINT64_MAX) {
+		fprintf(stderr, "ld: no loadable sections\n");
+		return false;
+	}
+
+	uint64_t file_size = 0;
+	for (int i = 1; i < section_count; i++) {
+		if (sections[i].size > 0 && sections[i].type != SHT_NOBITS) {
+			uint64_t end = (sections[i].lma - base_lma) + sections[i].size;
+			if (end > file_size) {
+				file_size = end;
+			}
+		}
+	}
+
+	uint8_t *output = calloc(1, file_size);
+	if (!output) {
+		fprintf(stderr, "ld: out of memory\n");
+		return false;
+	}
+
+	for (int i = 1; i < section_count; i++) {
+		OutputSection *sec = &sections[i];
+		if (sec->size > 0 && sec->type != SHT_NOBITS && sec->data) {
+			uint64_t offset = sec->lma - base_lma;
+			memcpy(output + offset, sec->data, sec->size);
+		}
+	}
+
+	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+	if (fd < 0) {
+		fprintf(stderr, "ld: cannot create %s\n", path);
+		free(output);
+		return false;
+	}
+
+	bool ok = write_all(fd, output, file_size);
+	close(fd);
+	free(output);
+
+	if (!ok) {
+		fprintf(stderr, "ld: write error: %s\n", path);
+		return false;
+	}
+
+	return true;
+}

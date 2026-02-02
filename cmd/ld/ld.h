@@ -228,6 +228,7 @@ const char *symbol_name(ObjectFile *obj, int idx);
 // symbol.c
 void symtab_init(SymbolTable *tab);
 Symbol *symbol_lookup(SymbolTable *tab, const char *name);
+Symbol *add_linker_symbol(SymbolTable *tab, const char *name, uint64_t value);
 bool resolve_symbols(ObjectFile **objects, int count, SymbolTable *global);
 void collect_definitions(ObjectFile **objects, int count, SymbolTable *global);
 bool resolve_archives(ObjectFile ***objects, int *count, int *capacity, Archive **archives, int archive_count, SymbolTable *global, const char *entry_point, bool verbose);
@@ -240,7 +241,7 @@ void dump_globals(SymbolTable *global);
 #define TEXT_BASE     0x10000
 #define SECTION_ALIGN 8
 
-// Output section indices
+// Output section indices (userspace)
 enum {
 	OUT_NULL = 0,
 	OUT_TEXT = 1,
@@ -249,6 +250,24 @@ enum {
 	OUT_BSS = 4,
 	OUT_COUNT
 };
+
+// Output section indices (kernel)
+enum {
+	KOUT_NULL = 0,
+	KOUT_TEXT_BOOT = 1,
+	KOUT_TABLES = 2,
+	KOUT_TEXT = 3,
+	KOUT_RODATA = 4,
+	KOUT_DATA = 5,
+	KOUT_BSS = 6,
+	KOUT_COUNT
+};
+
+// Kernel memory layout constants
+#define KERNEL_PHYS_BASE  0x40080000ULL
+#define KERNEL_VIRT_BASE  0xFFFF000040080000ULL
+#define KERNEL_BOOT_SIZE  0x10000ULL
+#define KERNEL_STACK_SIZE 0x10000ULL
 
 // Section piece - tracks origin of merged content
 typedef struct SectionPiece {
@@ -262,6 +281,7 @@ typedef struct SectionPiece {
 typedef struct OutputSection {
 	const char *name;
 	uint64_t addr;
+	uint64_t lma;
 	uint64_t offset;
 	uint64_t size;
 	uint64_t alignment;
@@ -275,19 +295,24 @@ typedef struct OutputSection {
 
 void output_section_init(OutputSection *sec, const char *name, uint32_t type, uint64_t flags);
 int categorize_section(const char *name, uint64_t flags);
-void merge_sections(ObjectFile **objects, int count, OutputSection *sections);
+int categorize_section_kernel(const char *name, uint64_t flags);
+void merge_sections(ObjectFile **objects, int count, OutputSection *sections, int section_count, int (*categorize)(const char *, uint64_t));
 void assign_addresses(OutputSection *sections);
-SectionPiece *find_piece(OutputSection *sections, ObjectFile *file, int input_shndx);
-void update_symbol_values(SymbolTable *global, OutputSection *sections);
-uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections);
-void dump_output_sections(OutputSection *sections);
+void assign_addresses_kernel(OutputSection *sections);
+SectionPiece *find_piece(OutputSection *sections, int section_count, ObjectFile *file, int input_shndx);
+void update_symbol_values(SymbolTable *global, OutputSection *sections, int section_count);
+uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *sections, int section_count);
+void add_kernel_symbol_placeholders(SymbolTable *global);
+void define_kernel_symbols(SymbolTable *global, OutputSection *sections);
+void dump_output_sections(OutputSection *sections, int section_count);
 
 // reloc.c
-bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections);
+bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections, int section_count);
 const char *reloc_type_name(int type);
 
 // output.c
 bool write_executable(const char *path, OutputSection *sections, SymbolTable *global, const char *entry_point);
+bool write_binary(const char *path, OutputSection *sections, int section_count);
 
 // archive.c
 Archive *archive_open(const char *path);

@@ -41,7 +41,7 @@ static Elf64_Rela *get_rela_for_section(ObjectFile *obj, int sec_idx, int *count
 	return NULL;
 }
 
-static uint64_t resolve_reloc_symbol(ObjectFile *obj, int sym_idx, SymbolTable *global, OutputSection *sections) {
+static uint64_t resolve_reloc_symbol(ObjectFile *obj, int sym_idx, SymbolTable *global, OutputSection *sections, int section_count) {
 	if (sym_idx < 0 || sym_idx >= obj->symcount) {
 		return 0;
 	}
@@ -51,12 +51,12 @@ static uint64_t resolve_reloc_symbol(ObjectFile *obj, int sym_idx, SymbolTable *
 	uint8_t type = ELF64_ST_TYPE(sym->st_info);
 
 	if (binding == STB_LOCAL || type == STT_SECTION) {
-		return resolve_local_symbol(obj, sym_idx, sections);
+		return resolve_local_symbol(obj, sym_idx, sections, section_count);
 	}
 
 	const char *name = symbol_name(obj, sym_idx);
 	if (!name || name[0] == '\0') {
-		return resolve_local_symbol(obj, sym_idx, sections);
+		return resolve_local_symbol(obj, sym_idx, sections, section_count);
 	}
 
 	Symbol *gsym = symbol_lookup(global, name);
@@ -64,11 +64,11 @@ static uint64_t resolve_reloc_symbol(ObjectFile *obj, int sym_idx, SymbolTable *
 		return gsym->value;
 	}
 
-	return resolve_local_symbol(obj, sym_idx, sections);
+	return resolve_local_symbol(obj, sym_idx, sections, section_count);
 }
 
-static int find_output_section_idx(OutputSection *sections, ObjectFile *file, int input_shndx) {
-	for (int i = 1; i < OUT_COUNT; i++) {
+static int find_output_section_idx(OutputSection *sections, int section_count, ObjectFile *file, int input_shndx) {
+	for (int i = 1; i < section_count; i++) {
 		OutputSection *sec = &sections[i];
 		for (int j = 0; j < sec->piece_count; j++) {
 			SectionPiece *p = &sec->pieces[j];
@@ -231,7 +231,7 @@ static bool apply_one_reloc(uint8_t *target, uint64_t place_addr, uint64_t sym_v
 	return true;
 }
 
-bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections) {
+bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections, int section_count) {
 	for (int i = 0; i < count; i++) {
 		ObjectFile *obj = objects[i];
 
@@ -248,12 +248,12 @@ bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, Out
 				continue;
 			}
 
-			SectionPiece *piece = find_piece(sections, obj, j);
+			SectionPiece *piece = find_piece(sections, section_count, obj, j);
 			if (!piece) {
 				continue;
 			}
 
-			int out_idx = find_output_section_idx(sections, obj, j);
+			int out_idx = find_output_section_idx(sections, section_count, obj, j);
 			if (out_idx < 0) {
 				continue;
 			}
@@ -269,7 +269,7 @@ bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, Out
 				int sym_idx = ELF64_R_SYM(rela->r_info);
 				int rtype = ELF64_R_TYPE(rela->r_info);
 
-				uint64_t sym_value = resolve_reloc_symbol(obj, sym_idx, global, sections);
+				uint64_t sym_value = resolve_reloc_symbol(obj, sym_idx, global, sections, section_count);
 
 				if (!apply_one_reloc(target, place_addr, sym_value, rtype, rela->r_addend, obj->filename)) {
 					return false;

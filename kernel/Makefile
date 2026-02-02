@@ -1,11 +1,9 @@
-CROSS = aarch64-elf-
 CC = ../.bin/cc
-LD = $(CROSS)ld
-OBJCOPY = $(CROSS)objcopy
+LD = ../.bin/ld
 AS = ../.bin/as
 
 CFLAGS = -I.
-LDFLAGS = -nostdlib -T linker.ld
+LDFLAGS = -T kernel --oformat=binary
 
 OBJ = \
 	boot.o \
@@ -64,18 +62,12 @@ TEST_OBJ = \
 
 all: kernel.bin
 
-kernel.elf: $(OBJ)
+kernel.bin: $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ $(OBJ)
 
-kernel.bin: kernel.elf
-	$(OBJCOPY) -O binary $< $@
-
-kernel-test.elf: CFLAGS += -DRUN_TESTS
-kernel-test.elf: $(OBJ) $(TEST_OBJ)
+kernel-test.bin: CFLAGS += -DRUN_TESTS
+kernel-test.bin: $(OBJ) $(TEST_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $(OBJ) $(TEST_OBJ)
-
-kernel-test.bin: kernel-test.elf
-	$(OBJCOPY) -O binary $< $@
 
 %.o: %.S $(AS)
 	$(AS) $< -o $@
@@ -86,4 +78,4 @@ kernel-test.bin: kernel-test.elf
 	$(AS) -o $@ $*.s
 
 clean:
-	rm -f *.o *.s *.elf *.bin tests/*.o tests/*.s
+	rm -f *.o *.s *.bin tests/*.o tests/*.s
