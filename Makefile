@@ -17,8 +17,9 @@ BUILD_ENV = BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(ROOT)/.bin/ar \
 	BUILD_INCLUDE=$(ROOT)/lib
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
-QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
-QEMU_TEST = $(QEMU_BASE) -drive file=disk-test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
+QEMU_PFLASH = -drive if=pflash,format=raw,file=.build/out/bootloader.bin,readonly=on
+QEMU_DISK = $(QEMU_BASE) $(QEMU_PFLASH) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
+QEMU_TEST = $(QEMU_BASE) $(QEMU_PFLASH) -drive file=disk-test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
 
 .PHONY: all build build-test clean run test tidy
 
@@ -88,10 +89,10 @@ disk-test.img: .bin/mkfs build-test
 		.build/out/bin/tests:/bin/tests
 
 run: clean disk.img
-	$(QEMU_DISK) -kernel .build/out/boot/kernel.bin -append "init=/bin/init"
+	$(QEMU_DISK)
 
 test: clean disk-test.img
-	$(QEMU_TEST) -kernel .build/out/boot/kernel-test.bin -append "init=/bin/tests"
+	$(QEMU_TEST)
 
 clean:
 	rm -rf .bin/ .build/
@@ -100,8 +101,3 @@ clean:
 tidy:
 	find kernel libc lib cmd boot -name '*.c' -o -name '*.h' | xargs clang-format -i
 
-test-bootloader: clean disk-test.img
-	$(QEMU_BASE) \
-		-drive if=pflash,format=raw,file=.build/out/bootloader.bin,readonly=on \
-		-drive file=disk-test.img,if=none,format=raw,id=hd0 \
-		-device virtio-blk-device,drive=hd0

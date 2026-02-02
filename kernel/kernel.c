@@ -105,7 +105,11 @@ void kernel_main(void) {
 
 	const char *init_prog = cmdline_get("init");
 	if (!init_prog) {
-		kpanic("init= not specified in kernel command line");
+#ifdef RUN_TESTS
+		init_prog = "/bin/tests";
+#else
+		init_prog = "/bin/init";
+#endif
 	}
 
 	init(init_prog);
