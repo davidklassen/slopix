@@ -414,6 +414,11 @@ static long sys_poweroff(void) {
 	return 0;
 }
 
+static long sys_reboot(void) {
+	psci_system_reset();
+	return 0;
+}
+
 static long sys_sbrk(long n) {
 	unsigned long old_sz = current->sz;
 	unsigned long new_sz = old_sz + n;
@@ -1394,6 +1399,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_getdents:
 		ret = sys_getdents((int)tf->regs[0], (char *)tf->regs[1], (unsigned int)tf->regs[2]);
+		break;
+	case SYS_reboot:
+		ret = sys_reboot();
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

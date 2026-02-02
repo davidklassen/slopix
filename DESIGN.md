@@ -12,10 +12,43 @@ QEMU virt machine with:
 - Timer: ARM Generic Timer
 - Block device: Virtio-blk (virtio-mmio region at 0x0a00_0000)
 
+QEMU invocation (boots from pflash):
+```
+qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic \
+  -drive if=pflash,format=raw,file=bootloader.bin,readonly=on \
+  -drive file=disk.img,if=none,format=raw,id=hd0 \
+  -device virtio-blk-device,drive=hd0
+```
+
 ## Boot Sequence
 
-1. QEMU loads kernel.bin at 0x4008_0000 (RAM_BASE + 0x80000), jumps to _start
-   - Raw binary format enables DTB address in x0 and -append for kernel cmdline
+### Bootloader (pflash)
+
+QEMU boots from pflash (no `-kernel` flag). The bootloader loads the kernel from disk:
+
+```
+pflash0 (0x0)           Bootloader code
+    ↓
+uart_init()             Initialize UART for debug output
+virtio_init()           Initialize virtio-blk (polling mode)
+fs_init()               Read superblock, validate filesystem
+    ↓
+fs_read_file()          Load /boot/kernel.bin → 0x40080000
+    ↓
+jump_to_kernel()        x0 = DTB (0x40000000), branch to kernel
+```
+
+Bootloader memory layout (below kernel load address):
+```
+0x40070000   Virtqueue structures (desc, avail, used rings)
+0x40072000   Block request header and status
+0x40073000   Filesystem block buffers
+0x40080000   Stack pointer (grows down) / Kernel load address
+```
+
+### Kernel
+
+1. Bootloader loads kernel.bin at 0x4008_0000, jumps to _start with DTB in x0
 2. _start (boot.S) - runs at physical address:
    - Configure MMU registers (MAIR, TCR, TTBR0, TTBR1)
    - Enable MMU with data and instruction caches
@@ -433,6 +466,7 @@ struct file {
 | 7 | exec | cmdline | - | - | argc or -1 |
 | 8 | poll | fd | timeout_ms | - | 1 if data, 0 timeout |
 | 9 | poweroff | - | - | - | - |
+| 39 | reboot | - | - | - | - |
 | 10 | sbrk | n | - | - | old break |
 | 11 | open | path | flags | - | fd or -1 |
 | 12 | close | fd | - | - | 0 or -1 |
@@ -737,13 +771,30 @@ Stage 5: Build kernel (separate, uses GCC)
 
 ### Self-Hosted Build (on slopix)
 
+The system is fully self-hosting. Toolchain on disk:
+- `/bin/cc` - C compiler (chibicc port)
+- `/bin/as` - AArch64 assembler
+- `/bin/ld` - ELF linker (supports `-T kernel` and `-T bootloader` modes)
+- `/bin/ar` - Archive tool
+- `/bin/build` - Generic build tool
+- `/lib/libc.a` - C standard library
+- `/src/` - Complete source tree
+
+**Userspace rebuild:**
 ```
 cd /src && /bin/build
 ```
 
-Same build.c files, same flow. Environment defaults to slopix paths:
-- `CC=/bin/cc`, `AS=/bin/as`, `LD=/bin/ld`
-- `INCLUDE_PATH=/include`, `LIB_PATH=/lib`
+**Kernel rebuild cycle:**
+```
+cd /src/kernel
+# edit source files
+/bin/build              # produces /boot/kernel.bin
+reboot                  # boot into new kernel
+```
+
+Same build.c files work in both host cross-compilation and native builds.
+Environment defaults to slopix paths: `CC=/bin/cc`, `AS=/bin/as`, `LD=/bin/ld`
 
 ### Artifact Bubbling
 

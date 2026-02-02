@@ -2,7 +2,7 @@
 .global open, close, fstat, dup, _mkdir_syscall, mknod, link, unlink, chdir, pipe
 .global stat, getcwd, lseek, rename, mmap, munmap
 .global kill, getprocs, getppid, _waitpid_syscall
-.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate, getdents
+.global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate, getdents, reboot
 
 write:
 	mov x8, #0
@@ -198,6 +198,11 @@ getdents:
 	mov x8, #38
 	svc #0
 	b __syscall_ret
+
+reboot:
+	mov x8, #39
+	svc #0
+	ret
 
 // Common syscall return handler
 // Check for error (negative return), set errno if needed

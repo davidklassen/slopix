@@ -30,6 +30,7 @@ int main(void) {
 	if (build_subdir("sed") != 0) return 1;
 	if (build_subdir("shell") != 0) return 1;
 	if (build_subdir("shutdown") != 0) return 1;
+	if (build_subdir("reboot") != 0) return 1;
 	if (build_subdir("sleep") != 0) return 1;
 	if (build_subdir("ticker") != 0) return 1;
 	if (build_subdir("touch") != 0) return 1;

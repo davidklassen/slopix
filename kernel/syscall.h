@@ -40,6 +40,7 @@
 #define SYS_tcgetraw  36
 #define SYS_ftruncate 37
 #define SYS_getdents  38
+#define SYS_reboot    39
 
 struct procinfo {
 	int pid;
