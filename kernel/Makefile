@@ -3,10 +3,8 @@ CC = ../.bin/cc
 LD = $(CROSS)ld
 OBJCOPY = $(CROSS)objcopy
 AS = ../.bin/as
-GNU_AS = $(CROSS)as
 
 CFLAGS = -I.
-ASFLAGS = -g -mcpu=cortex-a57
 LDFLAGS = -nostdlib -T linker.ld
 
 OBJ = \
@@ -82,10 +80,10 @@ kernel-test.bin: kernel-test.elf
 %.o: %.S $(AS)
 	$(AS) $< -o $@
 
-# Two-step compilation: C -> .s -> .o (custom cc produces assembly, GNU as assembles)
-%.o: %.c $(CC)
+# Two-step compilation: C -> .s -> .o (custom cc produces assembly, custom as assembles)
+%.o: %.c $(CC) $(AS)
 	$(CC) $(CFLAGS) -S -o $*.s $<
-	$(GNU_AS) $(ASFLAGS) -o $@ $*.s
+	$(AS) -o $@ $*.s
 
 clean:
 	rm -f *.o *.s *.elf *.bin tests/*.o tests/*.s

@@ -1302,24 +1302,33 @@ uint32_t encode_svc(int imm16) {
 	return 0xD4000001 | ((uint32_t)(imm16 & 0xFFFF) << 5);
 }
 
+// HVC #imm16 (hypervisor call)
+uint32_t encode_hvc(int imm16) {
+	return 0xD4000002 | ((uint32_t)(imm16 & 0xFFFF) << 5);
+}
+
 // System register encoding table
 // Encoding: (op0-2)<<14 | op1<<11 | CRn<<7 | CRm<<3 | op2
 static const struct {
 	const char *name;
 	uint16_t encoding;
 } sysregs[] = {
-    {"sctlr_el1", 0x4080}, // 3:0:1:0:0
-    {"mair_el1", 0x4510},  // 3:0:10:2:0
-    {"tcr_el1", 0x4102},   // 3:0:2:0:2
-    {"ttbr0_el1", 0x4100}, // 3:0:2:0:0
-    {"ttbr1_el1", 0x4101}, // 3:0:2:0:1
-    {"vbar_el1", 0x4600},  // 3:0:12:0:0
-    {"cpacr_el1", 0x4082}, // 3:0:1:0:2
-    {"sp_el0", 0x4208},	   // 3:0:4:1:0
-    {"elr_el1", 0x4201},   // 3:0:4:0:1
-    {"spsr_el1", 0x4200},  // 3:0:4:0:0
-    {"esr_el1", 0x4290},   // 3:0:5:2:0
-    {"far_el1", 0x4300},   // 3:0:6:0:0
+    {"sctlr_el1", 0x4080},     // 3:0:1:0:0
+    {"mair_el1", 0x4510},      // 3:0:10:2:0
+    {"tcr_el1", 0x4102},       // 3:0:2:0:2
+    {"ttbr0_el1", 0x4100},     // 3:0:2:0:0
+    {"ttbr1_el1", 0x4101},     // 3:0:2:0:1
+    {"vbar_el1", 0x4600},      // 3:0:12:0:0
+    {"cpacr_el1", 0x4082},     // 3:0:1:0:2
+    {"sp_el0", 0x4208},	       // 3:0:4:1:0
+    {"elr_el1", 0x4201},       // 3:0:4:0:1
+    {"spsr_el1", 0x4200},      // 3:0:4:0:0
+    {"esr_el1", 0x4290},       // 3:0:5:2:0
+    {"far_el1", 0x4300},       // 3:0:6:0:0
+    {"daif", 0x5A11},	       // 3:3:4:2:1
+    {"cntfrq_el0", 0x5F00},    // 3:3:14:0:0
+    {"cntp_tval_el0", 0x5F10}, // 3:3:14:2:0
+    {"cntp_ctl_el0", 0x5F11},  // 3:3:14:2:1
 };
 
 int encode_sysreg(const char *name) {
@@ -1341,11 +1350,17 @@ uint32_t encode_dsb_sy(void) {
 uint32_t encode_tlbi_vmalle1(void) {
 	return 0xD508871F;
 }
+uint32_t encode_tlbi_vaae1is(int rt) {
+	return 0xD5088320 | (uint32_t)(rt & 0x1F);
+}
 uint32_t encode_eret(void) {
 	return 0xD69F03E0;
 }
 uint32_t encode_wfe(void) {
 	return 0xD503205F;
+}
+uint32_t encode_wfi(void) {
+	return 0xD503207F;
 }
 
 // MSR sysreg, Xt
@@ -1763,8 +1778,12 @@ void test_encode(void) {
 	check_encoding("ISB", encode_isb(), 0xD5033FDF);
 	check_encoding("DSB SY", encode_dsb_sy(), 0xD5033F9F);
 	check_encoding("TLBI VMALLE1", encode_tlbi_vmalle1(), 0xD508871F);
+	check_encoding("TLBI VAAE1IS, x9", encode_tlbi_vaae1is(9), 0xD5088329);
 	check_encoding("ERET", encode_eret(), 0xD69F03E0);
 	check_encoding("WFE", encode_wfe(), 0xD503205F);
+	check_encoding("WFI", encode_wfi(), 0xD503207F);
+	check_encoding("SVC #0", encode_svc(0), 0xD4000001);
+	check_encoding("HVC #0", encode_hvc(0), 0xD4000002);
 
 	printf("\nMSR/MRS:\n");
 	check_encoding("MSR sctlr_el1, x0",

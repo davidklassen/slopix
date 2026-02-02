@@ -65,7 +65,6 @@ the system.
 
 | Component | Gap | Solution |
 |-----------|-----|----------|
-| **cc** | No inline assembly codegen | Add minimal constraint support |
 | **ld** | No kernel memory layout | Add `-T kernel` mode |
 | **ld** | No binary output | Add `--oformat=binary` |
 | **boot** | QEMU `-kernel` flag | New bootloader component |
@@ -73,15 +72,19 @@ the system.
 ### Recently Completed
 
 - **as**: Directives (`.equ`, `.fill`, `.balign`, `.quad`, `.section`)
-- **as**: System instructions (`msr`, `mrs`, `isb`, `dsb`, `tlbi`, `eret`, `wfe`)
+- **as**: System instructions (`msr`, `mrs`, `isb`, `dsb`, `tlbi`, `eret`, `wfe`, `wfi`, `hvc`)
 - **as**: Macro support (`.macro`/`.endm` with `\param` substitution)
+- **as**: Support for `adr Xn, .` (current location in inline asm)
+- **as**: Timer/interrupt registers (`daif`, `cntfrq_el0`, `cntp_tval_el0`, `cntp_ctl_el0`)
+- **as**: TLB invalidation (`tlbi vaae1is, Xt`)
 - **kernel**: All .S files now assemble with custom assembler (boot.S, vectors.S, tables.S)
+- **kernel**: All .c files now assemble with custom assembler (replaced GNU as)
 
 ## Toolchain Gaps
 
-### 1. C Compiler: Inline Assembly
+### 1. C Compiler: Inline Assembly ✓
 
-**Current state:** Parser creates `ND_ASM` node but codegen ignores it.
+**Status:** Complete. All kernel inline assembly patterns are supported.
 
 **Kernel usage (19 occurrences in cpu.h, 2 in test_exception.c, 1 in psci.c):**
 
@@ -100,15 +103,6 @@ asm volatile("msr ttbr0_el1, %0" : : "r"(v));
 register long x0 asm("x0") = PSCI_SYSTEM_OFF;
 asm volatile("hvc #0" ::"r"(x0));
 ```
-
-**Solution:** Implement minimal inline asm support (~100-150 LOC):
-
-1. Parse constraint syntax: `: "=r"(var)` and `: : "r"(var)`
-2. Allocate temp register (e.g., x9)
-3. Substitute `%0` in asm string with register name
-4. Emit: load before (input), asm string, store after (output)
-
-Only `"r"` constraint needed. Single operand sufficient.
 
 ### 2. Assembler: Missing Directives ✓
 
@@ -317,16 +311,18 @@ asm volatile("hvc #0" ::"r"(x0));
 **Exit criteria:** Makefile updated to use custom cc for kernel .c → .s, GNU as for
 .s → .o, GNU ld for linking. `make test` passes.
 
-### Phase 6: Assembler for Compiler Output
+### Phase 6: Assembler for Compiler Output ✓
 
 **Goal:** Replace GNU as with custom as for compiler-generated assembly.
 
-Gaps to be discovered during Phase 5 testing. The compiler may emit instructions,
-addressing modes, or directive patterns not yet supported by our assembler.
+**Status:** Complete. All 427 tests pass (137 kernel + 290 userspace).
 
-Known gap: `hvc` instruction (hypervisor call for PSCI).
-
-Still using GNU ld at this point.
+The following has been added to `cmd/as`:
+- ✓ `hvc #imm16` instruction for PSCI hypervisor calls
+- ✓ `tlbi vaae1is, Xt` for TLB invalidation by VA
+- ✓ `wfi` instruction for wait-for-interrupt
+- ✓ System registers: `daif`, `cntfrq_el0`, `cntp_tval_el0`, `cntp_ctl_el0`
+- ✓ Handle `adr Xn, .` (current location) without emitting relocation
 
 **Exit criteria:** Makefile uses custom cc + custom as + GNU ld. `make test` passes.
 
@@ -402,7 +398,7 @@ Each phase has concrete validation:
 | 3. Macros | `as` accepts kernel/vectors.S | ✓ |
 | 4. Expansion | `as` accepts kernel/tables.S | ✓ |
 | 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | ✓ |
-| 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | |
+| 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | ✓ |
 | 7. Linker | custom cc + custom as + custom ld, `make test` passes | |
 | 9. Bootloader | Boot without -kernel flag | |
 
@@ -463,12 +459,12 @@ Verify toolchain correctness:
 | as: system instructions | ✓ |
 | as: simple macros | ✓ |
 | tables.S expansion | ✓ |
-| cc: inline asm | 100-150 |
-| as: compiler output gaps | TBD |
+| cc: inline asm | ✓ |
+| as: compiler output gaps | ✓ |
 | ld: kernel mode | 150-200 |
 | kernel/build.c | 50-100 |
 | bootloader | 500-800 |
-| **Remaining** | ~800-1250 + TBD |
+| **Remaining** | ~700-1100 |
 
 ## References
 

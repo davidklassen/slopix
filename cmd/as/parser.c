@@ -985,6 +985,13 @@ static void handle_instruction(Token *tok) {
 		return;
 	}
 
+	if (strcasecmp(mnemonic, "hvc") == 0) {
+		t = skip_hash(t);
+		int imm16 = (int)t->val;
+		emit32(encode_hvc(imm16));
+		return;
+	}
+
 	if (strcasecmp(mnemonic, "isb") == 0) {
 		emit32(encode_isb());
 		return;
@@ -1003,7 +1010,15 @@ static void handle_instruction(Token *tok) {
 			emit32(encode_tlbi_vmalle1());
 			return;
 		}
-		error_tok(t, "only 'tlbi vmalle1' supported");
+		if (t->kind == TOK_IDENT && strcasecmp(t->str, "vaae1is") == 0) {
+			t = t->next;
+			if (t->kind == TOK_COMMA)
+				t = t->next;
+			int rt = encode_gpr(t);
+			emit32(encode_tlbi_vaae1is(rt));
+			return;
+		}
+		error_tok(t, "unsupported tlbi operation");
 	}
 
 	if (strcasecmp(mnemonic, "eret") == 0) {
@@ -1013,6 +1028,11 @@ static void handle_instruction(Token *tok) {
 
 	if (strcasecmp(mnemonic, "wfe") == 0) {
 		emit32(encode_wfe());
+		return;
+	}
+
+	if (strcasecmp(mnemonic, "wfi") == 0) {
+		emit32(encode_wfi());
 		return;
 	}
 
@@ -1197,6 +1217,11 @@ static void handle_instruction(Token *tok) {
 		expect_register(t);
 		int rd = encode_gpr(t);
 		t = expect_comma(t->next);
+		if (t->kind == TOK_DOT ||
+		    (t->kind == TOK_IDENT && strcmp(t->str, ".") == 0)) {
+			emit32(encode_adr(rd, 0));
+			return;
+		}
 		if (t->kind == TOK_IDENT) {
 			Symbol *sym = symtab_add(t->str);
 			int sym_idx = symtab_get_index(sym);

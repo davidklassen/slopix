@@ -456,13 +456,16 @@ uint32_t encode_adr(int rd, int64_t offset);
 // encode.c - miscellaneous
 uint32_t encode_nop(void);
 uint32_t encode_svc(int imm16);
+uint32_t encode_hvc(int imm16);
 
 // encode.c - system instructions
 uint32_t encode_isb(void);
 uint32_t encode_dsb_sy(void);
 uint32_t encode_tlbi_vmalle1(void);
+uint32_t encode_tlbi_vaae1is(int rt);
 uint32_t encode_eret(void);
 uint32_t encode_wfe(void);
+uint32_t encode_wfi(void);
 int encode_sysreg(const char *name);
 uint32_t encode_msr_reg(int sysreg, int rt);
 uint32_t encode_mrs(int sysreg, int rt);
