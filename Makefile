@@ -93,4 +93,7 @@ clean:
 	rm -f disk.img disk-test.img initramfs-test.bin
 
 tidy:
-	find kernel libc lib cmd -name '*.c' -o -name '*.h' | xargs clang-format -i
+	find kernel libc lib cmd boot -name '*.c' -o -name '*.h' | xargs clang-format -i
+
+test-bootloader: build
+	$(QEMU_BASE) -drive if=pflash,format=raw,file=.build/out/bootloader.bin,readonly=on

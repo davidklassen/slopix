@@ -263,6 +263,19 @@ enum {
 	KOUT_COUNT
 };
 
+// Output section indices (bootloader)
+enum {
+	BOUT_NULL = 0,
+	BOUT_TEXT = 1,
+	BOUT_RODATA = 2,
+	BOUT_DATA = 3,
+	BOUT_BSS = 4,
+	BOUT_COUNT
+};
+
+// Bootloader memory layout
+#define BOOT_TEXT_BASE 0x0ULL
+
 // Kernel memory layout constants
 #define KERNEL_PHYS_BASE  0x40080000ULL
 #define KERNEL_VIRT_BASE  0xFFFF000040080000ULL
@@ -305,6 +318,8 @@ uint64_t resolve_local_symbol(ObjectFile *obj, int sym_idx, OutputSection *secti
 void add_kernel_symbol_placeholders(SymbolTable *global);
 void define_kernel_symbols(SymbolTable *global, OutputSection *sections);
 void dump_output_sections(OutputSection *sections, int section_count);
+int categorize_section_bootloader(const char *name, uint64_t flags);
+void assign_addresses_bootloader(OutputSection *sections);
 
 // reloc.c
 bool apply_relocations(ObjectFile **objects, int count, SymbolTable *global, OutputSection *sections, int section_count);

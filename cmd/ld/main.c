@@ -17,7 +17,8 @@ void error(char *fmt, ...) {
 
 typedef enum {
 	LINK_MODE_USERSPACE,
-	LINK_MODE_KERNEL
+	LINK_MODE_KERNEL,
+	LINK_MODE_BOOTLOADER
 } LinkMode;
 
 typedef enum {
@@ -32,7 +33,7 @@ static void usage(int code) {
 	fprintf(stderr, "  -L <dir>          Add library search path\n");
 	fprintf(stderr, "  -l <name>         Link with libNAME.a\n");
 	fprintf(stderr, "  -e <symbol>       Set entry point (default: _start)\n");
-	fprintf(stderr, "  -T kernel         Use kernel memory layout\n");
+	fprintf(stderr, "  -T <mode>         Link mode: kernel, bootloader\n");
 	fprintf(stderr, "  --oformat=binary  Output raw binary (not ELF)\n");
 	fprintf(stderr, "  --verbose         Verbose output\n");
 	fprintf(stderr, "  --dump-sections   Print sections and exit\n");
@@ -290,6 +291,8 @@ int main(int argc, char **argv) {
 			i++;
 			if (strcmp(argv[i], "kernel") == 0) {
 				link_mode = LINK_MODE_KERNEL;
+			} else if (strcmp(argv[i], "bootloader") == 0) {
+				link_mode = LINK_MODE_BOOTLOADER;
 			} else {
 				error("unknown -T target: %s", argv[i]);
 			}
@@ -388,6 +391,17 @@ int main(int argc, char **argv) {
 		merge_sections(objects, object_count, sections, section_count, categorize_section_kernel);
 		assign_addresses_kernel(sections);
 		define_kernel_symbols(&global, sections);
+	} else if (link_mode == LINK_MODE_BOOTLOADER) {
+		section_count = BOUT_COUNT;
+		sections = calloc(BOUT_COUNT, sizeof(OutputSection));
+		output_section_init(&sections[BOUT_NULL], "", SHT_NULL, 0);
+		output_section_init(&sections[BOUT_TEXT], ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+		output_section_init(&sections[BOUT_RODATA], ".rodata", SHT_PROGBITS, SHF_ALLOC);
+		output_section_init(&sections[BOUT_DATA], ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+		output_section_init(&sections[BOUT_BSS], ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
+
+		merge_sections(objects, object_count, sections, section_count, categorize_section_bootloader);
+		assign_addresses_bootloader(sections);
 	} else {
 		section_count = OUT_COUNT;
 		sections = calloc(OUT_COUNT, sizeof(OutputSection));

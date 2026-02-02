@@ -335,3 +335,37 @@ void define_kernel_symbols(SymbolTable *global, OutputSection *sections) {
 
 	stack_top->value = align_up(bss->addr + bss->size, 16) + KERNEL_STACK_SIZE;
 }
+
+int categorize_section_bootloader(const char *name, uint64_t flags) {
+	if (!(flags & SHF_ALLOC)) {
+		return -1;
+	}
+	if (strncmp(name, ".text", 5) == 0) {
+		return BOUT_TEXT;
+	}
+	if (strncmp(name, ".rodata", 7) == 0) {
+		return BOUT_RODATA;
+	}
+	if (strncmp(name, ".data", 5) == 0) {
+		return BOUT_DATA;
+	}
+	if (strncmp(name, ".bss", 4) == 0) {
+		return BOUT_BSS;
+	}
+	return -1;
+}
+
+void assign_addresses_bootloader(OutputSection *sections) {
+	uint64_t addr = BOOT_TEXT_BASE;
+
+	for (int i = BOUT_TEXT; i <= BOUT_BSS; i++) {
+		OutputSection *sec = &sections[i];
+		if (sec->size == 0) {
+			continue;
+		}
+		addr = align_up(addr, sec->alignment);
+		sec->addr = addr;
+		sec->lma = addr;
+		addr += sec->size;
+	}
+}
