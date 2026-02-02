@@ -64,6 +64,7 @@ disk.img: .bin/mkfs build
 		:bdev:/dev/disk:1:0 \
 		build.c:/src/build.c \
 		-m .build/out:/ \
+		-m boot:src/boot \
 		-m cmd:src/cmd \
 		-m kernel:src/kernel \
 		-m lib:src/lib \
