@@ -8,7 +8,10 @@ void halt(void);
 void virtio_init(void);
 int virtio_read(unsigned long sector, void *buf);
 
-#define READ_BUF_PA 0x40073000UL
+int fs_init(void);
+int fs_read_file(const char *path, void *buf, unsigned int max_size);
+
+#define FILE_BUF_PA 0x40074000UL
 
 void boot_main(void) {
 	uart_init();
@@ -16,19 +19,22 @@ void boot_main(void) {
 
 	virtio_init();
 
-	unsigned char *buf = (unsigned char *)READ_BUF_PA;
+	if (fs_init() < 0) {
+		uart_puts("fs: init failed\n");
+		halt();
+	}
+	uart_puts("fs: ok\n");
 
-	uart_puts("reading sector 2 (superblock)\n");
-	if (virtio_read(2, buf) < 0) {
+	unsigned char *buf = (unsigned char *)FILE_BUF_PA;
+	int size = fs_read_file("/hello", buf, 256);
+	if (size < 0) {
 		uart_puts("read failed\n");
 		halt();
 	}
 
-	uart_puts("data: ");
-	for (int i = 0; i < 16; i++) {
-		uart_puthex8(buf[i]);
-		uart_putc(' ');
-	}
+	uart_puts("contents: ");
+	for (int i = 0; i < size; i++)
+		uart_putc(buf[i]);
 	uart_puts("\n");
 
 	halt();

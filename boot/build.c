@@ -13,6 +13,7 @@ static const char *c_srcs[] = {
     "main",
     "uart",
     "virtio",
+    "fs",
     NULL,
 };
 
