@@ -3,6 +3,7 @@
 .equ TRAP_FRAME_SIZE,    272
 .equ VECTOR_ENTRY_SIZE,  0x80
 .equ VECTOR_TABLE_ALIGN, 0x800
+.equ KERNEL_BASE,        0xFFFF000000000000
 
 .section .text
 
@@ -195,3 +196,21 @@ usertrap_return:
     // Restore trapframe and return to EL0
     restore_trap_frame
     eret
+
+// First entry to user mode for a new process
+// Called with sp pointing to the trap frame (set by context switch)
+// Must preserve sp and tail-call to usertrap_return
+.global usertrap_first
+usertrap_first:
+    // Enable IRQs
+    msr     daifclr, #2
+
+    // Compute VA_TO_PA(current->pagetable)
+    adrp    x0, current
+    ldr     x0, [x0, :lo12:current]  // x0 = current
+    ldr     x0, [x0, #136]           // x0 = current->pagetable (offset 136)
+    ldr     x1, =KERNEL_BASE
+    sub     x0, x0, x1               // x0 = pagetable - KERNEL_BASE (physical addr)
+
+    // Tail call to usertrap_return (sp still points to trap frame)
+    b       usertrap_return

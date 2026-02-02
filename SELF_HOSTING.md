@@ -272,16 +272,19 @@ Expanded `ram_blocks` macro in kernel/tables.S to explicit `.quad` directives.
 
 **Status:** Complete. kernel/tables.S assembles with custom assembler.
 
-### Phase 5: Kernel C Compilation
+### Phase 5: Kernel C Compilation ✓
 
 **Goal:** Compile all kernel .c files with custom cc, assemble with GNU as.
 
-Add to `cmd/cc`:
-- Parse `: "=r"(var)` output constraint
-- Parse `: : "r"(var)` input constraint
-- Emit load/store around asm string
-- Register substitution for `%0`
-- Handle `register ... asm("x0")` variable binding
+**Status:** Complete. All 137 kernel tests pass.
+
+The following has been added to `cmd/cc`:
+- ✓ Inline asm: parse `: "=r"(var)` output and `: : "r"(var)` input constraints
+- ✓ Inline asm: emit load/store around asm string with `%0` substitution
+- ✓ Inline asm: handle `register ... asm("x0")` variable binding
+- ✓ Fixed negative immediate codegen (use `mov` instead of `ldr =value` for [-65536, 65535])
+- ✓ Fixed 32-bit arithmetic (use w registers for types ≤ 4 bytes)
+- ✓ Fixed comparison codegen (use operand types for register width, not result type)
 
 **Kernel C files (28 total):**
 
@@ -398,7 +401,7 @@ Each phase has concrete validation:
 | 2. System instrs | `as` accepts kernel/boot.S | ✓ |
 | 3. Macros | `as` accepts kernel/vectors.S | ✓ |
 | 4. Expansion | `as` accepts kernel/tables.S | ✓ |
-| 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | |
+| 5. Kernel C | custom cc + GNU as + GNU ld, `make test` passes | ✓ |
 | 6. Assembler | custom cc + custom as + GNU ld, `make test` passes | |
 | 7. Linker | custom cc + custom as + custom ld, `make test` passes | |
 | 9. Bootloader | Boot without -kernel flag | |

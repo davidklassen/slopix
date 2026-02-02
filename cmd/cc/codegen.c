@@ -200,10 +200,10 @@ static void add_offset(int offset) {
 	} else if (offset < 0 && offset >= -4095) {
 		println("  sub x0, x0, #%d", -offset);
 	} else if (offset > 0) {
-		println("  mov x9, #%d", offset);
+		load_const("x9", offset);
 		println("  add x0, x0, x9");
 	} else {
-		println("  mov x9, #%d", -offset);
+		load_const("x9", -offset);
 		println("  sub x0, x0, x9");
 	}
 }
@@ -488,7 +488,8 @@ static void gen_expr(Node *node) {
 			return;
 		}
 		default:
-			if (node->val >= 0 && node->val <= 65535) {
+			// Use mov for values that fit in movz/movn (single instruction)
+			if (node->val >= -65536 && node->val <= 65535) {
 				println("  mov x0, #%" PRId64, node->val);
 			} else {
 				println("  ldr x0, =%" PRId64, node->val);
@@ -766,60 +767,71 @@ static void gen_expr(Node *node) {
 		pop("x1");
 		// x0 = LHS, x1 = RHS
 
+		// Use 32-bit registers for types <= 4 bytes, 64-bit otherwise
+		// For comparisons, use operand type; for arithmetic, use result type
+		int opsize = node->ty->size;
+		if (node->kind == ND_EQ || node->kind == ND_NE ||
+		    node->kind == ND_LT || node->kind == ND_LE) {
+			opsize = node->lhs->ty->size;
+		}
+		char *r0 = (opsize <= 4) ? "w0" : "x0";
+		char *r1 = (opsize <= 4) ? "w1" : "x1";
+		char *r2 = (opsize <= 4) ? "w2" : "x2";
+
 		switch (node->kind) {
 		case ND_ADD:
-			println("  add x0, x0, x1");
+			println("  add %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_SUB:
-			println("  sub x0, x0, x1");
+			println("  sub %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_MUL:
-			println("  mul x0, x0, x1");
+			println("  mul %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_DIV:
 			if (node->ty->is_unsigned) {
-				println("  udiv x0, x0, x1");
+				println("  udiv %s, %s, %s", r0, r0, r1);
 			} else {
-				println("  sdiv x0, x0, x1");
+				println("  sdiv %s, %s, %s", r0, r0, r1);
 			}
 			break;
 		case ND_MOD:
 			if (node->ty->is_unsigned) {
-				println("  udiv x2, x0, x1");
+				println("  udiv %s, %s, %s", r2, r0, r1);
 			} else {
-				println("  sdiv x2, x0, x1");
+				println("  sdiv %s, %s, %s", r2, r0, r1);
 			}
-			println("  msub x0, x2, x1, x0");
+			println("  msub %s, %s, %s, %s", r0, r2, r1, r0);
 			break;
 		case ND_BITAND:
-			println("  and x0, x0, x1");
+			println("  and %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_BITOR:
-			println("  orr x0, x0, x1");
+			println("  orr %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_BITXOR:
-			println("  eor x0, x0, x1");
+			println("  eor %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_SHL:
-			println("  lsl x0, x0, x1");
+			println("  lsl %s, %s, %s", r0, r0, r1);
 			break;
 		case ND_SHR:
 			if (node->ty->is_unsigned) {
-				println("  lsr x0, x0, x1");
+				println("  lsr %s, %s, %s", r0, r0, r1);
 			} else {
-				println("  asr x0, x0, x1");
+				println("  asr %s, %s, %s", r0, r0, r1);
 			}
 			break;
 		case ND_EQ:
-			println("  cmp x0, x1");
+			println("  cmp %s, %s", r0, r1);
 			println("  cset x0, eq");
 			break;
 		case ND_NE:
-			println("  cmp x0, x1");
+			println("  cmp %s, %s", r0, r1);
 			println("  cset x0, ne");
 			break;
 		case ND_LT:
-			println("  cmp x0, x1");
+			println("  cmp %s, %s", r0, r1);
 			if (node->lhs->ty->is_unsigned) {
 				println("  cset x0, lo");
 			} else {
@@ -827,7 +839,7 @@ static void gen_expr(Node *node) {
 			}
 			break;
 		case ND_LE:
-			println("  cmp x0, x1");
+			println("  cmp %s, %s", r0, r1);
 			if (node->lhs->ty->is_unsigned) {
 				println("  cset x0, ls");
 			} else {
@@ -957,6 +969,40 @@ static void gen_stmt(Node *node) {
 		println("%s:", node->label);
 		gen_stmt(node->lhs);
 		return;
+	case ND_ASM: {
+		char *reg = "x9"; // temp register for %0
+
+		// Load input operand
+		if (node->asm_input) {
+			add_type(node->asm_input);
+			if (node->asm_input->kind == ND_VAR && node->asm_input->var->asm_reg) {
+				reg = node->asm_input->var->asm_reg;
+				gen_expr(node->asm_input);
+				println("  mov %s, x0", reg);
+			} else {
+				gen_expr(node->asm_input);
+				println("  mov x9, x0");
+			}
+		}
+
+		// Emit asm with %0 substitution
+		char *p = strstr(node->asm_str, "%0");
+		if (p) {
+			println("  %.*s%s%s", (int)(p - node->asm_str), node->asm_str, reg, p + 2);
+		} else {
+			println("  %s", node->asm_str);
+		}
+
+		// Store output operand
+		if (node->asm_output) {
+			add_type(node->asm_output);
+			gen_addr(node->asm_output);
+			push();
+			println("  mov x0, %s", reg);
+			store(node->asm_output->ty);
+		}
+		return;
+	}
 	default:
 		break;
 	}

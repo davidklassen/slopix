@@ -5,8 +5,10 @@ docsearch.db*
 .build/
 initramfs-test.bin
 kernel/*.o
+kernel/*.s
 kernel/*.elf
 kernel/tests/*.o
+kernel/tests/*.s
 kernel/kernel.bin
 kernel/kernel-test.bin
 disk.img

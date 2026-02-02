@@ -922,6 +922,18 @@ static Node *declaration(Token **rest, Token *tok, Type *basety, VarAttr *attr) 
 			var->align = attr->align;
 		}
 
+		// Parse asm("regname") register binding
+		if (equal(tok, "asm")) {
+			tok = tok->next;
+			tok = skip(tok, "(");
+			if (tok->kind != TK_STR) {
+				error_tok(tok, "expected register name");
+			}
+			var->asm_reg = tok->str;
+			tok = tok->next;
+			tok = skip(tok, ")");
+		}
+
 		if (equal(tok, "=")) {
 			Node *expr = lvar_initializer(&tok, tok->next, var);
 			cur = cur->next = new_unary(ND_EXPR_STMT, expr, tok);
@@ -1603,7 +1615,9 @@ static bool is_typename(Token *tok) {
 	return hashmap_get2(&map, tok->loc, tok->len) || find_typedef(tok);
 }
 
-// asm-stmt = "asm" ("volatile" | "inline")* "(" string-literal ")"
+// asm-stmt = "asm" ("volatile")* "(" string-literal asm-operands? ")"
+// asm-operands = ":" output? (":" input?)?
+// output/input = constraint "(" expr ")"
 static Node *asm_stmt(Token **rest, Token *tok) {
 	Node *node = new_node(ND_ASM, tok);
 	tok = tok->next;
@@ -1617,7 +1631,35 @@ static Node *asm_stmt(Token **rest, Token *tok) {
 		error_tok(tok, "expected string literal");
 	}
 	node->asm_str = tok->str;
-	*rest = skip(tok->next, ")");
+	tok = tok->next;
+
+	// Parse : "=r"(var) : "r"(expr)
+	if (equal(tok, ":")) {
+		tok = tok->next;
+		if (tok->kind == TK_STR) {
+			if (strcmp(tok->str, "=r") != 0) {
+				error_tok(tok, "only \"=r\" constraint supported");
+			}
+			tok = tok->next;
+			tok = skip(tok, "(");
+			node->asm_output = assign(&tok, tok);
+			tok = skip(tok, ")");
+		}
+		if (equal(tok, ":")) {
+			tok = tok->next;
+			if (tok->kind == TK_STR) {
+				if (strcmp(tok->str, "r") != 0) {
+					error_tok(tok, "only \"r\" constraint supported");
+				}
+				tok = tok->next;
+				tok = skip(tok, "(");
+				node->asm_input = assign(&tok, tok);
+				tok = skip(tok, ")");
+			}
+		}
+	}
+
+	*rest = skip(tok, ")");
 	return node;
 }
 

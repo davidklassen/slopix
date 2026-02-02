@@ -1,10 +1,11 @@
 CROSS = aarch64-elf-
-CC = $(CROSS)gcc
+CC = ../.bin/cc
 LD = $(CROSS)ld
 OBJCOPY = $(CROSS)objcopy
 AS = ../.bin/as
+GNU_AS = $(CROSS)as
 
-CFLAGS = -Wall -Wextra -Werror -O2 -g -ffreestanding -nostdinc -nostdlib -nostartfiles -mcpu=cortex-a57 -I.
+CFLAGS = -I.
 ASFLAGS = -g -mcpu=cortex-a57
 LDFLAGS = -nostdlib -T linker.ld
 
@@ -78,21 +79,13 @@ kernel-test.elf: $(OBJ) $(TEST_OBJ)
 kernel-test.bin: kernel-test.elf
 	$(OBJCOPY) -O binary $< $@
 
-# Use custom assembler for boot.S, vectors.S, and tables.S
-boot.o: boot.S $(AS)
+%.o: %.S $(AS)
 	$(AS) $< -o $@
 
-vectors.o: vectors.S $(AS)
-	$(AS) $< -o $@
-
-tables.o: tables.S $(AS)
-	$(AS) $< -o $@
-
-%.o: %.S
-	$(CC) $(ASFLAGS) -c $< -o $@
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Two-step compilation: C -> .s -> .o (custom cc produces assembly, GNU as assembles)
+%.o: %.c $(CC)
+	$(CC) $(CFLAGS) -S -o $*.s $<
+	$(GNU_AS) $(ASFLAGS) -o $@ $*.s
 
 clean:
-	rm -f *.o *.elf *.bin tests/*.o
+	rm -f *.o *.s *.elf *.bin tests/*.o tests/*.s

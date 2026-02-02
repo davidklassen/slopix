@@ -67,12 +67,7 @@ void proc_create(proc_func func) {
 	p->ctx.sp = (unsigned long)sp;
 }
 
-extern void usertrap_return(paddr_t pagetable_pa);
-
-void usertrap_first(void) {
-	enable_irq();
-	usertrap_return(VA_TO_PA(current->pagetable));
-}
+extern void usertrap_first(void);
 
 int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack, unsigned long sz) {
 	struct proc *p = proc_alloc();

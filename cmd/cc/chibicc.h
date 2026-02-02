@@ -132,6 +132,7 @@ struct Obj {
 
 	// Local variable
 	int offset;
+	char *asm_reg; // register binding from asm("x0") syntax
 
 	// Global variable or function
 	bool is_function;
@@ -268,8 +269,10 @@ struct Node {
 	long begin;
 	long end;
 
-	// "asm" string literal
+	// "asm" statement
 	char *asm_str;
+	Node *asm_output; // output operand (lvalue for store)
+	Node *asm_input;  // input operand (expression to load)
 
 	// Atomic compare-and-swap
 	Node *cas_addr;

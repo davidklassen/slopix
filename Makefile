@@ -65,10 +65,10 @@ initramfs-test.bin: .bin/mkramfs userspace
 		.build/out/bin/touch .build/out/bin/wc .build/out/bin/head .build/out/bin/grep \
 		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
 
-kernel/kernel.bin:
+kernel/kernel.bin: .bin/as
 	$(MAKE) -C kernel kernel.bin
 
-kernel/kernel-test.bin:
+kernel/kernel-test.bin: .bin/as
 	$(MAKE) -C kernel kernel-test.bin
 
 disk.img: .bin/mkfs userspace
