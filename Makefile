@@ -95,5 +95,8 @@ clean:
 tidy:
 	find kernel libc lib cmd boot -name '*.c' -o -name '*.h' | xargs clang-format -i
 
-test-bootloader: build
-	$(QEMU_BASE) -drive if=pflash,format=raw,file=.build/out/bootloader.bin,readonly=on
+test-bootloader: clean disk.img
+	$(QEMU_BASE) \
+		-drive if=pflash,format=raw,file=.build/out/bootloader.bin,readonly=on \
+		-drive file=disk.img,if=none,format=raw,id=hd0 \
+		-device virtio-blk-device,drive=hd0

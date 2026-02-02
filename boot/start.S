@@ -11,3 +11,13 @@ _start:
 halt:
 	wfe
 	b	halt
+
+.global dsb
+dsb:
+	dsb	sy
+	ret
+
+.global nop
+nop:
+	nop
+	ret

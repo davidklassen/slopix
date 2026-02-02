@@ -38,3 +38,16 @@ void uart_puts(const char *s) {
 		uart_putc(*s++);
 	}
 }
+
+void uart_puthex(unsigned int val) {
+	static const char hex[] = "0123456789abcdef";
+	for (int i = 28; i >= 0; i -= 4) {
+		uart_putc(hex[(val >> i) & 0xF]);
+	}
+}
+
+void uart_puthex8(unsigned char val) {
+	static const char hex[] = "0123456789abcdef";
+	uart_putc(hex[(val >> 4) & 0xF]);
+	uart_putc(hex[val & 0xF]);
+}

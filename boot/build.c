@@ -12,6 +12,7 @@ static const char *asm_srcs[] = {
 static const char *c_srcs[] = {
     "main",
     "uart",
+    "virtio",
     NULL,
 };
 
