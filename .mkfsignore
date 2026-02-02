@@ -3,4 +3,3 @@
 *.elf
 *.bin
 *.dSYM
-Makefile

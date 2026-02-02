@@ -3,13 +3,6 @@ docsearch.db*
 
 /.bin/
 .build/
-initramfs-test.bin
-kernel/*.o
-kernel/*.s
-kernel/*.elf
-kernel/tests/*.o
-kernel/tests/*.s
-kernel/kernel.bin
-kernel/kernel-test.bin
 disk.img
 disk-test.img
+initramfs-test.bin

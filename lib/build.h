@@ -509,13 +509,13 @@ int assemble(const char *src) {
 	return ret;
 }
 
-static char objbufs[32][256];
+static char objbufs[64][256];
 static int objbuf_idx = 0;
 
 static const char *make_objpath(const char *base) {
 	snprintf(objbufs[objbuf_idx], sizeof(objbufs[0]), ".build/obj/%s.o", base);
 	const char *result = objbufs[objbuf_idx];
-	objbuf_idx = (objbuf_idx + 1) % 32;
+	objbuf_idx = (objbuf_idx + 1) % 64;
 	return result;
 }
 

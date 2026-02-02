@@ -12,19 +12,17 @@ CC = $(ROOT)/.bin/cc
 AS = $(ROOT)/.bin/as
 LD = $(ROOT)/.bin/ld
 
-# Environment for cross-compiler
-export CC_INCLUDE_PATH = $(LIBC_INCLUDE)
-export CC_AS = $(AS)
-export CC_LD = $(LD)
-export CC_LIBC = $(LIBC)
+BUILD_ENV = BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(ROOT)/.bin/ar \
+	INCLUDE_PATH=$(LIBC_INCLUDE) LIB_PATH=$(ROOT)/.build/out/lib \
+	BUILD_INCLUDE=$(ROOT)/lib
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
 QEMU_DISK = $(QEMU_BASE) -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
 QEMU_TEST = $(QEMU_BASE) -drive file=disk-test.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
 
-.PHONY: all clean run test tidy userspace
+.PHONY: all build build-test clean run test tidy
 
-all: kernel/kernel.bin
+all: build
 
 .bin/build: cmd/build/main.c lib/build.h | .bin
 	$(HOSTCC) -I lib $(HOST_CFLAGS) -o $@ cmd/build/main.c
@@ -50,28 +48,13 @@ all: kernel/kernel.bin
 .bin:
 	mkdir -p $@
 
-userspace: .bin/cc .bin/as .bin/ld .bin/ar
-	BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(ROOT)/.bin/ar \
-	INCLUDE_PATH=$(LIBC_INCLUDE) LIB_PATH=$(ROOT)/.build/out/lib \
-	BUILD_INCLUDE=$(ROOT)/lib \
-	$(BUILD)
+build: .bin/cc .bin/as .bin/ld .bin/ar
+	$(BUILD_ENV) $(BUILD)
 
-initramfs-test.bin: .bin/mkramfs userspace
-	$(MKRAMFS) $@ \
-		.build/out/bin/init .build/out/bin/shell .build/out/bin/cursor_blink \
-		.build/out/bin/echo .build/out/bin/ticker .build/out/bin/shutdown \
-		.build/out/bin/true .build/out/bin/false .build/out/bin/cat .build/out/bin/ls \
-		.build/out/bin/mkdir .build/out/bin/rm .build/out/bin/cp .build/out/bin/mv \
-		.build/out/bin/touch .build/out/bin/wc .build/out/bin/head .build/out/bin/grep \
-		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
+build-test: .bin/cc .bin/as .bin/ld .bin/ar
+	$(BUILD_ENV) RUN_TESTS=1 $(BUILD)
 
-kernel/kernel.bin: .bin/as
-	$(MAKE) -C kernel kernel.bin
-
-kernel/kernel-test.bin: .bin/as
-	$(MAKE) -C kernel kernel-test.bin
-
-disk.img: .bin/mkfs userspace
+disk.img: .bin/mkfs build
 	$(MKFS) $@ -s 102400 -i 1024 \
 		:dir:/dev \
 		:dir:/tmp \
@@ -86,7 +69,7 @@ disk.img: .bin/mkfs userspace
 		-m lib:src/lib \
 		-m libc:src/libc
 
-disk-test.img: .bin/mkfs userspace
+disk-test.img: .bin/mkfs build-test
 	$(MKFS) $@ -s 2048 \
 		:dir:/dev \
 		:cdev:/dev/console:1:0 \
@@ -97,15 +80,23 @@ disk-test.img: .bin/mkfs userspace
 		.build/out/bin/true:/true \
 		.build/out/bin/false:/false
 
-run: clean disk.img kernel/kernel.bin
-	$(QEMU_DISK) -kernel kernel/kernel.bin -append "init=/bin/init"
+initramfs-test.bin: .bin/mkramfs build-test
+	$(MKRAMFS) $@ \
+		.build/out/bin/init .build/out/bin/shell .build/out/bin/cursor_blink \
+		.build/out/bin/echo .build/out/bin/ticker .build/out/bin/shutdown \
+		.build/out/bin/true .build/out/bin/false .build/out/bin/cat .build/out/bin/ls \
+		.build/out/bin/mkdir .build/out/bin/rm .build/out/bin/cp .build/out/bin/mv \
+		.build/out/bin/touch .build/out/bin/wc .build/out/bin/head .build/out/bin/grep \
+		.build/out/bin/ps .build/out/bin/kill .build/out/bin/sleep .build/out/bin/tests
 
-test: clean disk-test.img kernel/kernel-test.bin initramfs-test.bin
-	$(QEMU_TEST) -kernel kernel/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
+run: clean disk.img
+	$(QEMU_DISK) -kernel .build/out/kernel.bin -append "init=/bin/init"
+
+test: clean disk-test.img initramfs-test.bin
+	$(QEMU_TEST) -kernel .build/out/kernel-test.bin -initrd initramfs-test.bin -append "init=initramfs:tests"
 
 clean:
 	rm -rf .bin/ .build/
-	$(MAKE) -C kernel clean
 	rm -f disk.img disk-test.img initramfs-test.bin
 
 tidy:
