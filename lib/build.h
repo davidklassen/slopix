@@ -1,23 +1,21 @@
-/*
- * build.h - Header-only build library for slopix
- *
- * Heavily inspired by nob.h by Alexey Kutepov (tsoding)
- * https://github.com/tsoding/nob.h
- *
- * nob.h is Public Domain. This file is part of slopix.
- *
- * Include this header in build.c files. Define BUILD_IMPLEMENTATION
- * before including in exactly one source file to get the implementation.
- *
- * Environment variables:
- *   CC            C compiler
- *   AS            Assembler
- *   LD            Linker
- *   AR            Archive tool
- *   BUILD         Path to build tool (default: /bin/build)
- *   INCLUDE_PATH  Header search path
- *   LIB_PATH      Library path (if set, links libc.a)
- */
+// build.h - Header-only build library for slopix
+//
+// Heavily inspired by nob.h by Alexey Kutepov (tsoding)
+// https://github.com/tsoding/nob.h
+//
+// nob.h is Public Domain. This file is part of slopix.
+//
+// Include this header in build.c files. Define BUILD_IMPLEMENTATION
+// before including in exactly one source file to get the implementation.
+//
+// Environment variables:
+//   CC            C compiler
+//   AS            Assembler
+//   LD            Linker
+//   AR            Archive tool
+//   BUILD         Path to build tool (default: /bin/build)
+//   INCLUDE_PATH  Header search path
+//   LIB_PATH      Library path (if set, links libc.a)
 #ifndef BUILD_H
 #define BUILD_H
 
