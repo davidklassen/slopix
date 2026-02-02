@@ -2,16 +2,19 @@ void uart_init(void);
 void uart_puts(const char *s);
 void uart_putc(char c);
 void uart_puthex(unsigned int val);
-void uart_puthex8(unsigned char val);
 void halt(void);
 
 void virtio_init(void);
-int virtio_read(unsigned long sector, void *buf);
 
 int fs_init(void);
 int fs_read_file(const char *path, void *buf, unsigned int max_size);
 
-#define FILE_BUF_PA 0x40074000UL
+void jump_to_kernel(unsigned long dtb_addr, unsigned long entry_point);
+
+#define KERNEL_PATH	"/boot/kernel.bin"
+#define KERNEL_LOAD_PA	0x40080000UL
+#define DTB_PA		0x40000000UL
+#define MAX_KERNEL_SIZE (512 * 1024)
 
 void boot_main(void) {
 	uart_init();
@@ -25,17 +28,20 @@ void boot_main(void) {
 	}
 	uart_puts("fs: ok\n");
 
-	unsigned char *buf = (unsigned char *)FILE_BUF_PA;
-	int size = fs_read_file("/hello", buf, 256);
+	uart_puts("loading ");
+	uart_puts(KERNEL_PATH);
+	uart_puts("\n");
+
+	int size = fs_read_file(KERNEL_PATH, (void *)KERNEL_LOAD_PA, MAX_KERNEL_SIZE);
 	if (size < 0) {
-		uart_puts("read failed\n");
+		uart_puts("kernel not found\n");
 		halt();
 	}
 
-	uart_puts("contents: ");
-	for (int i = 0; i < size; i++)
-		uart_putc(buf[i]);
-	uart_puts("\n");
+	uart_puts("kernel size: ");
+	uart_puthex(size);
+	uart_puts(" bytes\n");
 
-	halt();
+	uart_puts("booting kernel\n");
+	jump_to_kernel(DTB_PA, KERNEL_LOAD_PA);
 }

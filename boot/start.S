@@ -21,3 +21,9 @@ dsb:
 nop:
 	nop
 	ret
+
+.global jump_to_kernel
+jump_to_kernel:
+	// x0 = DTB address (first arg, stays in x0 for kernel)
+	// x1 = kernel entry point (second arg)
+	br	x1

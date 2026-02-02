@@ -59,9 +59,11 @@ disk.img: .bin/mkfs build
 		:dir:/dev \
 		:dir:/tmp \
 		:dir:/src \
+		:dir:/boot \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
+		.build/out/boot/kernel.bin:/boot/kernel.bin \
 		build.c:/src/build.c \
 		-m .build/out:/ \
 		-m boot:src/boot \
@@ -71,12 +73,14 @@ disk.img: .bin/mkfs build
 		-m libc:src/libc
 
 disk-test.img: .bin/mkfs build-test
-	$(MKFS) $@ -s 4096 \
+	$(MKFS) $@ -s 8192 \
 		:dir:/dev \
 		:dir:/bin \
+		:dir:/boot \
 		:cdev:/dev/console:1:0 \
 		:cdev:/dev/null:2:0 \
 		:bdev:/dev/disk:1:0 \
+		.build/out/boot/kernel-test.bin:/boot/kernel.bin \
 		testdata/hello.txt:/hello \
 		testdata/large.txt:/large \
 		.build/out/bin/true:/true \
