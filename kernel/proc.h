@@ -70,9 +70,11 @@ void context_switch(struct context *prev, struct context *next);
 void proc_scheduler(void);
 void proc_sched(void);
 void proc_yield(void);
-void proc_sleep(unsigned long ticks);
-void proc_wait(void *chan);
-void proc_wait_timeout(void *chan, unsigned long ticks);
+int proc_sleep(unsigned long ticks);
+int proc_wait(void *chan);
+void proc_wait_nointr(void *chan);
+int proc_wait_timeout(void *chan, unsigned long ticks);
+void proc_wait_timeout_nointr(void *chan, unsigned long ticks);
 void proc_wakeup(void *chan);
 void proc_wakeup_timed(void);
 #define proc_is_killed(p) ((p)->pending & (1 << SIGKILL))

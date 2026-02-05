@@ -1,4 +1,5 @@
 #include "uart.h"
+#include "errno.h"
 #include "kprintf.h"
 #include "proc.h"
 #include "gic.h"
@@ -100,7 +101,9 @@ int uart_read(char *buf, unsigned long len) {
 	unsigned long i = 0;
 	while (i < len) {
 		while (uart_rx.head == uart_rx.tail) {
-			proc_wait(&uart_rx);
+			if (proc_wait(&uart_rx) < 0) {
+				return i > 0 ? (int)i : -EINTR;
+			}
 		}
 		buf[i++] = uart_rx.buf[uart_rx.tail];
 		uart_rx.tail = (uart_rx.tail + 1) % UART_RX_BUF_SIZE;
@@ -120,6 +123,8 @@ int uart_poll_timeout(unsigned long ticks) {
 	if (ticks == 0) {
 		return 0;
 	}
-	proc_wait_timeout(&uart_rx, ticks);
+	if (proc_wait_timeout(&uart_rx, ticks) < 0) {
+		return -EINTR;
+	}
 	return uart_poll();
 }

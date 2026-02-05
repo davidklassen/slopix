@@ -151,10 +151,21 @@ void proc_yield(void) {
 	proc_sched();
 }
 
-void proc_wait(void *chan) {
+int proc_wait(void *chan) {
 	if (current->pending) {
-		return;
+		return -EINTR;
 	}
+	current->chan = chan;
+	current->state = SLEEPING;
+	proc_sched();
+	current->chan = 0;
+	if (current->pending) {
+		return -EINTR;
+	}
+	return 0;
+}
+
+void proc_wait_nointr(void *chan) {
 	current->chan = chan;
 	current->state = SLEEPING;
 	proc_sched();
@@ -182,19 +193,35 @@ void proc_wakeup_timed(void) {
 	}
 }
 
-void proc_sleep(unsigned long ticks) {
+int proc_sleep(unsigned long ticks) {
 	if (ticks == 0) {
-		return;
+		return 0;
 	}
 	current->wakeup_tick = timer_get_ticks() + ticks;
-	proc_wait(&current->wakeup_tick);
+	int r = proc_wait(&current->wakeup_tick);
 	current->wakeup_tick = 0;
+	return r;
 }
 
-void proc_wait_timeout(void *chan, unsigned long ticks) {
+int proc_wait_timeout(void *chan, unsigned long ticks) {
 	if (current->pending) {
-		return;
+		return -EINTR;
 	}
+	current->chan = chan;
+	if (ticks > 0) {
+		current->wakeup_tick = timer_get_ticks() + ticks;
+	}
+	current->state = SLEEPING;
+	proc_sched();
+	current->chan = 0;
+	current->wakeup_tick = 0;
+	if (current->pending) {
+		return -EINTR;
+	}
+	return 0;
+}
+
+void proc_wait_timeout_nointr(void *chan, unsigned long ticks) {
 	current->chan = chan;
 	if (ticks > 0) {
 		current->wakeup_tick = timer_get_ticks() + ticks;

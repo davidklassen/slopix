@@ -67,7 +67,7 @@ void fs_ilock(struct inode *ip) {
 	unsigned long flags = irq_save();
 	while (ip->locked) {
 		irq_restore(flags);
-		proc_wait(ip);
+		proc_wait_nointr(ip);
 		flags = irq_save();
 	}
 	ip->locked = 1;

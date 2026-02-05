@@ -1,4 +1,5 @@
 #include "pipe.h"
+#include "errno.h"
 #include "file.h"
 #include "pmm.h"
 #include "board.h"
@@ -75,7 +76,9 @@ int piperead(struct pipe *pi, char *addr, int n) {
 
 	while (pi->nread == pi->nwrite && pi->writeopen) {
 		irq_restore(flags);
-		proc_wait(&pi->nread);
+		if (proc_wait(&pi->nread) < 0) {
+			return -EINTR;
+		}
 		flags = irq_save();
 	}
 
@@ -106,7 +109,9 @@ int pipewrite(struct pipe *pi, const char *addr, int n) {
 		if (pi->nwrite == pi->nread + PIPESIZE) {
 			proc_wakeup(&pi->nread);
 			irq_restore(flags);
-			proc_wait(&pi->nwrite);
+			if (proc_wait(&pi->nwrite) < 0) {
+				return i > 0 ? i : -EINTR;
+			}
 			flags = irq_save();
 			continue;
 		}

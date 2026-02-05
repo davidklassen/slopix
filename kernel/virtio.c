@@ -211,7 +211,7 @@ static int virtio_disk_rw(unsigned long sector, void *buf, int write) {
 				}
 				return VIRTIO_E_TIMEOUT;
 			}
-			proc_wait_timeout(&virtio_disk_chan, deadline - now);
+			proc_wait_timeout_nointr(&virtio_disk_chan, deadline - now);
 		}
 	} else {
 		unsigned long timeout = 100000000;

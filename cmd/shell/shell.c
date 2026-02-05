@@ -538,6 +538,10 @@ static int readline(char *buf, int max) {
 
 	while (len < max - 1) {
 		int key = read_key();
+		if (key < 0) {
+			write(2, "\n", 1);
+			return 0;
+		}
 
 		switch (key) {
 		case KEY_ENTER:

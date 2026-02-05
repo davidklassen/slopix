@@ -78,7 +78,9 @@ static long sys_sleep(unsigned long ms) {
 	if (ticks == 0 && ms > 0) {
 		ticks = 1;
 	}
-	proc_sleep(ticks);
+	if (proc_sleep(ticks) < 0) {
+		return -EINTR;
+	}
 	return 0;
 }
 
@@ -339,7 +341,9 @@ static long sys_wait(void) {
 		if (!has_children) {
 			return -ESRCH;
 		}
-		proc_wait(current);
+		if (proc_wait(current) < 0) {
+			return -EINTR;
+		}
 	}
 }
 
@@ -382,7 +386,9 @@ static long sys_waitpid(int pid, int options) {
 			return 0;
 		}
 
-		proc_wait(current);
+		if (proc_wait(current) < 0) {
+			return -EINTR;
+		}
 	}
 }
 
@@ -406,7 +412,11 @@ static long sys_poll(int fd, long timeout_ms) {
 		ticks = 1;
 	}
 
-	return uart_poll_timeout(ticks);
+	int r = uart_poll_timeout(ticks);
+	if (r < 0) {
+		return r;
+	}
+	return r;
 }
 
 static long sys_poweroff(void) {

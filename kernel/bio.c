@@ -13,7 +13,7 @@ static void disk_wait(void) {
 	unsigned long flags = irq_save();
 	while (bcache.disk_busy) {
 		irq_restore(flags);
-		proc_wait(&bcache.disk_busy);
+		proc_wait_nointr(&bcache.disk_busy);
 		flags = irq_save();
 	}
 	bcache.disk_busy = 1;

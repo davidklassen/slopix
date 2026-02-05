@@ -26,7 +26,7 @@ void sleep_lock(struct sleeplock *lk) {
 	disable_irq();
 	while (lk->locked) {
 		enable_irq();
-		proc_wait(lk);
+		proc_wait_nointr(lk);
 		disable_irq();
 	}
 	lk->locked = 1;
