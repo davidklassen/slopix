@@ -1,5 +1,6 @@
 docsearch.db*
 .claude/
+.mcp.json
 
 /.bin/
 .build/

@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "docsearch": {
-      "command": "docsearch",
-      "args": ["serve", "--db", "./docsearch.db", "--skip-index"]
-    }
-  }
-}
