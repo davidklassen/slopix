@@ -41,15 +41,10 @@ static void ls(const char *path) {
 	long long max_size = 0;
 
 	while ((ent = readdir(d)) != 0) {
-		if (strcmp(path, "/") == 0) {
-			fullpath[0] = '/';
-			strcpy(fullpath + 1, ent->d_name);
-		} else {
-			strcpy(fullpath, path);
-			int len = strlen(fullpath);
-			fullpath[len] = '/';
-			strcpy(fullpath + len + 1, ent->d_name);
-		}
+		if (strcmp(path, "/") == 0)
+			snprintf(fullpath, sizeof(fullpath), "/%s", ent->d_name);
+		else
+			snprintf(fullpath, sizeof(fullpath), "%s/%s", path, ent->d_name);
 
 		struct stat entst;
 		if (stat(fullpath, &entst) < 0)
@@ -69,15 +64,10 @@ static void ls(const char *path) {
 	int width = digit_count(max_size);
 
 	while ((ent = readdir(d)) != 0) {
-		if (strcmp(path, "/") == 0) {
-			fullpath[0] = '/';
-			strcpy(fullpath + 1, ent->d_name);
-		} else {
-			strcpy(fullpath, path);
-			int len = strlen(fullpath);
-			fullpath[len] = '/';
-			strcpy(fullpath + len + 1, ent->d_name);
-		}
+		if (strcmp(path, "/") == 0)
+			snprintf(fullpath, sizeof(fullpath), "/%s", ent->d_name);
+		else
+			snprintf(fullpath, sizeof(fullpath), "%s/%s", path, ent->d_name);
 
 		struct stat entst;
 		if (stat(fullpath, &entst) < 0) {
