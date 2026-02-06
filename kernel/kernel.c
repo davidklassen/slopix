@@ -26,6 +26,7 @@ DECLARE_SUITE(timer);
 DECLARE_SUITE(vmm);
 DECLARE_SUITE(tlb);
 DECLARE_SUITE(walk);
+DECLARE_SUITE(copyinstr);
 DECLARE_SUITE(pmm);
 DECLARE_SUITE(virtio);
 DECLARE_SUITE(virtio_features);
@@ -75,6 +76,7 @@ void kernel_main(void) {
 	RUN_SUITE(pmm);
 	RUN_SUITE(tlb);
 	RUN_SUITE(walk);
+	RUN_SUITE(copyinstr);
 	RUN_SUITE(proc);
 
 	virtio_init();

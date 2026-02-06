@@ -269,6 +269,12 @@ int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned lon
 		return -1;
 	}
 
+	pte_t *pte = walk(pagetable, srcva, 0);
+	if (pte == 0 || (*pte & PTE_VALID) == 0) {
+		return -1;
+	}
+	paddr_t cur_page_pa = *pte & PTE_ADDR_MASK;
+
 	while (i < max - 1) {
 		unsigned long addr = srcva + i;
 
@@ -278,15 +284,15 @@ int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned lon
 			if (validate_page(pagetable, addr) < 0) {
 				return -1;
 			}
+			pte = walk(pagetable, addr, 0);
+			if (pte == 0 || (*pte & PTE_VALID) == 0) {
+				return -1;
+			}
+			cur_page_pa = *pte & PTE_ADDR_MASK;
 			cur_page = page;
 		}
 
-		// Get physical address and read byte
-		pte_t *pte = walk(pagetable, addr, 0);
-		if (pte == 0) {
-			return -1;
-		}
-		paddr_t pa = (*pte & PTE_ADDR_MASK) + (addr & (PAGE_SIZE - 1));
+		paddr_t pa = cur_page_pa + (addr & (PAGE_SIZE - 1));
 		char c = *(char *)PA_TO_VA(pa);
 
 		dst[i] = c;

@@ -63,6 +63,7 @@ static const char *test_srcs[] = {
     "tests/test_gic",
     "tests/test_dtb",
     "tests/test_cmdline",
+    "tests/test_copyinstr",
     "tests/test_proc",
     NULL,
 };
