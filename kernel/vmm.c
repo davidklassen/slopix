@@ -272,6 +272,9 @@ int vmm_copyinstr(pte_t *pagetable, char *dst, unsigned long srcva, unsigned lon
 
 		// Get physical address and read byte
 		pte_t *pte = walk(pagetable, addr, 0);
+		if (pte == 0) {
+			return -1;
+		}
 		paddr_t pa = (*pte & PTE_ADDR_MASK) + (addr & (PAGE_SIZE - 1));
 		char c = *(char *)PA_TO_VA(pa);
 
