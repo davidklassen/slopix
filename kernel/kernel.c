@@ -43,6 +43,7 @@ DECLARE_SUITE(pipe);
 DECLARE_SUITE(dtb);
 DECLARE_SUITE(cmdline);
 DECLARE_SUITE(gic);
+DECLARE_SUITE(proc);
 
 void kernel_main(void) {
 	uart_init();
@@ -72,6 +73,7 @@ void kernel_main(void) {
 	pmm_init();
 	RUN_SUITE(pmm);
 	RUN_SUITE(tlb);
+	RUN_SUITE(proc);
 
 	virtio_init();
 	RUN_SUITE(virtio);

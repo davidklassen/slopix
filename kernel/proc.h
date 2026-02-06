@@ -21,6 +21,7 @@ struct context {
 };
 
 enum proc_state { UNUSED,
+		  EMBRYO,
 		  RUNNABLE,
 		  RUNNING,
 		  SLEEPING,

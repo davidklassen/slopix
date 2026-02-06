@@ -3,14 +3,14 @@
 
 static const char *state_str(int state) {
 	switch (state) {
-	case 1:
 	case 2:
-		return "R";
 	case 3:
-		return "S";
+		return "R";
 	case 4:
-		return "T";
+		return "S";
 	case 5:
+		return "T";
+	case 6:
 		return "Z";
 	default:
 		return "?";

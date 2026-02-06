@@ -17,7 +17,7 @@ struct proc *proc_alloc(void) {
 	for (int i = 0; i < NPROC; i++) {
 		struct proc *p = &procs[i];
 		if (p->state == UNUSED) {
-			p->state = RUNNABLE;
+			p->state = EMBRYO;
 			p->pid = nextpid++;
 			p->pgid = p->pid;
 			paddr_t pa = pmm_alloc_contiguous(KSTACK_PAGES);
@@ -35,6 +35,9 @@ struct proc *proc_alloc(void) {
 			p->pending = 0;
 			p->name[0] = '\0';
 			p->cwd = 0;
+			for (int j = 0; j < NOFILE; j++) {
+				p->ofile[j] = 0;
+			}
 			return p;
 		}
 	}
@@ -65,6 +68,8 @@ void proc_create(proc_func func) {
 	p->ctx.x29 = 0;
 	p->ctx.x30 = (unsigned long)proc_entry;
 	p->ctx.sp = (unsigned long)sp;
+
+	p->state = RUNNABLE;
 }
 
 extern void usertrap_first(void);
@@ -96,6 +101,8 @@ int proc_create_user(pte_t *pagetable, unsigned long entry, unsigned long ustack
 	p->ctx.x30 = (unsigned long)usertrap_first;
 	p->ctx.sp = (unsigned long)tf;
 	p->ctx.x29 = 0;
+
+	p->state = RUNNABLE;
 
 	return p->pid;
 }

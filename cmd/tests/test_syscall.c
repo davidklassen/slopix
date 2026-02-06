@@ -340,7 +340,7 @@ TEST(kill_with_sigstop) {
 	int n = getprocs(procs, 8);
 	int found_stopped = 0;
 	for (int i = 0; i < n; i++) {
-		if (procs[i].pid == child_pid && procs[i].state == 4) {
+		if (procs[i].pid == child_pid && procs[i].state == 5) {
 			found_stopped = 1;
 			break;
 		}
@@ -370,7 +370,7 @@ TEST(kill_with_sigcont) {
 	int n = getprocs(procs, 8);
 	int found_running = 0;
 	for (int i = 0; i < n; i++) {
-		if (procs[i].pid == child_pid && procs[i].state != 4) {
+		if (procs[i].pid == child_pid && procs[i].state != 5) {
 			found_running = 1;
 			break;
 		}
@@ -408,7 +408,7 @@ TEST(ps_shows_stopped) {
 	int found = 0;
 	for (int i = 0; i < n; i++) {
 		if (procs[i].pid == child_pid) {
-			ASSERT_EQ(procs[i].state, 4, "state is STOPPED");
+			ASSERT_EQ(procs[i].state, 5, "state is STOPPED");
 			found = 1;
 			break;
 		}

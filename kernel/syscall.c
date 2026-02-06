@@ -301,6 +301,8 @@ static long sys_fork(void) {
 		}
 	}
 
+	child->state = RUNNABLE;
+
 	// Parent returns child's pid
 	return child->pid;
 }
