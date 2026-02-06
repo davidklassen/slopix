@@ -57,12 +57,29 @@ TEST(pmm_alloc_contiguous_pages_are_contiguous) {
 	return 0;
 }
 
+TEST(pmm_alloc_contiguous_after_free) {
+	unsigned long before = pmm_free_count();
+	paddr_t p1 = pmm_alloc();
+	paddr_t p2 = pmm_alloc();
+	paddr_t p3 = pmm_alloc();
+	pmm_free(p2);
+	pmm_free(p1);
+	pmm_free(p3);
+	paddr_t pa = pmm_alloc_contiguous(4);
+	ASSERT(pa != PMM_INVALID, "contiguous alloc after re-insertion");
+	ASSERT(IS_PAGE_ALIGNED(pa), "aligned");
+	pmm_free_contiguous(pa, 4);
+	ASSERT_EQ(before, pmm_free_count(), "free count restored");
+	return 0;
+}
+
 TEST_SUITE(pmm) {
 	RUN_TEST(pmm_init_populates_freelist);
 	RUN_TEST(pmm_alloc_contiguous_basic);
 	RUN_TEST(pmm_alloc_contiguous_one);
 	RUN_TEST(pmm_alloc_contiguous_zero);
 	RUN_TEST(pmm_alloc_contiguous_pages_are_contiguous);
+	RUN_TEST(pmm_alloc_contiguous_after_free);
 }
 
 #endif

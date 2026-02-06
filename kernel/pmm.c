@@ -42,11 +42,16 @@ void pmm_init(void) {
 	freelist = 0;
 	free_count = 0;
 
+	struct run **tail = &freelist;
 	for (paddr_t pa = start; pa + PAGE_SIZE <= end; pa += PAGE_SIZE) {
-		if (reserved_start != 0 && pa >= reserved_start && pa < reserved_end) {
+		if (reserved_start != 0 && pa >= reserved_start && pa < reserved_end)
 			continue;
-		}
-		pmm_free(pa);
+		zero_page(pa);
+		struct run *r = (struct run *)PA_TO_VA(pa);
+		r->next = 0;
+		*tail = r;
+		tail = &r->next;
+		free_count++;
 	}
 
 	kprintf("pmm: %lu pages available\n", free_count);
@@ -65,73 +70,63 @@ paddr_t pmm_alloc(void) {
 	return pa;
 }
 
-static int is_page_free(paddr_t pa) {
-	struct run *r = freelist;
-	while (r) {
-		if (VA_TO_PA((paddr_t)r) == pa) {
-			return 1;
-		}
-		r = r->next;
-	}
-	return 0;
-}
-
-static void remove_page(paddr_t pa) {
-	struct run **pp = &freelist;
-	while (*pp) {
-		if (VA_TO_PA((paddr_t)*pp) == pa) {
-			*pp = (*pp)->next;
-			free_count--;
-			return;
-		}
-		pp = &(*pp)->next;
-	}
-}
-
 paddr_t pmm_alloc_contiguous(int n) {
-	if (n <= 0) {
+	if (n <= 0)
 		return PMM_INVALID;
-	}
-	if (n == 1) {
+	if (n == 1)
 		return pmm_alloc();
+
+	if (!freelist)
+		return PMM_INVALID;
+
+	struct run **run_start = &freelist;
+	paddr_t base = VA_TO_PA((paddr_t)freelist);
+	int count = 1;
+
+	for (struct run **pp = &freelist; *pp; pp = &(*pp)->next) {
+		if (count >= n)
+			break;
+		struct run *next = (*pp)->next;
+		if (!next)
+			break;
+		if (VA_TO_PA((paddr_t)next) ==
+		    VA_TO_PA((paddr_t)*pp) + PAGE_SIZE) {
+			count++;
+		} else {
+			run_start = &(*pp)->next;
+			base = VA_TO_PA((paddr_t)next);
+			count = 1;
+		}
 	}
 
-	struct run *r = freelist;
-	while (r) {
-		paddr_t base = VA_TO_PA((paddr_t)r);
-		int found = 1;
-		for (int i = 1; i < n; i++) {
-			if (!is_page_free(base + i * PAGE_SIZE)) {
-				found = 0;
-				break;
-			}
-		}
-		if (found) {
-			for (int i = 0; i < n; i++) {
-				paddr_t pa = base + i * PAGE_SIZE;
-				remove_page(pa);
-				zero_page(pa);
-			}
-			return base;
-		}
-		r = r->next;
-	}
-	return PMM_INVALID;
+	if (count < n)
+		return PMM_INVALID;
+
+	struct run *end = *run_start;
+	for (int i = 0; i < n; i++)
+		end = end->next;
+	*run_start = end;
+	free_count -= n;
+
+	for (int i = 0; i < n; i++)
+		zero_page(base + i * PAGE_SIZE);
+	return base;
 }
 
 void pmm_free(paddr_t pa) {
-	if (pa < RAM_BASE || pa >= RAM_BASE + RAM_SIZE) {
+	if (pa < RAM_BASE || pa >= RAM_BASE + RAM_SIZE)
 		return;
-	}
-	if (!IS_PAGE_ALIGNED(pa)) {
+	if (!IS_PAGE_ALIGNED(pa))
 		return;
-	}
 
 	zero_page(pa);
 
 	struct run *r = (struct run *)PA_TO_VA(pa);
-	r->next = freelist;
-	freelist = r;
+	struct run **pp = &freelist;
+	while (*pp && (paddr_t)*pp < (paddr_t)r)
+		pp = &(*pp)->next;
+	r->next = *pp;
+	*pp = r;
 	free_count++;
 }
 
