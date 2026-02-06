@@ -1,19 +1,9 @@
 ROOT = $(CURDIR)
 
-HOSTCC ?= cc
-HOST_CFLAGS = -std=c11 -g -Wall -Wextra -Werror -O0
-
 BUILD = $(ROOT)/.bin/build
 MKFS = $(ROOT)/.bin/mkfs
-MKRAMFS = $(ROOT)/.bin/mkramfs
-LIBC = $(ROOT)/.build/out/lib/libc.a
-LIBC_INCLUDE = $(ROOT)/libc/include
-CC = $(ROOT)/.bin/cc
-AS = $(ROOT)/.bin/as
-LD = $(ROOT)/.bin/ld
-
-BUILD_ENV = BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(ROOT)/.bin/ar \
-	INCLUDE_PATH=$(LIBC_INCLUDE) LIB_PATH=$(ROOT)/.build/out/lib \
+BUILD_ENV = BUILD=$(BUILD) CC=$(ROOT)/.bin/cc AS=$(ROOT)/.bin/as LD=$(ROOT)/.bin/ld AR=$(ROOT)/.bin/ar \
+	INCLUDE_PATH=$(ROOT)/libc/include LIB_PATH=$(ROOT)/.build/out/lib \
 	BUILD_INCLUDE=$(ROOT)/lib
 
 QEMU_BASE = qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic
@@ -26,25 +16,25 @@ QEMU_TEST = $(QEMU_BASE) $(QEMU_PFLASH) -drive file=disk-test.img,if=none,format
 all: build
 
 .bin/build: cmd/build/main.c lib/build.h | .bin
-	$(HOSTCC) -I lib $(HOST_CFLAGS) -o $@ cmd/build/main.c
+	cc -I lib -std=c11 -g -Wall -Wextra -Werror -O0 -o $@ cmd/build/main.c
 
 .bin/cc: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/cc
+	LD=cc $(BUILD) --prefix=.bin cmd/cc
 
 .bin/as: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/as
+	LD=cc $(BUILD) --prefix=.bin cmd/as
 
 .bin/ld: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ld
+	LD=cc $(BUILD) --prefix=.bin cmd/ld
 
 .bin/ar: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ar
+	LD=cc $(BUILD) --prefix=.bin cmd/ar
 
 .bin/mkfs: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkfs
+	LD=cc $(BUILD) --prefix=.bin cmd/mkfs
 
 .bin/mkramfs: .bin/build | .bin
-	LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkramfs
+	LD=cc $(BUILD) --prefix=.bin cmd/mkramfs
 
 .bin:
 	mkdir -p $@
