@@ -57,6 +57,32 @@ TEST(realloc_grow) {
 	return 0;
 }
 
+TEST(realloc_shrink) {
+	char *p = malloc(64);
+	ASSERT_NOT_NULL(p, "malloc succeeded");
+	memcpy(p, "hello", 6);
+	char *q = realloc(p, 16);
+	ASSERT_EQ((unsigned long)q, (unsigned long)p, "shrink returns same pointer");
+	ASSERT_EQ(strcmp(q, "hello"), 0, "data preserved after shrink");
+	free(q);
+	return 0;
+}
+
+TEST(realloc_shrink_grow) {
+	char *p = malloc(64);
+	ASSERT_NOT_NULL(p, "malloc succeeded");
+	memset(p, 'X', 64);
+	memcpy(p, "hello", 6);
+	char *q = realloc(p, 16);
+	ASSERT_EQ((unsigned long)q, (unsigned long)p, "shrink returns same pointer");
+	char *r = realloc(q, 128);
+	ASSERT_NOT_NULL(r, "grow after shrink succeeded");
+	ASSERT_EQ(strcmp(r, "hello"), 0, "data preserved after shrink+grow");
+	ASSERT_NE(r[16], 'X', "stale data not copied beyond shrunk size");
+	free(r);
+	return 0;
+}
+
 TEST(malloc_multiple) {
 	void *ptrs[8];
 	for (int i = 0; i < 8; i++) {
@@ -95,6 +121,8 @@ TEST_SUITE(malloc) {
 	RUN_TEST(realloc_null);
 	RUN_TEST(realloc_zero);
 	RUN_TEST(realloc_grow);
+	RUN_TEST(realloc_shrink);
+	RUN_TEST(realloc_shrink_grow);
 	RUN_TEST(malloc_multiple);
 	RUN_TEST(malloc_reuse);
 	RUN_TEST(malloc_large);

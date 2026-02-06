@@ -115,6 +115,7 @@ void *realloc(void *ptr, size_t size) {
 	}
 
 	if (old_size >= size) {
+		block->size = size;
 		return ptr;
 	}
 
