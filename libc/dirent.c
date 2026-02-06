@@ -54,6 +54,11 @@ struct dirent *readdir(DIR *dirp) {
 		}
 
 		struct linux_dirent *ld = (struct linux_dirent *)(dirp->buf + dirp->pos);
+
+		if (ld->d_reclen == 0) {
+			return 0;
+		}
+
 		dirp->pos += ld->d_reclen;
 
 		entry.d_ino = ld->d_ino;

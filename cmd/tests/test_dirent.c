@@ -56,6 +56,28 @@ TEST(opendir_nonexistent) {
 	return 0;
 }
 
+TEST(readdir_zero_reclen) {
+	DIR *d = opendir("/");
+	ASSERT(d != 0, "opendir succeeds");
+
+	// Craft a fake linux_dirent with d_reclen = 0 in the DIR buffer.
+	// Layout on AArch64: d_ino (8), d_off (8), d_reclen (2), d_name[]
+	memset(d->buf, 0, 20);
+	unsigned long *ino = (unsigned long *)d->buf;
+	*ino = 1;
+	// d_off and d_reclen are already 0 from memset
+	d->buf[18] = 'x';
+	d->buf[19] = '\0';
+	d->pos = 0;
+	d->end = 20;
+
+	struct dirent *ent = readdir(d);
+	ASSERT(ent == 0, "readdir returns NULL on zero d_reclen");
+
+	closedir(d);
+	return 0;
+}
+
 TEST(closedir_works) {
 	DIR *d = opendir("/");
 	ASSERT(d != 0, "opendir succeeds");
@@ -69,5 +91,6 @@ TEST_SUITE(dirent) {
 	RUN_TEST(readdir_finds_entries);
 	RUN_TEST(readdir_dots);
 	RUN_TEST(opendir_nonexistent);
+	RUN_TEST(readdir_zero_reclen);
 	RUN_TEST(closedir_works);
 }
