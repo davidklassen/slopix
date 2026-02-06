@@ -145,6 +145,7 @@ void virtio_init_irq(void) {
 void virtio_intr(void) {
 	unsigned int status = VIRTIO_REG(VIRTIO_MMIO_INTERRUPT_STATUS);
 	VIRTIO_REG(VIRTIO_MMIO_INTERRUPT_ACK) = status;
+	dsb();
 
 	while (last_used_idx != used->idx) {
 		last_used_idx++;
