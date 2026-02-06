@@ -28,6 +28,10 @@ static pte_t make_page_desc_user(paddr_t pa, int write, int exec) {
 static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 	pte_t *table = pagetable;
 	int indices[3] = {L0_INDEX(va), L1_INDEX(va), L2_INDEX(va)};
+	pte_t *alloc_entries[3] = {0, 0, 0};
+	paddr_t alloc_pas[3] = {0, 0, 0};
+	int nalloc = 0;
+
 	for (int level = 0; level < 3; level++) {
 		pte_t *entry = &table[indices[level]];
 		if (*entry & PTE_VALID) {
@@ -38,9 +42,16 @@ static pte_t *walk(pte_t *pagetable, unsigned long va, int alloc) {
 			}
 			paddr_t pa = pmm_alloc();
 			if (pa == PMM_INVALID) {
+				for (int i = nalloc - 1; i >= 0; i--) {
+					*alloc_entries[i] = 0;
+					pmm_free(alloc_pas[i]);
+				}
 				return 0;
 			}
 			*entry = make_table_desc(pa);
+			alloc_entries[nalloc] = entry;
+			alloc_pas[nalloc] = pa;
+			nalloc++;
 			table = (pte_t *)PA_TO_VA(pa);
 		}
 	}
