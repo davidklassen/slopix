@@ -92,7 +92,7 @@ run: clean disk.img
 	$(QEMU_DISK)
 
 test: clean disk-test.img
-	$(QEMU_TEST)
+	$(QEMU_TEST) 2>&1 | ./scripts/format-tests.sh
 
 clean:
 	rm -rf .bin/ .build/
