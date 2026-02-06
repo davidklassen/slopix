@@ -86,6 +86,7 @@ static inline void tlbi_vmalle1(void) {
 }
 
 static inline void tlbi_va(unsigned long va) {
+	dsb();
 	asm volatile("tlbi vaae1is, %0" : : "r"(va >> 12));
 	dsb();
 	isb();
