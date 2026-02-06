@@ -107,7 +107,6 @@ int uart_read(char *buf, unsigned long len) {
 		}
 		buf[i++] = uart_rx.buf[uart_rx.tail];
 		uart_rx.tail = (uart_rx.tail + 1) % UART_RX_BUF_SIZE;
-		break;
 	}
 	return i;
 }
