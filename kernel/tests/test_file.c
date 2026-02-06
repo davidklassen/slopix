@@ -1,6 +1,7 @@
 #ifdef RUN_TESTS
 
 #include "test.h"
+#include "cpu.h"
 #include "file.h"
 #include "fs.h"
 #include "proc.h"
@@ -121,6 +122,7 @@ TEST(file_fdalloc_lowest) {
 	for (int i = 0; i < 16; i++) {
 		fake_proc.ofile[i] = 0;
 	}
+	unsigned long flags = irq_save();
 	struct proc *saved = current;
 	current = &fake_proc;
 
@@ -143,6 +145,7 @@ TEST(file_fdalloc_lowest) {
 	fileclose(f2);
 	fileclose(f3);
 	current = saved;
+	irq_restore(flags);
 	return 0;
 }
 

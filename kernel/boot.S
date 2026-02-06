@@ -21,7 +21,7 @@ _start:
     // Save DTB address passed by QEMU in x0
     mov     x19, x0
 
-    // Stage 1: Configure MMU (no stack needed)
+    // Configure MMU
     ldr     x0, =MAIR_VALUE
     msr     mair_el1, x0
     ldr     x0, =TCR_VALUE
@@ -32,7 +32,7 @@ _start:
     msr     ttbr1_el1, x0
     isb
 
-    // Stage 2: Enable MMU
+    // Enable MMU
     dsb     sy
     tlbi    vmalle1
     dsb     sy
@@ -43,7 +43,6 @@ _start:
     msr     sctlr_el1, x0
     isb
 
-    // Stage 3: Prepare for C (MMU on, high VA works)
     ldr     x0, =vectors
     msr     vbar_el1, x0
     isb
@@ -70,7 +69,6 @@ _start:
     add     x1, x19, x1
     str     x1, [x0]
 
-    // Stage 4: Jump to kernel at high VA
     ldr     x0, =kernel_main
     br      x0
 

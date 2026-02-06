@@ -1,6 +1,7 @@
 #ifdef RUN_TESTS
 
 #include "test.h"
+#include "cpu.h"
 #include "fs.h"
 #include "proc.h"
 
@@ -138,6 +139,7 @@ TEST(fs_namei_relative) {
 	fs_ilock(fake_proc.cwd);
 	fs_iunlock(fake_proc.cwd);
 
+	unsigned long flags = irq_save();
 	struct proc *saved_current = current;
 	current = &fake_proc;
 
@@ -149,6 +151,7 @@ TEST(fs_namei_relative) {
 	fs_iput(ip);
 
 	current = saved_current;
+	irq_restore(flags);
 	fs_iput(fake_proc.cwd);
 	return 0;
 }
@@ -159,6 +162,7 @@ TEST(fs_namei_relative_dot) {
 	fs_ilock(fake_proc.cwd);
 	fs_iunlock(fake_proc.cwd);
 
+	unsigned long flags = irq_save();
 	struct proc *saved_current = current;
 	current = &fake_proc;
 
@@ -168,6 +172,7 @@ TEST(fs_namei_relative_dot) {
 
 	fs_iput(ip);
 	current = saved_current;
+	irq_restore(flags);
 	fs_iput(fake_proc.cwd);
 	return 0;
 }
