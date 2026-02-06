@@ -648,7 +648,7 @@ TEST(blockwise_file_rw) {
 				// Found first mismatch
 				close(fd);
 				unlink("/test_block.txt");
-				ASSERT_EQ(global_i, -1, "byte mismatch");
+				ASSERT(0, "byte mismatch");
 			}
 		}
 	}
