@@ -83,7 +83,7 @@ static int read_inode(unsigned int inum, struct dinode *dip) {
 	return 0;
 }
 
-static unsigned int bmap(struct dinode *dip, unsigned int bn) {
+static int bmap(struct dinode *dip, unsigned int bn) {
 	if (bn < NDIRECT) {
 		return dip->addrs[bn];
 	}
@@ -92,7 +92,7 @@ static unsigned int bmap(struct dinode *dip, unsigned int bn) {
 
 	if (bn < NINDIRECT) {
 		if (read_block(dip->addrs[NDIRECT], indirect_buf) < 0)
-			return 0;
+			return -1;
 		unsigned int *addrs = (unsigned int *)indirect_buf;
 		return addrs[bn];
 	}
@@ -101,14 +101,14 @@ static unsigned int bmap(struct dinode *dip, unsigned int bn) {
 
 	unsigned int dindirect_block = dip->addrs[NDIRECT + 1];
 	if (read_block(dindirect_block, indirect_buf) < 0)
-		return 0;
+		return -1;
 
 	unsigned int *l1 = (unsigned int *)indirect_buf;
 	unsigned int l1_idx = bn / NINDIRECT;
 	unsigned int l2_idx = bn % NINDIRECT;
 
 	if (read_block(l1[l1_idx], indirect_buf) < 0)
-		return 0;
+		return -1;
 
 	unsigned int *l2 = (unsigned int *)indirect_buf;
 	return l2[l2_idx];
@@ -155,7 +155,9 @@ static unsigned int dirlookup(struct dinode *dir, const char *name) {
 	unsigned int remainder = dir->size % BSIZE;
 
 	for (unsigned int i = 0; i <= nblocks; i++) {
-		unsigned int blockno = bmap(dir, i);
+		int blockno = bmap(dir, i);
+		if (blockno < 0)
+			return 0;
 		if (blockno == 0)
 			continue;
 
@@ -224,8 +226,8 @@ int fs_read_file(const char *path, void *buf, unsigned int max_size) {
 
 	while (off < size) {
 		unsigned int bn = off / BSIZE;
-		unsigned int blockno = bmap(&inode, bn);
-		if (blockno == 0)
+		int blockno = bmap(&inode, bn);
+		if (blockno <= 0)
 			return -1;
 
 		if (read_block(blockno, block_buf) < 0)
