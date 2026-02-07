@@ -71,7 +71,7 @@ static const char *test_srcs[] = {
     NULL,
 };
 
-static int kernel_compile(const char *src, int test_mode) {
+static int kernel_compile(const char *src) {
 	const char *cc = get_env_or("CC", "cc");
 	const char *as = get_env_or("AS", "as");
 	char srcfile[256], sfile[256], ofile[256];
@@ -80,11 +80,10 @@ static int kernel_compile(const char *src, int test_mode) {
 	snprintf(sfile, sizeof(sfile), ".build/obj/%s.s", src);
 	snprintf(ofile, sizeof(ofile), ".build/obj/%s.o", src);
 
+	if (!needs_rebuild(srcfile, ofile)) return 0;
+
 	Cmd cmd = {0};
 	cmd_append(&cmd, cc, "-I.", NULL);
-	if (test_mode) {
-		cmd_append(&cmd, "-DRUN_TESTS", NULL);
-	}
 	cmd_append(&cmd, "-S", srcfile, "-o", sfile, NULL);
 
 	int ret = cmd_run(&cmd);
@@ -100,7 +99,23 @@ static int kernel_compile(const char *src, int test_mode) {
 	return ret;
 }
 
-static int kernel_link(const char *out, int include_tests) {
+static int kernel_link(const char *out) {
+	int rebuild = 0;
+	char opath[256];
+	for (int i = 0; asm_srcs[i] != NULL && !rebuild; i++) {
+		snprintf(opath, sizeof(opath), ".build/obj/%s.o", asm_srcs[i]);
+		if (needs_rebuild(opath, out)) rebuild = 1;
+	}
+	for (int i = 0; c_srcs[i] != NULL && !rebuild; i++) {
+		snprintf(opath, sizeof(opath), ".build/obj/%s.o", c_srcs[i]);
+		if (needs_rebuild(opath, out)) rebuild = 1;
+	}
+	for (int i = 0; test_srcs[i] != NULL && !rebuild; i++) {
+		snprintf(opath, sizeof(opath), ".build/obj/%s.o", test_srcs[i]);
+		if (needs_rebuild(opath, out)) rebuild = 1;
+	}
+	if (!rebuild) return 0;
+
 	const char *ld = get_env_or("LD", "ld");
 
 	Cmd cmd = {0};
@@ -114,10 +129,8 @@ static int kernel_link(const char *out, int include_tests) {
 		cmd_append(&cmd, make_objpath(c_srcs[i]), NULL);
 	}
 
-	if (include_tests) {
-		for (int i = 0; test_srcs[i] != NULL; i++) {
-			cmd_append(&cmd, make_objpath(test_srcs[i]), NULL);
-		}
+	for (int i = 0; test_srcs[i] != NULL; i++) {
+		cmd_append(&cmd, make_objpath(test_srcs[i]), NULL);
 	}
 
 	int ret = cmd_run(&cmd);
@@ -127,9 +140,7 @@ static int kernel_link(const char *out, int include_tests) {
 }
 
 int main(void) {
-	const char *run_tests = getenv("RUN_TESTS");
-	int test_mode = (run_tests != NULL && run_tests[0] != '0');
-	const char *output = test_mode ? ".build/out/boot/kernel-test.bin" : ".build/out/boot/kernel.bin";
+	const char *output = ".build/out/boot/kernel.bin";
 
 	mkdir_p(".build/obj");
 	mkdir_p(".build/obj/tests");
@@ -145,22 +156,20 @@ int main(void) {
 	}
 
 	for (int i = 0; c_srcs[i] != NULL; i++) {
-		if (kernel_compile(c_srcs[i], test_mode) != 0) {
+		if (kernel_compile(c_srcs[i]) != 0) {
 			log_error("failed to compile %s.c", c_srcs[i]);
 			return 1;
 		}
 	}
 
-	if (test_mode) {
-		for (int i = 0; test_srcs[i] != NULL; i++) {
-			if (kernel_compile(test_srcs[i], test_mode) != 0) {
-				log_error("failed to compile %s.c", test_srcs[i]);
-				return 1;
-			}
+	for (int i = 0; test_srcs[i] != NULL; i++) {
+		if (kernel_compile(test_srcs[i]) != 0) {
+			log_error("failed to compile %s.c", test_srcs[i]);
+			return 1;
 		}
 	}
 
-	if (kernel_link(output, test_mode) != 0) {
+	if (kernel_link(output) != 0) {
 		log_error("failed to link %s", output);
 		return 1;
 	}

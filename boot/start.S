@@ -24,6 +24,7 @@ nop:
 
 .global jump_to_kernel
 jump_to_kernel:
-	// x0 = DTB address (first arg, stays in x0 for kernel)
-	// x1 = kernel entry point (second arg)
-	br	x1
+	// x0 = DTB address (stays in x0 for kernel)
+	// x1 = runtests flag (stays in x1 for kernel)
+	// x2 = kernel entry point
+	br	x2

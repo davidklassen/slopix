@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "file.h"
@@ -159,5 +157,3 @@ TEST_SUITE(fs_file) {
 	RUN_TEST(file_read_not_readable);
 	RUN_TEST(file_fdalloc_lowest);
 }
-
-#endif

@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cmdline.h"
 
@@ -11,5 +9,3 @@ TEST(cmdline_get_nonexistent) {
 TEST_SUITE(cmdline) {
 	RUN_TEST(cmdline_get_nonexistent);
 }
-
-#endif

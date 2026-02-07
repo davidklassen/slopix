@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "pmm.h"
 #include "board.h"
@@ -92,5 +90,3 @@ TEST_SUITE(pmm) {
 	RUN_TEST(pmm_alloc_contiguous_after_free);
 	RUN_TEST(pmm_free_double_free_detected);
 }
-
-#endif

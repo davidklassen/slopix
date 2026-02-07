@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "dtb.h"
 #include "string.h"
@@ -192,5 +190,3 @@ TEST_SUITE(dtb) {
 	RUN_TEST(dtb_initrd_32bit);
 	RUN_TEST(dtb_initrd_64bit);
 }
-
-#endif

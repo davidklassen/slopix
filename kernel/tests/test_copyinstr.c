@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "vmm.h"
 #include "pmm.h"
@@ -104,5 +102,3 @@ TEST_SUITE(copyinstr) {
 	RUN_TEST(copyinstr_max_truncates);
 	RUN_TEST(copyinstr_unmapped_fails);
 }
-
-#endif

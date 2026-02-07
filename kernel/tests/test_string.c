@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "string.h"
 
@@ -165,5 +163,3 @@ TEST_SUITE(string) {
 	RUN_TEST(memmove_overlap_forward);
 	RUN_TEST(memmove_overlap_backward);
 }
-
-#endif

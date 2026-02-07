@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "elf.h"
 #include "pmm.h"
@@ -236,5 +234,3 @@ TEST_SUITE(elf) {
 	RUN_TEST(elf_load_too_small);
 	RUN_TEST(elf_load_no_leak);
 }
-
-#endif

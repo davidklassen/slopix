@@ -1,8 +1,7 @@
 #include "test.h"
 #include "kprintf.h"
 
-#ifdef RUN_TESTS
-
+int runtests = 0;
 int __tests_run = 0;
 int __tests_failed = 0;
 
@@ -27,6 +26,7 @@ void run_test(const char *name, int (*fn)(void)) {
 }
 
 void run_suite(const char *name, void (*fn)(void)) {
+	if (!runtests) return;
 	uart_puts("[");
 	uart_puts(name);
 	uart_puts("]\n");
@@ -34,6 +34,7 @@ void run_suite(const char *name, void (*fn)(void)) {
 }
 
 void test_report(void) {
+	if (!runtests) return;
 	kprintf("\n=== Test Report ===\n");
 	kprintf("  %d passed\n", __tests_run - __tests_failed);
 	kprintf("  %d failed\n", __tests_failed);
@@ -44,5 +45,3 @@ void test_report(void) {
 		kprintf("ALL PASSED\n\n");
 	}
 }
-
-#endif

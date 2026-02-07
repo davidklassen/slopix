@@ -18,8 +18,9 @@
 .global _start
 
 _start:
-    // Save DTB address passed by QEMU in x0
+    // Save bootloader args (x0 = DTB address, x1 = runtests flag)
     mov     x19, x0
+    mov     x20, x1
 
     // Configure MMU
     ldr     x0, =MAIR_VALUE
@@ -69,6 +70,10 @@ _start:
     add     x1, x19, x1
     str     x1, [x0]
 
+    // Store runtests flag from bootloader
+    ldr     x0, =_runtests
+    str     x20, [x0]
+
     ldr     x0, =kernel_main
     br      x0
 
@@ -80,4 +85,8 @@ halt:
 .section .data
 .global _dtb_address
 _dtb_address:
+    .quad 0
+
+.global _runtests
+_runtests:
     .quad 0

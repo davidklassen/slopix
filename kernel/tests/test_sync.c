@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "sync.h"
 #include "cpu.h"
@@ -104,5 +102,3 @@ TEST_SUITE(sync) {
 	RUN_TEST(spinlock_static_init);
 	RUN_TEST(sleeplock_static_init);
 }
-
-#endif

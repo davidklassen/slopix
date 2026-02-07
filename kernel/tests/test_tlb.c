@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "vmm.h"
@@ -68,5 +66,3 @@ TEST(tlb_stale_after_unmap) {
 TEST_SUITE(tlb) {
 	RUN_TEST(tlb_stale_after_unmap);
 }
-
-#endif

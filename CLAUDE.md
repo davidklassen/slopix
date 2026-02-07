@@ -27,12 +27,12 @@ make run  - always times out (no exit), kill background shell after
 
 ## Test Framework
 
-The test macros in `tests/test.h` are designed to work without `#ifdef` guards in application code:
+Test code is always compiled into the kernel binary. The bootloader checks for `/boot/runtests` on the filesystem and passes the flag to the kernel via register (x1) at boot:
 
-- When `RUN_TESTS` is defined: macros expand to actual test functions, `TEST_EXIT()` calls `psci_system_off()`
-- When `RUN_TESTS` is not defined: all macros become `((void)0)` no-ops
-
-This means `kernel_main()` can use test macros directly without conditionals - in normal builds they simply do nothing and code continues to the next statement.
+- `run_suite()` and `test_report()` check the `runtests` flag and return immediately when not set
+- `TEST_EXIT()` only calls `psci_system_off()` when `runtests` is set
+- `disk-test.img` includes the `/boot/runtests` flag file; `disk.img` does not
+- Test suites are interleaved with init calls (each suite runs after the init it verifies)
 
 ## Test Design
 

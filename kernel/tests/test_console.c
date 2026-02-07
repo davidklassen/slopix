@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "console.h"
 #include "file.h"
@@ -85,5 +83,3 @@ TEST_SUITE(console) {
 	RUN_TEST(console_raw_mode_default);
 	RUN_TEST(console_raw_mode_set);
 }
-
-#endif

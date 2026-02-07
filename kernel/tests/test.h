@@ -1,11 +1,10 @@
 #ifndef TEST_H
 #define TEST_H
 
-#ifdef RUN_TESTS
-
 #include "uart.h"
 #include "psci.h"
 
+extern int runtests;
 extern int __tests_run;
 extern int __tests_failed;
 
@@ -19,7 +18,10 @@ void test_report(void);
 #define DECLARE_SUITE(name) extern void test_suite_##name(void)
 #define RUN_SUITE(name)	    run_suite(#name, test_suite_##name)
 #define TEST_REPORT()	    test_report()
-#define TEST_EXIT()	    psci_system_off()
+#define TEST_EXIT()                              \
+	do {                                     \
+		if (runtests) psci_system_off(); \
+	} while (0)
 
 #define ASSERT(cond, msg)                        \
 	do {                                     \
@@ -49,14 +51,5 @@ int test_streq(const char *a, const char *b);
 			return 1;                           \
 		}                                           \
 	} while (0)
-
-#else
-
-#define DECLARE_SUITE(name)
-#define RUN_SUITE(name) ((void)0)
-#define TEST_REPORT()	((void)0)
-#define TEST_EXIT()	((void)0)
-
-#endif
 
 #endif

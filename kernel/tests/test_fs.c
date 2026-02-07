@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "fs.h"
@@ -267,5 +265,3 @@ TEST_SUITE(fs_read) {
 	RUN_TEST(fs_stati);
 	RUN_TEST(fs_readi_large);
 }
-
-#endif

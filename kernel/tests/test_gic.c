@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "gic.h"
 #include "board.h"
@@ -27,5 +25,3 @@ TEST_SUITE(gic) {
 	RUN_TEST(gicc_enabled);
 	RUN_TEST(gicc_pmr_max_priority);
 }
-
-#endif

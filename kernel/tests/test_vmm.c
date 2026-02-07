@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "vmm.h"
@@ -72,5 +70,3 @@ TEST_SUITE(vmm) {
 	RUN_TEST(ttbr0_and_ttbr1_are_different);
 	RUN_TEST(va_pa_roundtrip);
 }
-
-#endif

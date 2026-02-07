@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "file.h"
 #include "pipe.h"
@@ -49,5 +47,3 @@ TEST_SUITE(pipe) {
 	RUN_TEST(pipe_initial_state);
 	RUN_TEST(pipe_shared_struct);
 }
-
-#endif

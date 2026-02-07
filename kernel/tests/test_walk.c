@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "vmm.h"
 #include "pmm.h"
@@ -48,5 +46,3 @@ TEST(walk_leak_on_oom) {
 TEST_SUITE(walk) {
 	RUN_TEST(walk_leak_on_oom);
 }
-
-#endif

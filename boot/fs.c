@@ -179,6 +179,32 @@ static unsigned int dirlookup(struct dinode *dir, const char *name) {
 	return 0;
 }
 
+int fs_file_exists(const char *path) {
+	if (path[0] != '/')
+		return 0;
+
+	struct dinode inode;
+	char name[DIRSIZ];
+
+	if (read_inode(ROOTINO, &inode) < 0)
+		return 0;
+
+	const char *p = path;
+	while ((p = skipelem(p, name)) != 0) {
+		if (inode.type != T_DIR)
+			return 0;
+
+		unsigned int inum = dirlookup(&inode, name);
+		if (inum == 0)
+			return 0;
+
+		if (read_inode(inum, &inode) < 0)
+			return 0;
+	}
+
+	return 1;
+}
+
 int fs_read_file(const char *path, void *buf, unsigned int max_size) {
 	if (path[0] != '/') {
 		uart_puts("fs: path must be absolute\n");

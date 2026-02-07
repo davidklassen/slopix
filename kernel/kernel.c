@@ -66,6 +66,10 @@ void kernel_main(void) {
 		pmm_reserve_region(initrd_start, initrd_end);
 	}
 
+	extern unsigned long _runtests;
+	extern int runtests;
+	runtests = _runtests != 0;
+
 	RUN_SUITE(dtb);
 	cmdline_init(dtb_get_bootargs());
 	RUN_SUITE(cmdline);
@@ -117,11 +121,7 @@ void kernel_main(void) {
 
 	const char *init_prog = cmdline_get("init");
 	if (!init_prog) {
-#ifdef RUN_TESTS
-		init_prog = "/bin/tests";
-#else
-		init_prog = "/bin/init";
-#endif
+		init_prog = runtests ? "/bin/tests" : "/bin/init";
 	}
 
 	init(init_prog);

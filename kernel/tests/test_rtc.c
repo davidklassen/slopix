@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "rtc.h"
 
@@ -32,5 +30,3 @@ TEST_SUITE(rtc) {
 	RUN_TEST(rtc_reads_nonzero);
 	RUN_TEST(rtc_reads_reasonable);
 }
-
-#endif

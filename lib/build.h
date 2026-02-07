@@ -49,6 +49,7 @@ int archive_objs(const char *out, const char **objs);
 
 int mkdir_p(const char *path);
 int file_exists(const char *path);
+int needs_rebuild(const char *src, const char *out);
 int move_recursive(const char *src, const char *dst);
 int remove_recursive(const char *path);
 int copy_file(const char *src, const char *dst);
@@ -224,6 +225,13 @@ int mkdir_p(const char *path) {
 int file_exists(const char *path) {
 	struct stat st;
 	return stat(path, &st) == 0;
+}
+
+int needs_rebuild(const char *src, const char *out) {
+	struct stat src_st, out_st;
+	if (stat(out, &out_st) != 0) return 1;
+	if (stat(src, &src_st) != 0) return 1;
+	return src_st.st_mtime > out_st.st_mtime;
 }
 
 int remove_recursive(const char *path) {
@@ -446,7 +454,7 @@ int build_subdir(const char *dir) {
 		}
 	}
 
-	remove_recursive(".build");
+	remove_recursive(".build/out");
 
 	if (chdir(origdir) < 0) {
 		log_error("chdir back to '%s' failed", origdir);
@@ -499,6 +507,8 @@ int compile(const char *src) {
 		snprintf(ofile, sizeof(ofile), ".build/obj/%s.o", base);
 	}
 
+	if (!needs_rebuild(src, ofile)) return 0;
+
 	Cmd cmd = {0};
 	cmd_append(&cmd, cc, NULL);
 	if (include_path[0]) {
@@ -539,6 +549,8 @@ int assemble(const char *src) {
 		snprintf(ofile, sizeof(ofile), ".build/obj/%s.o", base);
 	}
 
+	if (!needs_rebuild(src, ofile)) return 0;
+
 	Cmd cmd = {0};
 	cmd_append(&cmd, as, "-o", ofile, src, NULL);
 	int ret = cmd_run(&cmd);
@@ -562,6 +574,17 @@ static const char *make_objpath(const char *base) {
 }
 
 int link_objs(const char *out, const char **objs) {
+	int rebuild = 0;
+	for (int i = 0; objs[i] != NULL; i++) {
+		char opath[256];
+		snprintf(opath, sizeof(opath), ".build/obj/%s.o", objs[i]);
+		if (needs_rebuild(opath, out)) {
+			rebuild = 1;
+			break;
+		}
+	}
+	if (!rebuild) return 0;
+
 	const char *ld = get_env_or("LD", "ld");
 	const char *lib_path = getenv("LIB_PATH");
 	if (lib_path == NULL || lib_path[0] == '\0') {
@@ -599,6 +622,17 @@ int link_objs(const char *out, const char **objs) {
 }
 
 int archive_objs(const char *out, const char **objs) {
+	int rebuild = 0;
+	for (int i = 0; objs[i] != NULL; i++) {
+		char opath[256];
+		snprintf(opath, sizeof(opath), ".build/obj/%s.o", objs[i]);
+		if (needs_rebuild(opath, out)) {
+			rebuild = 1;
+			break;
+		}
+	}
+	if (!rebuild) return 0;
+
 	const char *ar = get_env_or("AR", "ar");
 
 	Cmd cmd = {0};

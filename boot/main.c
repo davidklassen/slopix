@@ -8,8 +8,9 @@ void virtio_init(void);
 
 int fs_init(void);
 int fs_read_file(const char *path, void *buf, unsigned int max_size);
+int fs_file_exists(const char *path);
 
-void jump_to_kernel(unsigned long dtb_addr, unsigned long entry_point);
+void jump_to_kernel(unsigned long dtb_addr, unsigned long runtests, unsigned long entry_point);
 
 #define KERNEL_PATH	"/boot/kernel.bin"
 #define KERNEL_LOAD_PA	0x40080000UL
@@ -42,6 +43,8 @@ void boot_main(void) {
 	uart_puthex(size);
 	uart_puts(" bytes\n");
 
+	unsigned long runtests = fs_file_exists("/boot/runtests");
+
 	uart_puts("booting kernel\n");
-	jump_to_kernel(DTB_PA, KERNEL_LOAD_PA);
+	jump_to_kernel(DTB_PA, runtests, KERNEL_LOAD_PA);
 }

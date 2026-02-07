@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "exception.h"
@@ -25,5 +23,3 @@ TEST_SUITE(exception) {
 	RUN_TEST(undefined_instruction);
 	RUN_TEST(svc_call);
 }
-
-#endif

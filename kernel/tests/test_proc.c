@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "proc.h"
 #include "pmm.h"
@@ -45,5 +43,3 @@ TEST_SUITE(proc) {
 	RUN_TEST(proc_alloc_zeroes_ofile);
 	RUN_TEST(proc_alloc_zeroes_cwd);
 }
-
-#endif

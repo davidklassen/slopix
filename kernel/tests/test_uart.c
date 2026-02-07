@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "uart.h"
 
@@ -32,5 +30,3 @@ TEST_SUITE(uart) {
 	RUN_TEST(init_enables_rx);
 	RUN_TEST(getc_nb_empty);
 }
-
-#endif

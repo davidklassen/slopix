@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "kprintf.h"
 
@@ -97,5 +95,3 @@ TEST_SUITE(kprintf) {
 	RUN_TEST(kprintf_percent);
 	RUN_TEST(kprintf_mixed);
 }
-
-#endif

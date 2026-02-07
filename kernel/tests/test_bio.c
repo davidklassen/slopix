@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "bio.h"
 
@@ -91,5 +89,3 @@ TEST_SUITE(bio) {
 	RUN_TEST(bwrite_persists_data);
 	RUN_TEST(cache_lru_eviction);
 }
-
-#endif

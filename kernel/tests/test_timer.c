@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "cpu.h"
 #include "gic.h"
@@ -49,5 +47,3 @@ TEST_SUITE(timer) {
 	RUN_TEST(gic_pmr);
 	RUN_TEST(timer_ticks);
 }
-
-#endif

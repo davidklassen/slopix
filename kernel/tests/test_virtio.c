@@ -1,5 +1,3 @@
-#ifdef RUN_TESTS
-
 #include "test.h"
 #include "virtio.h"
 #include "gic.h"
@@ -208,5 +206,3 @@ TEST_SUITE(virtio_errors) {
 	RUN_TEST(virtio_read_bad_sector);
 	RUN_TEST(virtio_status_check);
 }
-
-#endif
