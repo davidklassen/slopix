@@ -106,6 +106,25 @@ TEST(fputc_fgetc_basic) {
 	return 0;
 }
 
+TEST(fputc_fgetc_all_bytes) {
+	FILE *f = fopen("/test_allbytes.txt", "w");
+	ASSERT_NOT_NULL(f, "fopen w");
+	for (int i = 0; i < 256; i++) {
+		ASSERT_EQ(fputc(i, f), i, "fputc return");
+	}
+	fclose(f);
+
+	f = fopen("/test_allbytes.txt", "r");
+	ASSERT_NOT_NULL(f, "fopen r");
+	for (int i = 0; i < 256; i++) {
+		ASSERT_EQ(fgetc(f), i, "fgetc round-trip");
+	}
+	ASSERT_EQ(fgetc(f), EOF, "fgetc EOF");
+	fclose(f);
+	unlink("/test_allbytes.txt");
+	return 0;
+}
+
 TEST(fflush_write) {
 	FILE *f = fopen("/test_flush.txt", "w");
 	ASSERT_NOT_NULL(f, "fopen w");
@@ -1153,6 +1172,7 @@ TEST_SUITE(stdio) {
 	RUN_TEST(fopen_invalid_mode);
 	RUN_TEST(fwrite_fread_basic);
 	RUN_TEST(fputc_fgetc_basic);
+	RUN_TEST(fputc_fgetc_all_bytes);
 	RUN_TEST(fflush_write);
 	RUN_TEST(fread_partial);
 	RUN_TEST(fwrite_buffer_boundary);

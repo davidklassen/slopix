@@ -101,14 +101,14 @@ int fputc(int c, FILE *stream) {
 	if (!stream || !(stream->flags & _FILE_WRITE)) {
 		return EOF;
 	}
+	unsigned char uc = (unsigned char)c;
 	if (stream->flags & _FILE_UNBUF) {
-		unsigned char ch = (unsigned char)c;
-		long written = write(stream->fd, &ch, 1);
+		long written = write(stream->fd, &uc, 1);
 		if (written != 1) {
 			stream->error = 1;
 			return EOF;
 		}
-		return (unsigned char)c;
+		return uc;
 	}
 	if (!stream->wbuf) {
 		stream->wbuf = malloc(BUFSIZ);
@@ -130,11 +130,11 @@ int fputc(int c, FILE *stream) {
 			stream->wbuf = newbuf;
 			stream->wbuf_size = newsize;
 		}
-		stream->wbuf[stream->wbuf_pos++] = (char)c;
+		stream->wbuf[stream->wbuf_pos++] = uc;
 		stream->wbuf[stream->wbuf_pos] = '\0';
-		return (unsigned char)c;
+		return uc;
 	}
-	stream->wbuf[stream->wbuf_pos++] = (char)c;
+	stream->wbuf[stream->wbuf_pos++] = uc;
 	int should_flush = stream->wbuf_pos >= stream->wbuf_size;
 	if (stream->fd == 1 && c == '\n') {
 		should_flush = 1;
@@ -144,7 +144,7 @@ int fputc(int c, FILE *stream) {
 			return EOF;
 		}
 	}
-	return (unsigned char)c;
+	return uc;
 }
 
 int fgetc(FILE *stream) {
@@ -890,11 +890,12 @@ typedef struct {
 
 static int str_putc(int c, void *ctx) {
 	StrWriterCtx *s = ctx;
+	unsigned char uc = (unsigned char)c;
 	if (s->buf && s->pos < s->size - 1) {
-		s->buf[s->pos] = (char)c;
+		s->buf[s->pos] = uc;
 	}
 	s->pos++;
-	return (unsigned char)c;
+	return uc;
 }
 
 int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
