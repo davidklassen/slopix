@@ -71,21 +71,6 @@ static const char *test_srcs[] = {
     NULL,
 };
 
-static int kernel_assemble(const char *src) {
-	const char *as = get_env_or("AS", "as");
-	char srcfile[256], ofile[256];
-
-	snprintf(srcfile, sizeof(srcfile), "%s.S", src);
-	snprintf(ofile, sizeof(ofile), ".build/obj/%s.o", src);
-
-	Cmd cmd = {0};
-	cmd_append(&cmd, as, srcfile, "-o", ofile, NULL);
-	int ret = cmd_run(&cmd);
-	cmd_reset(&cmd);
-
-	return ret;
-}
-
 static int kernel_compile(const char *src, int test_mode) {
 	const char *cc = get_env_or("CC", "cc");
 	const char *as = get_env_or("AS", "as");
@@ -151,8 +136,10 @@ int main(void) {
 	mkdir_p(".build/out/boot");
 
 	for (int i = 0; asm_srcs[i] != NULL; i++) {
-		if (kernel_assemble(asm_srcs[i]) != 0) {
-			log_error("failed to assemble %s.S", asm_srcs[i]);
+		char srcfile[256];
+		snprintf(srcfile, sizeof(srcfile), "%s.S", asm_srcs[i]);
+		if (assemble(srcfile) != 0) {
+			log_error("failed to assemble %s", srcfile);
 			return 1;
 		}
 	}
