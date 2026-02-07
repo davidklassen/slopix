@@ -221,7 +221,8 @@ int main(int argc, char **argv) {
 	char build_include[512];
 	if (build_include_env != NULL && build_include_env[0] != '\0') {
 		if (build_include_env[0] != '/') {
-			snprintf(build_include, sizeof(build_include), "%s/%s", cwd, build_include_env);
+			if (pathfmt(build_include, sizeof(build_include), "%s/%s", cwd, build_include_env) < 0)
+				return 1;
 		} else {
 			strncpy(build_include, build_include_env, sizeof(build_include) - 1);
 			build_include[sizeof(build_include) - 1] = '\0';
@@ -229,12 +230,14 @@ int main(int argc, char **argv) {
 	} else if (file_exists("/include/build.h")) {
 		strcpy(build_include, "/include");
 	} else {
-		snprintf(build_include, sizeof(build_include), "%s/lib", cwd);
+		if (pathfmt(build_include, sizeof(build_include), "%s/lib", cwd) < 0)
+			return 1;
 	}
 
 	char prefix[512];
 	if (prefix_arg[0] != '/') {
-		snprintf(prefix, sizeof(prefix), "%s/%s", cwd, prefix_arg);
+		if (pathfmt(prefix, sizeof(prefix), "%s/%s", cwd, prefix_arg) < 0)
+			return 1;
 	} else {
 		strncpy(prefix, prefix_arg, sizeof(prefix) - 1);
 		prefix[sizeof(prefix) - 1] = '\0';

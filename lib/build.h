@@ -19,6 +19,8 @@
 //   LDFLAGS       Extra linker flags (before objects)
 //   LDLIBS        Extra libraries (after objects and libc.a)
 //   LIB_PATH      Library path (if set, links libc.a)
+#define _DEFAULT_SOURCE
+
 #ifndef BUILD_H
 #define BUILD_H
 
@@ -34,6 +36,7 @@ typedef struct {
 void cmd_append(Cmd *c, ...);
 void cmd_reset(Cmd *c);
 int cmd_run(Cmd *c);
+int pathfmt(char *buf, size_t size, const char *fmt, ...);
 
 const char *get_bin_prefix(void);
 
@@ -83,6 +86,18 @@ void log_error(const char *fmt, ...) {
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	fprintf(stderr, "\n");
+}
+
+__attribute__((format(printf, 3, 4))) int pathfmt(char *buf, size_t size, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int n = vsnprintf(buf, size, fmt, ap);
+	va_end(ap);
+	if (n < 0 || (size_t)n >= size) {
+		log_error("path too long");
+		return -1;
+	}
+	return 0;
 }
 
 void cmd_append(Cmd *c, ...) {
@@ -403,7 +418,10 @@ int build_subdir(const char *dir) {
 
 	if (file_exists(".build/out")) {
 		char dstout[512];
-		snprintf(dstout, sizeof(dstout), "%s/.build/out", origdir);
+		if (pathfmt(dstout, sizeof(dstout), "%s/.build/out", origdir) < 0) {
+			chdir(origdir);
+			return 1;
+		}
 
 		DIR *d = opendir(".build/out");
 		if (d != NULL) {
@@ -414,7 +432,11 @@ int build_subdir(const char *dir) {
 				}
 				char src[512], dst[512];
 				snprintf(src, sizeof(src), ".build/out/%s", ent->d_name);
-				snprintf(dst, sizeof(dst), "%s/%s", dstout, ent->d_name);
+				if (pathfmt(dst, sizeof(dst), "%s/%s", dstout, ent->d_name) < 0) {
+					closedir(d);
+					chdir(origdir);
+					return 1;
+				}
 				mkdir_p(dstout);
 				if (move_recursive(src, dst) < 0) {
 					log_error("failed to move %s to %s", src, dst);
