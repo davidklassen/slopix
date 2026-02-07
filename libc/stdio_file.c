@@ -147,6 +147,10 @@ int fputc(int c, FILE *stream) {
 	return uc;
 }
 
+int putchar(int c) {
+	return fputc(c, stdout);
+}
+
 int fgetc(FILE *stream) {
 	if (!stream || !(stream->flags & _FILE_READ)) {
 		return EOF;

@@ -1,22 +1,20 @@
 ROOT = $(CURDIR)
 
 HOSTCC ?= cc
-ifeq ($(origin CC),default)
+HOSTAS ?= as
 CC = $(ROOT)/.bin/cc
-endif
-ifeq ($(origin AS),default)
 AS = $(ROOT)/.bin/as
-endif
-ifeq ($(origin LD),default)
 LD = $(ROOT)/.bin/ld
-endif
-ifeq ($(origin AR),default)
 AR = $(ROOT)/.bin/ar
-endif
 
 BUILD = $(ROOT)/.bin/build
 MKFS = $(ROOT)/.bin/mkfs
-BUILD_ENV = TZ=UTC BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(AR) \
+CFLAGS ?=
+LDFLAGS ?=
+LDLIBS ?=
+HOST_BUILD_ENV = CC=$(HOSTCC) AS=$(HOSTAS) LD=$(HOSTCC) CFLAGS= LDFLAGS= LDLIBS=
+CROSS_BUILD_ENV = TZ=UTC BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(AR) \
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)" \
 	INCLUDE_PATH=$(ROOT)/libc/include LIB_PATH=$(ROOT)/.build/out/lib \
 	BUILD_INCLUDE=$(ROOT)/lib
 
@@ -33,31 +31,31 @@ all: build
 	$(HOSTCC) -I lib -std=c11 -g -Wall -Wextra -Werror -O0 -o $@ cmd/build/main.c
 
 .bin/cc: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/cc
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/cc
 
 .bin/as: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/as
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/as
 
 .bin/ld: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ld
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/ld
 
 .bin/ar: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ar
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/ar
 
 .bin/mkfs: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkfs
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/mkfs
 
 .bin/mkramfs: .bin/build | .bin
-	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkramfs
+	$(HOST_BUILD_ENV) $(BUILD) --prefix=.bin cmd/mkramfs
 
 .bin:
 	mkdir -p $@
 
 build: .bin/cc .bin/as .bin/ld .bin/ar
-	$(BUILD_ENV) $(BUILD)
+	$(CROSS_BUILD_ENV) $(BUILD)
 
 build-test: .bin/cc .bin/as .bin/ld .bin/ar
-	$(BUILD_ENV) RUN_TESTS=1 $(BUILD)
+	$(CROSS_BUILD_ENV) RUN_TESTS=1 $(BUILD)
 
 disk.img: .bin/mkfs build
 	$(MKFS) $@ -s 102400 -i 1024 \

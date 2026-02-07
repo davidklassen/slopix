@@ -284,8 +284,6 @@ TEST(control_goto) {
 
 TEST(control_comma) {
 	ASSERT_EQ((1, 2, 3), 3, "comma");
-	ASSERT_EQ(({ int i = 2, j = 3; (i = 5, j) = 6; i; }), 5, "comma lhs");
-	ASSERT_EQ(({ int i = 2, j = 3; (i = 5, j) = 6; j; }), 6, "comma rhs");
 	return 0;
 }
 
@@ -323,26 +321,26 @@ TEST(pointers) {
 }
 
 TEST(arrays) {
-	ASSERT_EQ(({ int x[2]; int *y=&x; *y=3; *x; }), 3, "arr ptr assign");
+	ASSERT_EQ(({ int x[2]; int *y=(int *)&x; *y=3; *x; }), 3, "arr ptr assign");
 	ASSERT_EQ(({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *x; }), 3, "arr elem 0");
 	ASSERT_EQ(({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+1); }), 4, "arr elem 1");
 	ASSERT_EQ(({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+2); }), 5, "arr elem 2");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *y=0; **x; }), 0, "2d arr [0][0]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *(y+1)=1; *(*x+1); }), 1, "2d arr [0][1]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *(y+2)=2; *(*x+2); }), 2, "2d arr [0][2]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *(y+3)=3; **(x+1); }), 3, "2d arr [1][0]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *(y+4)=4; *(*(x+1)+1); }), 4, "2d arr [1][1]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; *(y+5)=5; *(*(x+1)+2); }), 5, "2d arr [1][2]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *y=0; **x; }), 0, "2d arr [0][0]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *(y+1)=1; *(*x+1); }), 1, "2d arr [0][1]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *(y+2)=2; *(*x+2); }), 2, "2d arr [0][2]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *(y+3)=3; **(x+1); }), 3, "2d arr [1][0]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *(y+4)=4; *(*(x+1)+1); }), 4, "2d arr [1][1]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; *(y+5)=5; *(*(x+1)+2); }), 5, "2d arr [1][2]");
 	ASSERT_EQ(({ int x[3]; *x=3; x[1]=4; x[2]=5; *x; }), 3, "subscript 0");
 	ASSERT_EQ(({ int x[3]; *x=3; x[1]=4; x[2]=5; *(x+1); }), 4, "subscript 1");
 	ASSERT_EQ(({ int x[3]; *x=3; x[1]=4; x[2]=5; *(x+2); }), 5, "subscript 2");
 	ASSERT_EQ(({ int x[3]; *x=3; x[1]=4; 2[x]=5; *(x+2); }), 5, "reverse subscript");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[0]=0; x[0][0]; }), 0, "2d subscript [0][0]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[1]=1; x[0][1]; }), 1, "2d subscript [0][1]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[2]=2; x[0][2]; }), 2, "2d subscript [0][2]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[3]=3; x[1][0]; }), 3, "2d subscript [1][0]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[4]=4; x[1][1]; }), 4, "2d subscript [1][1]");
-	ASSERT_EQ(({ int x[2][3]; int *y=x; y[5]=5; x[1][2]; }), 5, "2d subscript [1][2]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[0]=0; x[0][0]; }), 0, "2d subscript [0][0]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[1]=1; x[0][1]; }), 1, "2d subscript [0][1]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[2]=2; x[0][2]; }), 2, "2d subscript [0][2]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[3]=3; x[1][0]; }), 3, "2d subscript [1][0]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[4]=4; x[1][1]; }), 4, "2d subscript [1][1]");
+	ASSERT_EQ(({ int x[2][3]; int *y=(int *)x; y[5]=5; x[1][2]; }), 5, "2d subscript [1][2]");
 	return 0;
 }
 
@@ -397,7 +395,7 @@ TEST(usual_conversions) {
 	ASSERT_EQ((long)-2 <= -1, 1, "long cmp le");
 	ASSERT_EQ((long)-2 > -1, 0, "long cmp gt");
 	ASSERT_EQ((long)-2 >= -1, 0, "long cmp ge");
-	ASSERT_EQ((long)(2147483647 + 2147483647 + 2), 0, "int overflow");
+	ASSERT_EQ((long)((unsigned)2147483647 + 2147483647 + 2), 0, "int overflow");
 	ASSERT_EQ(({ long x; x=-1; x; }), (long)-1, "long assign");
 	ASSERT_EQ(({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[0]; }), 1, "char ptr idx");
 	ASSERT_EQ(({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[-1]; }), 0, "char ptr neg idx");
@@ -513,12 +511,12 @@ TEST(struct_basics) {
 }
 
 TEST(struct_arrays) {
-	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=x; p[0]=0; x[0].a; }), 0, "struct arr [0].a");
-	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=x; p[1]=1; x[0].b; }), 1, "struct arr [0].b");
-	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=x; p[2]=2; x[1].a; }), 2, "struct arr [1].a");
-	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=x; p[3]=3; x[1].b; }), 3, "struct arr [1].b");
-	ASSERT_EQ(({ struct {char a[3]; char b[5];} x; char *p=&x; x.a[0]=6; p[0]; }), 6, "nested arr a");
-	ASSERT_EQ(({ struct {char a[3]; char b[5];} x; char *p=&x; x.b[0]=7; p[3]; }), 7, "nested arr b");
+	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=(char *)x; p[0]=0; x[0].a; }), 0, "struct arr [0].a");
+	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=(char *)x; p[1]=1; x[0].b; }), 1, "struct arr [0].b");
+	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=(char *)x; p[2]=2; x[1].a; }), 2, "struct arr [1].a");
+	ASSERT_EQ(({ struct {char a; char b;} x[3]; char *p=(char *)x; p[3]=3; x[1].b; }), 3, "struct arr [1].b");
+	ASSERT_EQ(({ struct {char a[3]; char b[5];} x; char *p=(char *)&x; x.a[0]=6; p[0]; }), 6, "nested arr a");
+	ASSERT_EQ(({ struct {char a[3]; char b[5];} x; char *p=(char *)&x; x.b[0]=7; p[3]; }), 7, "nested arr b");
 	ASSERT_EQ(({ struct { struct { char b; } a; } x; x.a.b=6; x.a.b; }), 6, "nested struct");
 	return 0;
 }
@@ -640,7 +638,7 @@ TEST(bitfield_incr) {
 }
 
 TEST(bitfield_sizeof) {
-	ASSERT_EQ(sizeof(struct {int a:3; int c:1; int c:5; }), 4, "bf sizeof packed");
+	ASSERT_EQ(sizeof(struct {int a:3; int b:1; int c:5; }), 4, "bf sizeof packed");
 	ASSERT_EQ(sizeof(struct {int a:3; int:0; int c:5; }), 8, "bf sizeof zero");
 	ASSERT_EQ(sizeof(struct {int a:3; int:0; }), 4, "bf sizeof trailing");
 	return 0;

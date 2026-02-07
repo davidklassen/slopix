@@ -40,6 +40,7 @@ size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
 int fgetc(FILE *stream);
 char *fgets(char *s, int size, FILE *stream);
 int fputc(int c, FILE *stream);
+int putchar(int c);
 int fputs(const char *s, FILE *stream);
 int fseek(FILE *stream, long offset, int whence);
 long ftell(FILE *stream);

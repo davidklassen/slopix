@@ -10,11 +10,14 @@
 //
 // Environment variables:
 //   CC            C compiler
+//   CFLAGS        Extra C compiler flags
 //   AS            Assembler
 //   LD            Linker
 //   AR            Archive tool
 //   BUILD         Path to build tool (default: /bin/build)
 //   INCLUDE_PATH  Header search path
+//   LDFLAGS       Extra linker flags (before objects)
+//   LDLIBS        Extra libraries (after objects and libc.a)
 //   LIB_PATH      Library path (if set, links libc.a)
 #ifndef BUILD_H
 #define BUILD_H
@@ -436,9 +439,23 @@ static const char *basename_c(const char *path) {
 	return last ? last + 1 : path;
 }
 
+static void cmd_append_flags(Cmd *c, const char *flags) {
+	if (flags == NULL || flags[0] == '\0') {
+		return;
+	}
+	char *buf = strdup(flags);
+	char *tok = strtok(buf, " \t");
+	while (tok != NULL) {
+		cmd_append(c, strdup(tok), NULL);
+		tok = strtok(NULL, " \t");
+	}
+	free(buf);
+}
+
 int compile(const char *src) {
 	const char *cc = get_env_or("CC", "cc");
 	const char *as = get_env_or("AS", "as");
+	const char *cflags = getenv("CFLAGS");
 	const char *include_path = getenv("INCLUDE_PATH");
 	if (include_path == NULL || include_path[0] == '\0') {
 		include_path = "";
@@ -467,6 +484,7 @@ int compile(const char *src) {
 		snprintf(incflag, sizeof(incflag), "-I%s", include_path);
 		cmd_append(&cmd, incflag, NULL);
 	}
+	cmd_append_flags(&cmd, cflags);
 	cmd_append(&cmd, "-S", src, "-o", sfile, NULL);
 
 	int ret = cmd_run(&cmd);
@@ -532,8 +550,13 @@ int link_objs(const char *out, const char **objs) {
 		}
 	}
 
+	const char *ldflags = getenv("LDFLAGS");
+	const char *ldlibs = getenv("LDLIBS");
+
 	Cmd cmd = {0};
-	cmd_append(&cmd, ld, "-o", out, NULL);
+	cmd_append(&cmd, ld, NULL);
+	cmd_append_flags(&cmd, ldflags);
+	cmd_append(&cmd, "-o", out, NULL);
 
 	for (int i = 0; objs[i] != NULL; i++) {
 		cmd_append(&cmd, make_objpath(objs[i]), NULL);
@@ -544,6 +567,8 @@ int link_objs(const char *out, const char **objs) {
 		snprintf(libcpath, sizeof(libcpath), "%s/libc.a", lib_path);
 		cmd_append(&cmd, libcpath, NULL);
 	}
+
+	cmd_append_flags(&cmd, ldlibs);
 
 	int ret = cmd_run(&cmd);
 	cmd_reset(&cmd);
