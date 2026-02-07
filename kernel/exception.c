@@ -8,8 +8,6 @@
 #include "syscall.h"
 #include "proc.h"
 #include "signal.h"
-#include "file.h"
-#include "fs.h"
 
 static const char *vector_names[] = {
     "SP0 Sync",
@@ -204,23 +202,6 @@ void sync_exception_handler_user(struct trap_frame *tf) {
 	}
 
 	if (proc_is_killed(current)) {
-		for (int fd = 0; fd < NOFILE; fd++) {
-			if (current->ofile[fd]) {
-				fileclose(current->ofile[fd]);
-				current->ofile[fd] = 0;
-			}
-		}
-		if (current->cwd) {
-			fs_iput(current->cwd);
-			current->cwd = 0;
-		}
-		current->exit_status = -1;
-		if (current->parent) {
-			current->state = ZOMBIE;
-			proc_wakeup(current->parent);
-		} else {
-			current->state = UNUSED;
-		}
-		proc_sched();
+		proc_cleanup(-1);
 	}
 }

@@ -337,6 +337,27 @@ int proc_signal_pgrp(int pgid, int sig) {
 	return found ? 0 : -ESRCH;
 }
 
+void proc_cleanup(int exit_status) {
+	for (int fd = 0; fd < NOFILE; fd++) {
+		if (current->ofile[fd]) {
+			fileclose(current->ofile[fd]);
+			current->ofile[fd] = 0;
+		}
+	}
+	if (current->cwd) {
+		fs_iput(current->cwd);
+		current->cwd = 0;
+	}
+	current->exit_status = exit_status;
+	if (current->parent) {
+		current->state = ZOMBIE;
+		proc_wakeup(current->parent);
+	} else {
+		current->state = UNUSED;
+	}
+	proc_sched();
+}
+
 void proc_check_signals(void) {
 	if (current->pending == 0) {
 		return;
@@ -344,8 +365,8 @@ void proc_check_signals(void) {
 
 	if (current->pending & (1 << SIGKILL)) {
 		current->pending &= ~(1 << SIGKILL);
-		current->exit_status = -SIGKILL;
-		goto do_exit;
+		proc_cleanup(-SIGKILL);
+		return;
 	}
 
 	int stop_sigs[] = {SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU};
@@ -371,29 +392,8 @@ void proc_check_signals(void) {
 	for (int i = 0; i < 8; i++) {
 		if (current->pending & (1 << term_sigs[i])) {
 			current->pending &= ~(1 << term_sigs[i]);
-			current->exit_status = -term_sigs[i];
-			goto do_exit;
+			proc_cleanup(-term_sigs[i]);
+			return;
 		}
 	}
-
-	return;
-
-do_exit:
-	for (int fd = 0; fd < NOFILE; fd++) {
-		if (current->ofile[fd]) {
-			fileclose(current->ofile[fd]);
-			current->ofile[fd] = 0;
-		}
-	}
-	if (current->cwd) {
-		fs_iput(current->cwd);
-		current->cwd = 0;
-	}
-	if (current->parent) {
-		current->state = ZOMBIE;
-		proc_wakeup(current->parent);
-	} else {
-		current->state = UNUSED;
-	}
-	proc_sched();
 }

@@ -85,5 +85,6 @@ int proc_setpgid(int pid, int pgid);
 int proc_getpgid(int pid);
 int proc_signal_pgrp(int pgid, int sig);
 void proc_check_signals(void);
+void proc_cleanup(int exit_status);
 
 #endif

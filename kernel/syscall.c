@@ -34,25 +34,7 @@ static long sys_write(int fd, const char *buf, unsigned long len) {
 }
 
 static long sys_exit(int status) {
-	for (int fd = 0; fd < NOFILE; fd++) {
-		if (current->ofile[fd]) {
-			fileclose(current->ofile[fd]);
-			current->ofile[fd] = 0;
-		}
-	}
-
-	if (current->cwd) {
-		fs_iput(current->cwd);
-		current->cwd = 0;
-	}
-	current->exit_status = status;
-	if (current->parent) {
-		current->state = ZOMBIE;
-		proc_wakeup(current->parent);
-	} else {
-		current->state = UNUSED;
-	}
-	proc_sched();
+	proc_cleanup(status);
 	return 0;
 }
 
