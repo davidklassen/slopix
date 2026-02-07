@@ -74,8 +74,8 @@ static long sys_getpid(void) {
 
 static long sys_exec(const char *cmdline) {
 	// Safely copy command line from user space
-	char kcmd[1024];
-	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 1024) < 0) {
+	char kcmd[2048];
+	if (vmm_copyinstr(current->pagetable, kcmd, (unsigned long)cmdline, 2048) < 0) {
 		return -EFAULT;
 	}
 
