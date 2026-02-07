@@ -8,16 +8,20 @@ An experiment in vibe-coding an operating system from scratch. Every line of cod
 
 ## Development Environment Setup
 
+The build system bootstraps its own cross-toolchain from source — no cross compiler needed.
+
 ### macOS
 
 ```bash
-brew install aarch64-elf-gcc qemu
+xcode-select --install
+brew install qemu
 ```
 
 ### Ubuntu
 
 ```bash
-sudo apt install gcc-aarch64-linux-gnu qemu-system-arm
+sudo apt update
+sudo apt install build-essential qemu-system-arm
 ```
 
 ## Run
