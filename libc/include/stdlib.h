@@ -28,6 +28,8 @@ int mkstemp(char *templ);
 
 int atexit(void (*func)(void));
 
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+
 char *getenv(const char *name);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);

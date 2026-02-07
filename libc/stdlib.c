@@ -367,6 +367,88 @@ int waitpid(int pid, int *wstatus, int options) {
 	return ret >> 16;
 }
 
+static void swap(char *a, char *b, size_t size) {
+	char buf[256];
+	if (size <= sizeof(buf)) {
+		memcpy(buf, a, size);
+		memcpy(a, b, size);
+		memcpy(b, buf, size);
+	} else {
+		for (size_t i = 0; i < size; i++) {
+			char tmp = a[i];
+			a[i] = b[i];
+			b[i] = tmp;
+		}
+	}
+}
+
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
+	if (nmemb < 2)
+		return;
+
+	struct {
+		size_t lo, hi;
+	} stack[64];
+	int top = 0;
+
+	stack[top].lo = 0;
+	stack[top].hi = nmemb - 1;
+	top++;
+
+	char *arr = base;
+
+	while (top > 0) {
+		top--;
+		size_t lo = stack[top].lo;
+		size_t hi = stack[top].hi;
+
+		while (lo < hi) {
+			// Median-of-three pivot
+			size_t mid = lo + (hi - lo) / 2;
+			if (compar(arr + mid * size, arr + lo * size) < 0)
+				swap(arr + mid * size, arr + lo * size, size);
+			if (compar(arr + hi * size, arr + lo * size) < 0)
+				swap(arr + hi * size, arr + lo * size, size);
+			if (compar(arr + mid * size, arr + hi * size) < 0)
+				swap(arr + mid * size, arr + hi * size, size);
+			// Pivot is now at arr[hi]
+
+			// Hoare-like partition with Lomuto scheme
+			char *pivot = arr + hi * size;
+			size_t i = lo;
+			for (size_t j = lo; j < hi; j++) {
+				if (compar(arr + j * size, pivot) < 0) {
+					swap(arr + i * size, arr + j * size, size);
+					i++;
+				}
+			}
+			swap(arr + i * size, arr + hi * size, size);
+
+			// Push larger partition, loop on smaller
+			size_t left_size = (i > lo) ? i - lo : 0;
+			size_t right_size = (hi > i) ? hi - i : 0;
+
+			if (left_size > right_size) {
+				if (i > lo + 1) {
+					stack[top].lo = lo;
+					stack[top].hi = i - 1;
+					top++;
+				}
+				lo = i + 1;
+			} else {
+				if (i + 1 < hi) {
+					stack[top].lo = i + 1;
+					stack[top].hi = hi;
+					top++;
+				}
+				hi = (i > 0) ? i - 1 : 0;
+				if (i == 0)
+					break;
+			}
+		}
+	}
+}
+
 int lstat(const char *path, struct stat *st) {
 	return stat(path, st);
 }

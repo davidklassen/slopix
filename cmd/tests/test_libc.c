@@ -788,6 +788,107 @@ TEST(setenv_multiple) {
 	return 0;
 }
 
+static int cmp_int(const void *a, const void *b) {
+	return *(const int *)a - *(const int *)b;
+}
+
+static int cmp_str(const void *a, const void *b) {
+	return strcmp(*(const char *const *)a, *(const char *const *)b);
+}
+
+TEST(qsort_ints) {
+	int arr[] = {5, 3, 1, 4, 2};
+	qsort(arr, 5, sizeof(int), cmp_int);
+	for (int i = 0; i < 4; i++) {
+		ASSERT(arr[i] <= arr[i + 1], "ascending order");
+	}
+	return 0;
+}
+
+TEST(qsort_strings) {
+	const char *arr[] = {"banana", "apple", "cherry", "date"};
+	qsort(arr, 4, sizeof(char *), cmp_str);
+	ASSERT_EQ(strcmp(arr[0], "apple"), 0, "first");
+	ASSERT_EQ(strcmp(arr[1], "banana"), 0, "second");
+	ASSERT_EQ(strcmp(arr[2], "cherry"), 0, "third");
+	ASSERT_EQ(strcmp(arr[3], "date"), 0, "fourth");
+	return 0;
+}
+
+TEST(qsort_already_sorted) {
+	int arr[] = {1, 2, 3, 4, 5};
+	qsort(arr, 5, sizeof(int), cmp_int);
+	for (int i = 0; i < 5; i++) {
+		ASSERT_EQ(arr[i], i + 1, "unchanged");
+	}
+	return 0;
+}
+
+TEST(qsort_reverse) {
+	int arr[] = {5, 4, 3, 2, 1};
+	qsort(arr, 5, sizeof(int), cmp_int);
+	for (int i = 0; i < 5; i++) {
+		ASSERT_EQ(arr[i], i + 1, "reversed to ascending");
+	}
+	return 0;
+}
+
+TEST(qsort_single) {
+	int arr[] = {42};
+	qsort(arr, 1, sizeof(int), cmp_int);
+	ASSERT_EQ(arr[0], 42, "single element unchanged");
+	return 0;
+}
+
+TEST(qsort_empty) {
+	int arr[] = {1};
+	qsort(arr, 0, sizeof(int), cmp_int);
+	ASSERT_EQ(arr[0], 1, "no crash on empty");
+	return 0;
+}
+
+TEST(qsort_duplicates) {
+	int arr[] = {3, 1, 2, 1, 3, 2};
+	qsort(arr, 6, sizeof(int), cmp_int);
+	ASSERT_EQ(arr[0], 1, "first");
+	ASSERT_EQ(arr[1], 1, "second");
+	ASSERT_EQ(arr[2], 2, "third");
+	ASSERT_EQ(arr[3], 2, "fourth");
+	ASSERT_EQ(arr[4], 3, "fifth");
+	ASSERT_EQ(arr[5], 3, "sixth");
+	return 0;
+}
+
+struct big_elem {
+	int key;
+	char padding[300];
+};
+
+static int cmp_big(const void *a, const void *b) {
+	return ((const struct big_elem *)a)->key -
+	       ((const struct big_elem *)b)->key;
+}
+
+TEST(qsort_large_elements) {
+	struct big_elem arr[4];
+	arr[0].key = 40;
+	arr[1].key = 10;
+	arr[2].key = 30;
+	arr[3].key = 20;
+	memset(arr[0].padding, 'a', 300);
+	memset(arr[1].padding, 'b', 300);
+	memset(arr[2].padding, 'c', 300);
+	memset(arr[3].padding, 'd', 300);
+	qsort(arr, 4, sizeof(struct big_elem), cmp_big);
+	ASSERT_EQ(arr[0].key, 10, "first by key");
+	ASSERT_EQ(arr[1].key, 20, "second by key");
+	ASSERT_EQ(arr[2].key, 30, "third by key");
+	ASSERT_EQ(arr[3].key, 40, "fourth by key");
+	ASSERT_EQ(arr[0].padding[0], 'b', "payload followed key");
+	ASSERT_EQ(arr[3].padding[0], 'a', "payload followed key");
+	return 0;
+}
+
 TEST_SUITE(libc) {
 	RUN_TEST(strlen_empty);
 	RUN_TEST(strlen_basic);
@@ -896,4 +997,12 @@ TEST_SUITE(libc) {
 	RUN_TEST(unsetenv_nonexistent);
 	RUN_TEST(unsetenv_invalid);
 	RUN_TEST(setenv_multiple);
+	RUN_TEST(qsort_ints);
+	RUN_TEST(qsort_strings);
+	RUN_TEST(qsort_already_sorted);
+	RUN_TEST(qsort_reverse);
+	RUN_TEST(qsort_single);
+	RUN_TEST(qsort_empty);
+	RUN_TEST(qsort_duplicates);
+	RUN_TEST(qsort_large_elements);
 }

@@ -1,9 +1,21 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+struct entry {
+	char name[NAME_MAX + 1];
+	char type;
+	long long size;
+};
+
+static int cmp_entry(const void *a, const void *b) {
+	return strcmp(((const struct entry *)a)->name,
+		      ((const struct entry *)b)->name);
+}
 
 static int digit_count(long long n) {
 	if (n == 0)
@@ -29,10 +41,17 @@ static void ls(const char *path) {
 		return;
 	}
 
-	// First pass: find max size for column width
 	DIR *d = opendir(path);
 	if (d == 0) {
 		printf("ls: cannot open %s\n", path);
+		return;
+	}
+
+	size_t cap = 16;
+	size_t count = 0;
+	struct entry *entries = malloc(cap * sizeof(struct entry));
+	if (entries == 0) {
+		closedir(d);
 		return;
 	}
 
@@ -50,52 +69,51 @@ static void ls(const char *path) {
 		if (stat(fullpath, &entst) < 0)
 			continue;
 
-		if (entst.st_size > max_size)
-			max_size = entst.st_size;
+		if (count == cap) {
+			cap *= 2;
+			struct entry *tmp =
+			    realloc(entries, cap * sizeof(struct entry));
+			if (tmp == 0) {
+				break;
+			}
+			entries = tmp;
+		}
+
+		strncpy(entries[count].name, ent->d_name, NAME_MAX);
+		entries[count].name[NAME_MAX] = '\0';
+
+		if (S_ISREG(entst.st_mode))
+			entries[count].type = '-';
+		else if (S_ISDIR(entst.st_mode))
+			entries[count].type = 'd';
+		else if (S_ISCHR(entst.st_mode))
+			entries[count].type = 'c';
+		else if (S_ISBLK(entst.st_mode))
+			entries[count].type = 'b';
+		else
+			entries[count].type = '?';
+
+		entries[count].size = (long long)entst.st_size;
+		if (entries[count].size > max_size)
+			max_size = entries[count].size;
+
+		count++;
 	}
 
 	closedir(d);
 
-	// Second pass: print entries with proper alignment
-	d = opendir(path);
-	if (d == 0)
-		return;
+	qsort(entries, count, sizeof(struct entry), cmp_entry);
 
 	int width = digit_count(max_size);
-
-	while ((ent = readdir(d)) != 0) {
-		if (strcmp(path, "/") == 0)
-			snprintf(fullpath, sizeof(fullpath), "/%s", ent->d_name);
-		else
-			snprintf(fullpath, sizeof(fullpath), "%s/%s", path, ent->d_name);
-
-		struct stat entst;
-		if (stat(fullpath, &entst) < 0) {
-			printf("ls: cannot stat %s\n", fullpath);
-			continue;
-		}
-
-		char type;
-		if (S_ISREG(entst.st_mode)) {
-			type = '-';
-		} else if (S_ISDIR(entst.st_mode)) {
-			type = 'd';
-		} else if (S_ISCHR(entst.st_mode)) {
-			type = 'c';
-		} else if (S_ISBLK(entst.st_mode)) {
-			type = 'b';
-		} else {
-			type = '?';
-		}
-
-		int padding = width - digit_count(entst.st_size);
-		printf("%c ", type);
+	for (size_t i = 0; i < count; i++) {
+		int padding = width - digit_count(entries[i].size);
+		printf("%c ", entries[i].type);
 		while (padding-- > 0)
 			printf(" ");
-		printf("%lld %s\n", (long long)entst.st_size, ent->d_name);
+		printf("%lld %s\n", entries[i].size, entries[i].name);
 	}
 
-	closedir(d);
+	free(entries);
 }
 
 int main(int argc, char **argv) {
