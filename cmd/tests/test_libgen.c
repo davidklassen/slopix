@@ -112,6 +112,20 @@ TEST(basename_deep_path) {
 	return 0;
 }
 
+TEST(dirname_no_modify) {
+	char path[] = "/usr/lib";
+	dirname(path);
+	ASSERT_EQ(strcmp(path, "/usr/lib"), 0, "dirname should not modify input");
+	return 0;
+}
+
+TEST(basename_no_modify) {
+	char path[] = "/usr/lib/";
+	basename(path);
+	ASSERT_EQ(strcmp(path, "/usr/lib/"), 0, "basename should not modify input");
+	return 0;
+}
+
 TEST_SUITE(libgen) {
 	RUN_TEST(dirname_absolute_path);
 	RUN_TEST(dirname_trailing_slash);
@@ -129,4 +143,6 @@ TEST_SUITE(libgen) {
 	RUN_TEST(basename_null);
 	RUN_TEST(basename_just_filename);
 	RUN_TEST(basename_deep_path);
+	RUN_TEST(dirname_no_modify);
+	RUN_TEST(basename_no_modify);
 }

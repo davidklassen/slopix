@@ -1,59 +1,58 @@
 #include <string.h>
 
+#define PATH_MAX 1024
+
 char *dirname(char *path) {
-	static char dot[] = ".";
+	static char buf[PATH_MAX];
 
-	if (!path || !*path) {
-		return dot;
-	}
+	if (!path || !*path)
+		return ".";
 
-	// Remove trailing slashes
-	char *end = path + strlen(path) - 1;
-	while (end > path && *end == '/') {
+	size_t len = strlen(path);
+	if (len >= PATH_MAX)
+		len = PATH_MAX - 1;
+	memcpy(buf, path, len);
+	buf[len] = '\0';
+
+	char *end = buf + len - 1;
+	while (end > buf && *end == '/')
 		end--;
-	}
 
-	// Find last slash before end
-	while (end > path && *end != '/') {
+	while (end > buf && *end != '/')
 		end--;
-	}
 
-	if (end == path) {
-		if (*end == '/') {
+	if (end == buf) {
+		if (*end == '/')
 			return "/";
-		}
-		return dot;
+		return ".";
 	}
 
-	// Remove trailing slashes from directory
-	while (end > path && *end == '/') {
+	while (end > buf && *end == '/')
 		end--;
-	}
 
 	*(end + 1) = '\0';
-	return path;
+	return buf;
 }
 
 char *basename(char *path) {
-	static char dot[] = ".";
-	static char slash[] = "/";
+	static char buf[PATH_MAX];
 
-	if (!path || !*path) {
-		return dot;
-	}
+	if (!path || !*path)
+		return ".";
 
-	// Remove trailing slashes
-	char *end = path + strlen(path) - 1;
-	while (end > path && *end == '/') {
+	size_t len = strlen(path);
+	if (len >= PATH_MAX)
+		len = PATH_MAX - 1;
+	memcpy(buf, path, len);
+	buf[len] = '\0';
+
+	char *end = buf + len - 1;
+	while (end > buf && *end == '/')
 		*end-- = '\0';
-	}
 
-	// Handle root directory
-	if (path[0] == '/' && path[1] == '\0') {
-		return slash;
-	}
+	if (buf[0] == '/' && buf[1] == '\0')
+		return "/";
 
-	// Find last slash
-	char *base = strrchr(path, '/');
-	return base ? base + 1 : path;
+	char *base = strrchr(buf, '/');
+	return base ? base + 1 : buf;
 }
