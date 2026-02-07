@@ -1,8 +1,22 @@
 ROOT = $(CURDIR)
 
+HOSTCC ?= cc
+ifeq ($(origin CC),default)
+CC = $(ROOT)/.bin/cc
+endif
+ifeq ($(origin AS),default)
+AS = $(ROOT)/.bin/as
+endif
+ifeq ($(origin LD),default)
+LD = $(ROOT)/.bin/ld
+endif
+ifeq ($(origin AR),default)
+AR = $(ROOT)/.bin/ar
+endif
+
 BUILD = $(ROOT)/.bin/build
 MKFS = $(ROOT)/.bin/mkfs
-BUILD_ENV = TZ=UTC BUILD=$(BUILD) CC=$(ROOT)/.bin/cc AS=$(ROOT)/.bin/as LD=$(ROOT)/.bin/ld AR=$(ROOT)/.bin/ar \
+BUILD_ENV = TZ=UTC BUILD=$(BUILD) CC=$(CC) AS=$(AS) LD=$(LD) AR=$(AR) \
 	INCLUDE_PATH=$(ROOT)/libc/include LIB_PATH=$(ROOT)/.build/out/lib \
 	BUILD_INCLUDE=$(ROOT)/lib
 
@@ -16,25 +30,25 @@ QEMU_TEST = $(QEMU_BASE) $(QEMU_PFLASH) -drive file=disk-test.img,if=none,format
 all: build
 
 .bin/build: cmd/build/main.c lib/build.h | .bin
-	cc -I lib -std=c11 -g -Wall -Wextra -Werror -O0 -o $@ cmd/build/main.c
+	$(HOSTCC) -I lib -std=c11 -g -Wall -Wextra -Werror -O0 -o $@ cmd/build/main.c
 
 .bin/cc: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/cc
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/cc
 
 .bin/as: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/as
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/as
 
 .bin/ld: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/ld
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ld
 
 .bin/ar: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/ar
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/ar
 
 .bin/mkfs: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/mkfs
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkfs
 
 .bin/mkramfs: .bin/build | .bin
-	LD=cc $(BUILD) --prefix=.bin cmd/mkramfs
+	CC=$(HOSTCC) AS=as LD=$(HOSTCC) $(BUILD) --prefix=.bin cmd/mkramfs
 
 .bin:
 	mkdir -p $@
