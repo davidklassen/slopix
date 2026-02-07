@@ -1073,7 +1073,9 @@ int main(void) {
 		report_done_jobs();
 		printf("slopix> ");
 		fflush(stdout);
+		tcsetraw(0, 1);
 		int n = readline(buf, sizeof(buf));
+		tcsetraw(0, 0);
 		if (n < 0) {
 			printf("\n");
 			exit(0);
