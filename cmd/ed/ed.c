@@ -653,7 +653,7 @@ void editorSelectSyntaxHighlight(char *filename) {
 
 // Update the rendered version and the syntax highlight of a row.
 void editorUpdateRow(erow *row) {
-	unsigned int tabs = 0, nonprint = 0;
+	unsigned int tabs = 0;
 	int j, idx;
 
 	// Create a version of the row we can directly print on the screen,
@@ -666,13 +666,13 @@ void editorUpdateRow(erow *row) {
 	}
 
 	unsigned long long allocsize =
-	    (unsigned long long)row->size + tabs * 8 + nonprint * 9 + 1;
+	    (unsigned long long)row->size + tabs * 8 + 1;
 	if (allocsize > UINT32_MAX) {
 		printf("Some line of the edited file is too long for ed\n");
 		exit(1);
 	}
 
-	row->render = malloc(row->size + tabs * 8 + nonprint * 9 + 1);
+	row->render = malloc(row->size + tabs * 8 + 1);
 	idx = 0;
 	for (j = 0; j < row->size; j++) {
 		if (row->chars[j] == TAB) {

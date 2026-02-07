@@ -62,6 +62,7 @@
 
 // Timeout and retry configuration
 #define VIRTIO_TIMEOUT_TICKS 100
+#define VIRTIO_TIMEOUT_NOPS  100000000
 #define VIRTIO_MAX_RETRIES   3
 
 // VIRTIO0 interrupt (at 0x0a003e00, SPI 47 = INTID 79)

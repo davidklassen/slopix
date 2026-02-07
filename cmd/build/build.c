@@ -38,7 +38,6 @@ int main(void) {
 
 	Cmd cmd = {0};
 
-	// Compile - need both libc include and build.h include
 	cmd_append(&cmd, cc, NULL);
 	if (include_path && include_path[0]) {
 		static char incflag[256];
@@ -54,12 +53,10 @@ int main(void) {
 	if (cmd_run(&cmd) != 0) return 1;
 	cmd_reset(&cmd);
 
-	// Assemble
 	cmd_append(&cmd, as, "-o", ".build/obj/main.o", ".build/obj/main.s", NULL);
 	if (cmd_run(&cmd) != 0) return 1;
 	cmd_reset(&cmd);
 
-	// Link
 	const char *objs[] = {"main", NULL};
 	if (link_objs(outpath, objs) != 0) return 1;
 

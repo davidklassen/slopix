@@ -76,9 +76,7 @@ static bool take_arg(char *arg) {
 	return false;
 }
 
-static void add_default_include_paths(char *argv0) {
-	(void)argv0;
-
+static void add_default_include_paths(void) {
 	char *include_path = getenv("CC_INCLUDE_PATH");
 	if (include_path) {
 		strarray_push(&include_paths, include_path);
@@ -671,7 +669,7 @@ int main(int argc, char **argv) {
 	parse_args(argc, argv);
 
 	if (opt_cc1) {
-		add_default_include_paths(argv[0]);
+		add_default_include_paths();
 		cc1();
 		return 0;
 	}
