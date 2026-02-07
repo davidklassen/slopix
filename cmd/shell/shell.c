@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -29,6 +30,7 @@
 #define KEY_CTRL_D    261
 #define KEY_ENTER     262
 #define KEY_BACKSPACE 263
+#define KEY_TAB	      264
 
 struct cmd {
 	int type;
@@ -517,6 +519,9 @@ static int read_key(void) {
 	if (c == 0x04) {
 		return KEY_CTRL_D;
 	}
+	if (c == '\t') {
+		return KEY_TAB;
+	}
 
 	if (c == 0x1b) {
 		if (poll(0, 50) == 0) {
@@ -565,6 +570,235 @@ static void line_replace(char *buf, int *len, int *pos, const char *entry, int e
 	memcpy(buf, entry, elen);
 	*len = elen;
 	*pos = elen;
+}
+
+#define MAX_COMPLETIONS 64
+
+struct builtin {
+	const char *name;
+	int (*func)(int argc, char **argv);
+};
+
+static struct builtin builtins[];
+
+static int last_was_tab;
+
+static void tab_complete(char *buf, int *len, int *pos) {
+	static char matches[MAX_COMPLETIONS][NAME_MAX + 1];
+	int match_count = 0;
+
+	int token_start = *pos;
+	while (token_start > 0 && buf[token_start - 1] != ' ') {
+		token_start--;
+	}
+	int token_len = *pos - token_start;
+	char token[128];
+	memcpy(token, buf + token_start, token_len);
+	token[token_len] = '\0';
+
+	char dir[128];
+	char prefix[128];
+	int dir_len;
+	char *last_slash = 0;
+	for (int i = token_len - 1; i >= 0; i--) {
+		if (token[i] == '/') {
+			last_slash = token + i;
+			break;
+		}
+	}
+
+	if (last_slash) {
+		dir_len = last_slash - token + 1;
+		memcpy(dir, token, dir_len);
+		dir[dir_len] = '\0';
+		strncpy(prefix, last_slash + 1, sizeof(prefix) - 1);
+		prefix[sizeof(prefix) - 1] = '\0';
+	} else {
+		strcpy(dir, ".");
+		dir_len = 0;
+		strncpy(prefix, token, sizeof(prefix) - 1);
+		prefix[sizeof(prefix) - 1] = '\0';
+	}
+	int prefix_len = strlen(prefix);
+
+	int first_word = (token_start == 0);
+	int has_slash = (last_slash != 0);
+
+	if (first_word && !has_slash) {
+		for (struct builtin *b = builtins; b->name; b++) {
+			if (strncmp(b->name, prefix, prefix_len) == 0 && match_count < MAX_COMPLETIONS) {
+				strncpy(matches[match_count], b->name, NAME_MAX);
+				matches[match_count][NAME_MAX] = '\0';
+				match_count++;
+			}
+		}
+		DIR *dp = opendir("/bin");
+		if (dp) {
+			struct dirent *de;
+			while ((de = readdir(dp)) != 0) {
+				if (de->d_name[0] == '.') {
+					continue;
+				}
+				if (strncmp(de->d_name, prefix, prefix_len) == 0 && match_count < MAX_COMPLETIONS) {
+					int dup = 0;
+					for (int i = 0; i < match_count; i++) {
+						if (strcmp(matches[i], de->d_name) == 0) {
+							dup = 1;
+							break;
+						}
+					}
+					if (!dup) {
+						strncpy(matches[match_count], de->d_name, NAME_MAX);
+						matches[match_count][NAME_MAX] = '\0';
+						match_count++;
+					}
+				}
+			}
+			closedir(dp);
+		}
+	}
+
+	DIR *dp = opendir(dir);
+	if (dp) {
+		struct dirent *de;
+		while ((de = readdir(dp)) != 0) {
+			if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) {
+				continue;
+			}
+			if (strncmp(de->d_name, prefix, prefix_len) == 0 && match_count < MAX_COMPLETIONS) {
+				int dup = 0;
+				for (int i = 0; i < match_count; i++) {
+					if (strcmp(matches[i], de->d_name) == 0) {
+						dup = 1;
+						break;
+					}
+				}
+				if (!dup) {
+					strncpy(matches[match_count], de->d_name, NAME_MAX);
+					matches[match_count][NAME_MAX] = '\0';
+					match_count++;
+				}
+			}
+		}
+		closedir(dp);
+	}
+
+	if (match_count == 0) {
+		return;
+	}
+
+	char common[NAME_MAX + 1];
+	strncpy(common, matches[0], NAME_MAX);
+	common[NAME_MAX] = '\0';
+	int common_len = strlen(common);
+	for (int i = 1; i < match_count; i++) {
+		int j = 0;
+		while (j < common_len && matches[i][j] == common[j]) {
+			j++;
+		}
+		common_len = j;
+		common[common_len] = '\0';
+	}
+
+	if (match_count == 1) {
+		char full[256];
+		int flen;
+		if (has_slash) {
+			flen = snprintf(full, sizeof(full), "%s%s", dir, matches[0]);
+		} else if (first_word) {
+			flen = snprintf(full, sizeof(full), "%s", matches[0]);
+		} else {
+			flen = snprintf(full, sizeof(full), "%s%s", dir_len ? dir : "", matches[0]);
+		}
+		char path[256];
+		if (has_slash) {
+			snprintf(path, sizeof(path), "%s%s", dir, matches[0]);
+		} else {
+			snprintf(path, sizeof(path), "%s/%s", strcmp(dir, ".") == 0 ? "." : dir, matches[0]);
+		}
+		struct stat st;
+		if (stat(path, &st) == 0 && S_ISDIR(st.st_mode) && flen < (int)sizeof(full) - 1) {
+			full[flen++] = '/';
+			full[flen] = '\0';
+		}
+
+		int old_tail = *len - *pos;
+		for (int i = 0; i < *pos - token_start; i++) {
+			write(1, "\b", 1);
+		}
+		write(1, full, flen);
+		int old_from_token = *len - token_start;
+		for (int i = flen; i < old_from_token; i++) {
+			write(1, " ", 1);
+		}
+		for (int i = flen; i < old_from_token; i++) {
+			write(1, "\b", 1);
+		}
+		if (old_tail > 0) {
+			memmove(buf + token_start + flen, buf + *pos, old_tail);
+			write(1, buf + token_start + flen, old_tail);
+			for (int i = 0; i < old_tail; i++) {
+				write(1, "\b", 1);
+			}
+		}
+		memcpy(buf + token_start, full, flen);
+		*len = token_start + flen + old_tail;
+		*pos = token_start + flen;
+		return;
+	}
+
+	if (common_len > prefix_len) {
+		char full[256];
+		int flen;
+		if (has_slash) {
+			flen = snprintf(full, sizeof(full), "%s%s", dir, common);
+		} else {
+			flen = snprintf(full, sizeof(full), "%s", common);
+		}
+		int old_tail = *len - *pos;
+		for (int i = 0; i < *pos - token_start; i++) {
+			write(1, "\b", 1);
+		}
+		write(1, full, flen);
+		int old_from_token = *len - token_start;
+		for (int i = flen; i < old_from_token; i++) {
+			write(1, " ", 1);
+		}
+		for (int i = flen; i < old_from_token; i++) {
+			write(1, "\b", 1);
+		}
+		if (old_tail > 0) {
+			memmove(buf + token_start + flen, buf + *pos, old_tail);
+			write(1, buf + token_start + flen, old_tail);
+			for (int i = 0; i < old_tail; i++) {
+				write(1, "\b", 1);
+			}
+		}
+		memcpy(buf + token_start, full, flen);
+		*len = token_start + flen + old_tail;
+		*pos = token_start + flen;
+		last_was_tab = 0;
+		return;
+	}
+
+	if (!last_was_tab) {
+		last_was_tab = 1;
+		return;
+	}
+
+	write(1, "\n", 1);
+	for (int i = 0; i < match_count; i++) {
+		if (i > 0) {
+			write(1, "  ", 2);
+		}
+		write(1, matches[i], strlen(matches[i]));
+	}
+	write(1, "\n", 1);
+	write(1, "slopix> ", 8);
+	write(1, buf, *len);
+	for (int i = 0; i < *len - *pos; i++) {
+		write(1, "\b", 1);
+	}
 }
 
 static int readline(char *buf, int max) {
@@ -649,7 +883,12 @@ static int readline(char *buf, int max) {
 			}
 			break;
 
+		case KEY_TAB:
+			tab_complete(buf, &len, &pos);
+			break;
+
 		default:
+			last_was_tab = 0;
 			if (key >= ' ' && key < 256) {
 				memmove(buf + pos + 1, buf + pos, len - pos);
 				buf[pos] = key;
@@ -797,11 +1036,6 @@ static int builtin_bg(int argc, char **argv) {
 	j->state = JOB_RUNNING;
 	return 0;
 }
-
-struct builtin {
-	const char *name;
-	int (*func)(int argc, char **argv);
-};
 
 static struct builtin builtins[] = {
     {"cd", builtin_cd},
