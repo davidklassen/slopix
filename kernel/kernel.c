@@ -47,6 +47,7 @@ DECLARE_SUITE(dtb);
 DECLARE_SUITE(cmdline);
 DECLARE_SUITE(gic);
 DECLARE_SUITE(rtc);
+DECLARE_SUITE(elf);
 DECLARE_SUITE(proc);
 
 void kernel_main(void) {
@@ -81,6 +82,7 @@ void kernel_main(void) {
 	RUN_SUITE(tlb);
 	RUN_SUITE(walk);
 	RUN_SUITE(copyinstr);
+	RUN_SUITE(elf);
 	RUN_SUITE(proc);
 
 	virtio_init();
