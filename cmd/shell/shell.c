@@ -74,6 +74,24 @@ static int background;
 static int shell_pgid;
 static int last_exit_status = 0;
 
+#define HISTORY_SIZE 16
+
+static char history[HISTORY_SIZE][128];
+static int history_count;
+
+static void history_add(const char *line) {
+	if (history_count > 0 && strcmp(history[history_count - 1], line) == 0) {
+		return;
+	}
+	if (history_count >= HISTORY_SIZE) {
+		memmove(history[0], history[1], (HISTORY_SIZE - 1) * 128);
+		history_count = HISTORY_SIZE - 1;
+	}
+	strncpy(history[history_count], line, 127);
+	history[history_count][127] = '\0';
+	history_count++;
+}
+
 static char *ps;
 static char *es;
 
@@ -532,9 +550,29 @@ static int read_key(void) {
 	return -1;
 }
 
+static void line_replace(char *buf, int *len, int *pos, const char *entry, int elen) {
+	for (int i = 0; i < *pos; i++) {
+		write(1, "\b", 1);
+	}
+	write(1, entry, elen);
+	int oldlen = *len;
+	for (int i = elen; i < oldlen; i++) {
+		write(1, " ", 1);
+	}
+	for (int i = elen; i < oldlen; i++) {
+		write(1, "\b", 1);
+	}
+	memcpy(buf, entry, elen);
+	*len = elen;
+	*pos = elen;
+}
+
 static int readline(char *buf, int max) {
 	int len = 0;
 	int pos = 0;
+	int hidx = -1;
+	char saved[128];
+	int saved_len = 0;
 
 	while (len < max - 1) {
 		int key = read_key();
@@ -588,7 +626,27 @@ static int readline(char *buf, int max) {
 			break;
 
 		case KEY_UP:
+			if (hidx + 1 < history_count) {
+				if (hidx == -1) {
+					memcpy(saved, buf, len);
+					saved_len = len;
+				}
+				hidx++;
+				char *entry = history[history_count - 1 - hidx];
+				line_replace(buf, &len, &pos, entry, strlen(entry));
+			}
+			break;
+
 		case KEY_DOWN:
+			if (hidx >= 0) {
+				hidx--;
+				if (hidx == -1) {
+					line_replace(buf, &len, &pos, saved, saved_len);
+				} else {
+					char *entry = history[history_count - 1 - hidx];
+					line_replace(buf, &len, &pos, entry, strlen(entry));
+				}
+			}
 			break;
 
 		default:
@@ -787,6 +845,7 @@ int main(void) {
 			exit(0);
 		}
 		if (n > 0) {
+			history_add(buf);
 			char cmdstr[64];
 			strncpy(cmdstr, buf, 63);
 			cmdstr[63] = '\0';
