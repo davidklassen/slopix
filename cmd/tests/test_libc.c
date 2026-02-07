@@ -658,15 +658,15 @@ TEST(atexit_register) {
 	return 0;
 }
 
-TEST(time_returns_zero) {
-	ASSERT_EQ(time(0), 0, "time returns 0");
+TEST(time_returns_positive) {
+	ASSERT(time(0) > 0, "time returns positive");
 	return 0;
 }
 
 TEST(time_sets_tloc) {
-	time_t t = 99;
+	time_t t = 0;
 	time(&t);
-	ASSERT_EQ(t, 0, "time sets tloc to 0");
+	ASSERT(t > 0, "time sets tloc to positive");
 	return 0;
 }
 
@@ -980,7 +980,7 @@ TEST_SUITE(libc) {
 	RUN_TEST(mkstemp_unique);
 	RUN_TEST(mkstemp_invalid_template);
 	RUN_TEST(atexit_register);
-	RUN_TEST(time_returns_zero);
+	RUN_TEST(time_returns_positive);
 	RUN_TEST(time_sets_tloc);
 	RUN_TEST(localtime_returns_valid);
 	RUN_TEST(localtime_zeroed);

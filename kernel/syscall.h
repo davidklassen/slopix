@@ -42,6 +42,7 @@
 #define SYS_getdents  38
 #define SYS_reboot    39
 #define SYS_uname     40
+#define SYS_time      41
 
 struct utsname {
 	char sysname[32];

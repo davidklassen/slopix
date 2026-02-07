@@ -2,7 +2,7 @@ ROOT = $(CURDIR)
 
 BUILD = $(ROOT)/.bin/build
 MKFS = $(ROOT)/.bin/mkfs
-BUILD_ENV = BUILD=$(BUILD) CC=$(ROOT)/.bin/cc AS=$(ROOT)/.bin/as LD=$(ROOT)/.bin/ld AR=$(ROOT)/.bin/ar \
+BUILD_ENV = TZ=UTC BUILD=$(BUILD) CC=$(ROOT)/.bin/cc AS=$(ROOT)/.bin/as LD=$(ROOT)/.bin/ld AR=$(ROOT)/.bin/ar \
 	INCLUDE_PATH=$(ROOT)/libc/include LIB_PATH=$(ROOT)/.build/out/lib \
 	BUILD_INCLUDE=$(ROOT)/lib
 

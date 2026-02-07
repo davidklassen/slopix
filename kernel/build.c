@@ -39,6 +39,7 @@ static const char *c_srcs[] = {
     "sync",
     "dtb",
     "cmdline",
+    "rtc",
     NULL,
 };
 
@@ -65,6 +66,7 @@ static const char *test_srcs[] = {
     "tests/test_cmdline",
     "tests/test_copyinstr",
     "tests/test_proc",
+    "tests/test_rtc",
     NULL,
 };
 

@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 
 TEST(write_returns_count) {
 	ASSERT_EQ(write(1, "x", 1), 1, "write returns 1");
@@ -492,6 +493,16 @@ TEST(tcsetraw_invalid_fd) {
 	return 0;
 }
 
+TEST(time_returns_nonzero) {
+	ASSERT(time(0) > 0, "time returns positive");
+	return 0;
+}
+
+TEST(time_reasonable) {
+	ASSERT(time(0) > 1700000000, "time after 2023");
+	return 0;
+}
+
 TEST_SUITE(syscalls) {
 	RUN_TEST(write_returns_count);
 	RUN_TEST(read_poll);
@@ -537,4 +548,6 @@ TEST_SUITE(syscalls) {
 	RUN_TEST(tcsetpgrp_tcgetpgrp);
 	RUN_TEST(tcsetraw_tcgetraw);
 	RUN_TEST(tcsetraw_invalid_fd);
+	RUN_TEST(time_returns_nonzero);
+	RUN_TEST(time_reasonable);
 }

@@ -13,6 +13,7 @@ int main(void) {
 	if (build_subdir("cmp") != 0) return 1;
 	if (build_subdir("cp") != 0) return 1;
 	if (build_subdir("cursor_blink") != 0) return 1;
+	if (build_subdir("date") != 0) return 1;
 	if (build_subdir("echo") != 0) return 1;
 	if (build_subdir("ed") != 0) return 1;
 	if (build_subdir("false") != 0) return 1;

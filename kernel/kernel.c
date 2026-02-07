@@ -15,6 +15,7 @@
 #include "dtb.h"
 #include "cmdline.h"
 #include "initramfs.h"
+#include "rtc.h"
 #include "tests/test.h"
 
 DECLARE_SUITE(string);
@@ -45,10 +46,12 @@ DECLARE_SUITE(pipe);
 DECLARE_SUITE(dtb);
 DECLARE_SUITE(cmdline);
 DECLARE_SUITE(gic);
+DECLARE_SUITE(rtc);
 DECLARE_SUITE(proc);
 
 void kernel_main(void) {
 	uart_init();
+	rtc_init();
 	console_init();
 	disk_init();
 
@@ -70,6 +73,7 @@ void kernel_main(void) {
 	RUN_SUITE(uart);
 	RUN_SUITE(kprintf);
 	RUN_SUITE(exception);
+	RUN_SUITE(rtc);
 	RUN_SUITE(vmm);
 
 	pmm_init();

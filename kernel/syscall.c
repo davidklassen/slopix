@@ -16,6 +16,7 @@
 #include "string.h"
 #include "sync.h"
 #include "version.h"
+#include "rtc.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
@@ -1273,6 +1274,10 @@ fail:
 	return -EINVAL;
 }
 
+static long sys_time(void) {
+	return rtc_read();
+}
+
 static long sys_uname(struct utsname *buf) {
 	if (vmm_validate(current->pagetable, (unsigned long)buf, sizeof(struct utsname), 1) < 0) {
 		return -EFAULT;
@@ -1281,7 +1286,7 @@ static long sys_uname(struct utsname *buf) {
 	strncpy(buf->sysname, "Slopix", 32);
 	strncpy(buf->nodename, "slopix", 32);
 	strncpy(buf->release, SLOPIX_VERSION, 32);
-	strncpy(buf->version, SLOPIX_VERSION, 32);
+	strncpy(buf->version, SLOPIX_BUILD_DATE, 32);
 	strncpy(buf->machine, "aarch64", 32);
 	return 0;
 }
@@ -1413,6 +1418,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_uname:
 		ret = sys_uname((struct utsname *)tf->regs[0]);
+		break;
+	case SYS_time:
+		ret = sys_time();
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);
