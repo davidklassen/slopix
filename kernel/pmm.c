@@ -119,12 +119,14 @@ void pmm_free(paddr_t pa) {
 	if (!IS_PAGE_ALIGNED(pa))
 		return;
 
-	zero_page(pa);
-
 	struct run *r = (struct run *)PA_TO_VA(pa);
 	struct run **pp = &freelist;
 	while (*pp && (paddr_t)*pp < (paddr_t)r)
 		pp = &(*pp)->next;
+	if (*pp == r)
+		return;
+
+	zero_page(pa);
 	r->next = *pp;
 	*pp = r;
 	free_count++;

@@ -73,6 +73,16 @@ TEST(pmm_alloc_contiguous_after_free) {
 	return 0;
 }
 
+TEST(pmm_free_double_free_detected) {
+	paddr_t pa = pmm_alloc();
+	ASSERT(pa != PMM_INVALID, "Should allocate page");
+	pmm_free(pa);
+	unsigned long count = pmm_free_count();
+	pmm_free(pa);
+	ASSERT_EQ(count, pmm_free_count(), "Double free should not increase count");
+	return 0;
+}
+
 TEST_SUITE(pmm) {
 	RUN_TEST(pmm_init_populates_freelist);
 	RUN_TEST(pmm_alloc_contiguous_basic);
@@ -80,6 +90,7 @@ TEST_SUITE(pmm) {
 	RUN_TEST(pmm_alloc_contiguous_zero);
 	RUN_TEST(pmm_alloc_contiguous_pages_are_contiguous);
 	RUN_TEST(pmm_alloc_contiguous_after_free);
+	RUN_TEST(pmm_free_double_free_detected);
 }
 
 #endif
