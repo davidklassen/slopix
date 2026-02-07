@@ -211,6 +211,48 @@ Stop `build_subdir()` from deleting `.build/obj/` so object files persist.
 
 This works on macOS immediately. On slopix it's a no-op until phase 3.
 
+#### Test mode vs normal mode: stale object files
+
+The kernel compiles with `-DRUN_TESTS` in test mode. This is a compile-time
+`#ifdef` — test macros either expand to real test functions or to `((void)0)`
+no-ops. The resulting .o files are different even though the source is identical.
+
+If `needs_rebuild()` only checks source mtime vs object mtime, switching between
+`make test` and `make run` reuses stale .o files from the other mode:
+
+1. `make test` — kernel .o files compiled with `-DRUN_TESTS`
+2. `make run` — source unchanged, `needs_rebuild()` says skip — links with
+   test-enabled .o files — kernel runs tests when it shouldn't
+
+Only the kernel is affected. libc, boot, and cmd compile identically in both
+modes.
+
+Options:
+
+**A. Separate object directories** — use `.build/obj/` for normal builds and
+`.build/obj-test/` for test builds. Both caches coexist, no cross-contamination.
+Simple for two modes. Doesn't scale to arbitrary flag combinations (DEBUG=1 would
+need obj-debug/, obj-test-debug/, etc).
+
+**B. Flag file** — store current flags in `.build/obj/.flags`. On build start,
+compare against stored flags. If different, wipe obj dir and rebuild. Handles
+arbitrary flags. Downside: switching modes invalidates the cache. In practice
+this is rare — you usually do repeated `make test` or repeated `make run`, not
+alternating.
+
+**C. Runtime test detection** — move test mode from compile-time `#ifdef` to a
+runtime decision. Test code is always compiled in. At boot, check a kernel
+cmdline parameter (e.g. `runtests`) to decide whether to run tests. The kernel
+already has cmdline support and QEMU can pass boot args.
+
+This eliminates the two-mode build problem entirely: one kernel binary, same .o
+files always. `make test` after `make run` never recompiles — only rebuilds the
+disk image (different test data/binaries).
+
+Tradeoff: kernel binary is larger (test code always included) and test code is
+present in the "production" kernel. For this project's size the binary difference
+is negligible.
+
 ### Phase 3: Filesystem mtime (slopix support)
 
 Add mtime to `struct dinode` and `struct inode`. Wire `rtc_read()` into
