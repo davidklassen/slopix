@@ -2,7 +2,7 @@ docsearch.db*
 .claude/
 .mcp.json
 
-/.bin/
+/.tools/
 .build/
 disk.img
 disk-test.img
