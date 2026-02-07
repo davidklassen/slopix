@@ -507,13 +507,17 @@ int assemble(const char *src) {
 	return ret;
 }
 
-static char objbufs[64][256];
+static char objbufs[256][256];
 static int objbuf_idx = 0;
 
 static const char *make_objpath(const char *base) {
+	if (objbuf_idx >= 256) {
+		log_error("object path buffer exhausted (%d slots)", 256);
+		exit(1);
+	}
 	snprintf(objbufs[objbuf_idx], sizeof(objbufs[0]), ".build/obj/%s.o", base);
 	const char *result = objbufs[objbuf_idx];
-	objbuf_idx = (objbuf_idx + 1) % 64;
+	objbuf_idx++;
 	return result;
 }
 
