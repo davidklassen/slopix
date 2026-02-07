@@ -35,6 +35,7 @@ int main(void) {
 	if (build_subdir("ticker") != 0) return 1;
 	if (build_subdir("touch") != 0) return 1;
 	if (build_subdir("true") != 0) return 1;
+	if (build_subdir("uname") != 0) return 1;
 	if (build_subdir("wc") != 0) return 1;
 
 	return 0;

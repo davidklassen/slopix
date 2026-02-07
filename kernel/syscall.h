@@ -41,6 +41,15 @@
 #define SYS_ftruncate 37
 #define SYS_getdents  38
 #define SYS_reboot    39
+#define SYS_uname     40
+
+struct utsname {
+	char sysname[32];
+	char nodename[32];
+	char release[32];
+	char version[32];
+	char machine[32];
+};
 
 struct procinfo {
 	int pid;

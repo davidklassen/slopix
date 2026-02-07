@@ -15,6 +15,7 @@
 #include "pipe.h"
 #include "string.h"
 #include "sync.h"
+#include "version.h"
 
 static long sys_write(int fd, const char *buf, unsigned long len) {
 	if (fd < 0 || fd >= NOFILE) {
@@ -1272,6 +1273,19 @@ fail:
 	return -EINVAL;
 }
 
+static long sys_uname(struct utsname *buf) {
+	if (vmm_validate(current->pagetable, (unsigned long)buf, sizeof(struct utsname), 1) < 0) {
+		return -EFAULT;
+	}
+	memset(buf, 0, sizeof(struct utsname));
+	strncpy(buf->sysname, "Slopix", 32);
+	strncpy(buf->nodename, "slopix", 32);
+	strncpy(buf->release, SLOPIX_VERSION, 32);
+	strncpy(buf->version, SLOPIX_VERSION, 32);
+	strncpy(buf->machine, "aarch64", 32);
+	return 0;
+}
+
 void syscall(struct trap_frame *tf) {
 	long ret = -1;
 	unsigned long num = tf->regs[8];
@@ -1396,6 +1410,9 @@ void syscall(struct trap_frame *tf) {
 		break;
 	case SYS_reboot:
 		ret = sys_reboot();
+		break;
+	case SYS_uname:
+		ret = sys_uname((struct utsname *)tf->regs[0]);
 		break;
 	default:
 		kprintf("Unknown syscall %lu\n", num);

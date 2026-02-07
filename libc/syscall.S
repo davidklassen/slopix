@@ -3,6 +3,7 @@
 .global stat, getcwd, lseek, rename, mmap, munmap
 .global kill, getprocs, getppid, _waitpid_syscall
 .global setpgid, getpgid, tcsetpgrp, tcgetpgrp, tcsetraw, tcgetraw, ftruncate, getdents, reboot
+.global uname
 
 write:
 	mov x8, #0
@@ -203,6 +204,11 @@ reboot:
 	mov x8, #39
 	svc #0
 	ret
+
+uname:
+	mov x8, #40
+	svc #0
+	b __syscall_ret
 
 // Common syscall return handler
 // Check for error (negative return), set errno if needed
