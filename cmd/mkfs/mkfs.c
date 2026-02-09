@@ -55,6 +55,9 @@ static struct superblock sb;
 static uint32_t freeblock;
 static uint32_t freeinode;
 static char zeroes[BSIZE];
+static uint32_t nfiles;
+static uint32_t ndirs;
+static uint32_t ndevs;
 
 static void wsect(uint32_t sec, void *buf) {
 	if (lseek(fsfd, sec * BSIZE, SEEK_SET) != sec * BSIZE) {
@@ -114,8 +117,6 @@ static uint32_t ialloc(uint16_t type) {
 static void balloc(uint32_t used) {
 	unsigned char buf[BSIZE];
 	uint32_t bpb = BSIZE * 8;
-
-	printf("balloc: marking %d blocks as used\n", used);
 
 	for (uint32_t b = 0; b < used; b += bpb) {
 		memset(buf, 0, BSIZE);
@@ -428,7 +429,7 @@ static uint32_t lookup_or_create_path(const char *path) {
 		uint32_t found = lookup_in_dir(parent, component);
 		if (found == 0) {
 			found = create_dir(parent, component);
-			printf("mkfs: created directory '%s' (inode %d)\n", component, found);
+			ndirs++;
 		}
 		parent = found;
 		component = strtok_r(NULL, "/", &saveptr);
@@ -457,7 +458,7 @@ static void copy_file_to_image(const char *hostpath, uint32_t parent, const char
 		iappend(inum, fbuf, n);
 	}
 
-	printf("mkfs: synced '%s' (inode %d)\n", hostpath, inum);
+	nfiles++;
 	close(fd);
 }
 
@@ -674,12 +675,8 @@ int main(int argc, char **argv) {
 				fprintf(stderr, "mkfs: invalid directory name '%s'\n", name);
 				exit(1);
 			}
-			uint32_t inum = create_dir(parent, name);
-			printf("mkfs: created directory '/%s%s%s' (inode %d)\n",
-			       slash ? arg + 5 : "",
-			       slash ? "/" : "",
-			       name,
-			       inum);
+			create_dir(parent, name);
+			ndirs++;
 			continue;
 		}
 
@@ -725,13 +722,8 @@ int main(int argc, char **argv) {
 				exit(1);
 			}
 			uint16_t type = is_bdev ? T_BDEVICE : T_DEVICE;
-			uint32_t inum = create_device(parent, name, type, major, minor);
-			printf("mkfs: created %s device '%s' (%d,%d) (inode %d)\n",
-			       is_bdev ? "block" : "char",
-			       name,
-			       major,
-			       minor,
-			       inum);
+			create_device(parent, name, type, major, minor);
+			ndevs++;
 			continue;
 		}
 
@@ -788,7 +780,7 @@ int main(int argc, char **argv) {
 			iappend(inum, fbuf, n);
 		}
 
-		printf("mkfs: added '%s' as '%s' (inode %d)\n", hostpath, name, inum);
+		nfiles++;
 		close(fd);
 	}
 
@@ -813,7 +805,14 @@ int main(int argc, char **argv) {
 	balloc(freeblock);
 
 	close(fsfd);
-	printf("mkfs: done\n");
+	printf("mkfs: wrote %d files, %d dirs, %d devices (%d/%d inodes, %d/%d blocks used)\n",
+	       nfiles,
+	       ndirs,
+	       ndevs,
+	       freeinode - 1,
+	       sb.ninodes,
+	       freeblock,
+	       sb.size);
 
 	return 0;
 }
