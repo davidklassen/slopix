@@ -1,0 +1,38 @@
+CompileFlags:
+  Add:
+    - --target=aarch64-none-elf
+    - -ffreestanding
+    - -Wall
+
+---
+
+If:
+  PathMatch: kernel/.*
+CompileFlags:
+  Add:
+    - -I kernel
+    - -DNOTEST
+
+---
+
+If:
+  PathMatch: boot/.*
+CompileFlags:
+  Add:
+    - -I boot
+
+---
+
+If:
+  PathMatch: libc/.*
+CompileFlags:
+  Add:
+    - -I libc/include
+
+---
+
+If:
+  PathMatch: cmd/.*
+CompileFlags:
+  Add:
+    - -I libc/include
